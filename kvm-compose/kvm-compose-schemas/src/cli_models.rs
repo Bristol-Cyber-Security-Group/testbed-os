@@ -16,8 +16,6 @@ pub struct Opts {
     pub project_name: Option<String>,
     #[arg(short, long)]
     pub verbosity: Option<String>,
-    #[arg(long, help = "Suppress (accept) continue prompts")]
-    pub no_ask: bool,
     #[command(subcommand)]
     pub sub_command: SubCommand,
     #[arg(
