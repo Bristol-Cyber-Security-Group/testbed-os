@@ -196,20 +196,17 @@ async fn run(
                 // we also do not expect any other message over the socket from the client while a
                 // command is running
 
-                // TODO - break this up into a function
-                let res = tokio::select! {
+                // if this errors, it is either due to orchestration failure or non cancellation
+                // token was received
+                let close_connection_bool_result = tokio::select! {
+                    // process client instruction and return whether we continue
                     close = process_client_instruction(msg, loop_sender, loop_state, loop_common) => close,
-                    Some(Ok(maybe_cancel_token)) = receiver.next() => {
-                        tracing::info!("client has sent a cancellation token, closing connection");
-                        let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
-                            code: 1000,
-                            reason: Cow::from("The client sent a cancellation token, connection closed"),
-                        }))).await.context("sending close to client websocket")?;
-                        Ok(true)
-                    }
+                    // process potential cancelation token
+                    Some(Ok(maybe_cancel_token)) = receiver.next() => process_potential_cancel_token(maybe_cancel_token, loop_sender_cancel).await
                 };
 
-                let close_connection_bool = res?;
+                let close_connection_bool = close_connection_bool_result
+                    .context("determining if the orchestration loop should continue")?;
 
                 // got a close result, exit loop
                 if close_connection_bool {
@@ -392,6 +389,42 @@ async fn process_client_instruction(
             // dont close
             Ok(false)
 
+        }
+        Message::Close(_) => {
+            return Ok(true);
+        }
+        _ => Ok(true), // TODO - unexpected message?
+    }
+}
+
+async fn process_potential_cancel_token(
+    maybe_cancel_token: Message,
+    loop_sender_cancel: Arc<Mutex<SplitSink<WebSocket, Message>>>,
+) -> anyhow::Result<bool> {
+
+    match maybe_cancel_token {
+        Message::Binary(b) => {
+
+            let instruction: OrchestrationProtocol = serde_json::from_slice(&b)?;
+            tracing::info!("orchestration got instruction in cancellation listener: {:?}", &instruction.instruction);
+
+            match instruction.instruction {
+                OrchestrationInstruction::Cancel => {}
+                _ => {
+                    // was not cancellation token, for now we will throw an error and kill the
+                    // command running as the following commands will be out of order for the
+                    // orchestration protocol
+                    // there is a strict order of commands from the client to the server
+                    bail!("got a non cancellation token in the cancellation listener, killing orchestration")
+                }
+            }
+
+            tracing::info!("client has sent a cancellation token, closing connection");
+            let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
+                code: 1000,
+                reason: Cow::from("The client sent a cancellation token, connection closed"),
+            }))).await.context("sending close to client websocket")?;
+            Ok(true)
         }
         Message::Close(_) => {
             return Ok(true);
