@@ -199,60 +199,18 @@ async fn run(
 
                 // TODO - break this up into a function
                 let res = tokio::select! {
-                    close = tokio::spawn(async move {
-                        match msg {
-                            Message::Binary(b) => {
-                                // deserialise
-                                let instruction: OrchestrationProtocol = serde_json::from_slice(&b)?;
-                                tracing::info!("orchestration got instruction: {:?}", &instruction.instruction);
-
-                                let _ = loop_sender.lock().await.send(Message::Text("Receiving instruction OK".to_string()))
-                                    .await
-                                    .context("sending acknowledgement")?;
-
-                                // run the instruction, if the mpsc channel returns a message from the instruction
-                                // while it is running, process that and then resume waiting for the instruction to run
-                                // ... this will also handle sending any important log messages during the
-                                // execution of the instruction to the client, that aren't the final state of
-                                // the instruction result, as seen below `serialised_response`
-                                let (run_instruction_res, loop_sender) = get_instruction_result(
-                                    instruction,
-                                    &loop_state,
-                                    &loop_common,
-                                    loop_sender.clone(),
-                                ).await.context("getting result for instruction execution and ws sender")?;
-
-                                // send to client the result
-                                let serialised_response = serde_json::to_string(&run_instruction_res)?;
-                                let _ = loop_sender.lock().await.send(Message::Text(serialised_response))
-                                    .await
-                                    .context("sending instruction result")?;
-
-                                if !run_instruction_res.is_success()? {
-                                    bail!("there was a failed orchestration instruction, {run_instruction_res:?}");
-                                }
-
-                                // dont close
-                                Ok((false, loop_sender))
-
-                            }
-                            Message::Close(_) => {
-                                return Ok((true, loop_sender));
-                            }
-                            _ => Ok((true, loop_sender)), // TODO - unexpected message?
-                        }
-                    }) => close,
+                    close = process_client_instruction(msg, loop_sender, loop_state, loop_common) => close,
                     Some(Ok(maybe_cancel_token)) = receiver.next() => {
                         tracing::info!("client has sent a cancellation token, closing connection");
                         let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
                             code: 1000,
                             reason: Cow::from("The client sent a cancellation token, connection closed"),
                         }))).await.context("sending close to client websocket")?;
-                        Ok(Ok((true, loop_sender_cancel)))
+                        Ok((true, loop_sender_cancel))
                     }
                 };
 
-                let (close_connection_bool, ret_sender) = res??;
+                let (close_connection_bool, ret_sender) = res?;
 
                 // got a close result, exit loop
                 if close_connection_bool {
@@ -340,7 +298,7 @@ async fn get_instruction_result(
     instruction: OrchestrationProtocol,
     state: &State,
     common: &OrchestrationCommon,
-    mut ws_sender: Arc<Mutex<SplitSink<WebSocket, Message>>>
+    ws_sender: Arc<Mutex<SplitSink<WebSocket, Message>>>
 ) -> anyhow::Result<(OrchestrationProtocolResponse, Arc<Mutex<SplitSink<WebSocket, Message>>>)> {
     // set up channel
     let (logging_send, mut logging_recv) = mpsc::channel(32);
@@ -391,4 +349,54 @@ async fn get_init_protocol(
 ) -> anyhow::Result<OrchestrationProtocol> {
     let instruction: OrchestrationProtocol = serde_json::from_slice(b)?;
     Ok(instruction)
+}
+
+
+async fn process_client_instruction(
+    msg: Message,
+    loop_sender: Arc<Mutex<SplitSink<WebSocket, Message>>>,
+    loop_state: Arc<State>,
+    loop_common: OrchestrationCommon
+) -> anyhow::Result<(bool, Arc<Mutex<SplitSink<WebSocket, Message>>>)> {
+    match msg {
+        Message::Binary(b) => {
+            // deserialise
+            let instruction: OrchestrationProtocol = serde_json::from_slice(&b)?;
+            tracing::info!("orchestration got instruction: {:?}", &instruction.instruction);
+
+            let _ = loop_sender.lock().await.send(Message::Text("Receiving instruction OK".to_string()))
+                .await
+                .context("sending acknowledgement")?;
+
+            // run the instruction, if the mpsc channel returns a message from the instruction
+            // while it is running, process that and then resume waiting for the instruction to run
+            // ... this will also handle sending any important log messages during the
+            // execution of the instruction to the client, that aren't the final state of
+            // the instruction result, as seen below `serialised_response`
+            let (run_instruction_res, loop_sender) = get_instruction_result(
+                instruction,
+                &loop_state,
+                &loop_common,
+                loop_sender.clone(),
+            ).await.context("getting result for instruction execution and ws sender")?;
+
+            // send to client the result
+            let serialised_response = serde_json::to_string(&run_instruction_res)?;
+            let _ = loop_sender.lock().await.send(Message::Text(serialised_response))
+                .await
+                .context("sending instruction result")?;
+
+            if !run_instruction_res.is_success()? {
+                bail!("there was a failed orchestration instruction, {run_instruction_res:?}");
+            }
+
+            // dont close
+            Ok((false, loop_sender))
+
+        }
+        Message::Close(_) => {
+            return Ok((true, loop_sender));
+        }
+        _ => Ok((true, loop_sender)), // TODO - unexpected message?
+    }
 }
