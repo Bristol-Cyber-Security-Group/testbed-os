@@ -2,10 +2,11 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
 use anyhow::{bail, Context};
+use axum::Error;
 use axum::extract::ws::{CloseFrame, Message, WebSocket};
 use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::SplitSink;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 use tokio::task::JoinHandle;
 use kvm_compose_lib::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationProtocol, OrchestrationProtocolResponse};
 use kvm_compose_lib::orchestration::{OrchestrationCommon, read_previous_state};
@@ -60,7 +61,8 @@ async fn run(
 ) -> anyhow::Result<()> {
     tracing::info!("starting orchestration websocket");
 
-    let (mut sender, mut receiver) = socket.split();
+    let (sender, mut receiver) = socket.split();
+    let sender = Arc::new(Mutex::new(sender));
 
     tracing::info!("get Init instruction");
     // make sure the client starts with the Init protocol
@@ -74,7 +76,7 @@ async fn run(
             match instruction {
                 Ok(ok) => {
                     // acknowledge
-                    let _ = sender.send(Message::Text("Receiving instruction OK".to_string()))
+                    let _ = sender.lock().await.send(Message::Text("Receiving instruction OK".to_string()))
                         .await
                         .context("sending acknowledgement")?;
                     // confirm
@@ -83,14 +85,14 @@ async fn run(
                         .run_init()
                         .await?;
                     let serialised_response = serde_json::to_string(&run_instruction_res)?;
-                    let _ = sender.send(Message::Text(serialised_response))
+                    let _ = sender.lock().await.send(Message::Text(serialised_response))
                         .await
                         .context("sending instruction result")?;
                     // return the init protocol for later code to get deployment info
                     ok
                 }
                 Err(_) => {
-                    let _ = sender.send(Message::Close(Some(CloseFrame {
+                    let _ = sender.lock().await.send(Message::Close(Some(CloseFrame {
                         code: 1011, // this is error
                         reason: Cow::from("Could not deserialise the Init instruction"),
                     }))).await.context("sending close to client websocket")?;
@@ -99,7 +101,7 @@ async fn run(
             }
         }
         _ => {
-            let _ = sender.send(Message::Close(Some(CloseFrame {
+            let _ = sender.lock().await.send(Message::Close(Some(CloseFrame {
                 code: 1011, // this is error
                 reason: Cow::from("The client did not begin orchestration with an Init instruction"),
             }))).await.context("sending close to client websocket")?;
@@ -131,7 +133,7 @@ async fn run(
             (deployment, previous_state, deployment_command)
         }
         _ => {
-            let _ = sender.send(Message::Close(Some(CloseFrame {
+            let _ = sender.lock().await.send(Message::Close(Some(CloseFrame {
                 code: 1011, // this is error
                 reason: Cow::from("The client did not begin orchestration with an Init instruction"),
             }))).await.context("sending close to client websocket")?;
@@ -153,6 +155,7 @@ async fn run(
         let state = read_previous_state(project_location, &deployment_copy.name.clone())
             .await
             .context("getting project state in orchestration websocket job")?;
+        let state = Arc::new(state);
         let (force_provision, force_rerun_scripts) = match &deployment_command_copy {
             DeploymentCommand::Up { up_cmd } => {
                 (up_cmd.provision, up_cmd.rerun_scripts)
@@ -175,49 +178,90 @@ async fn run(
 
         tracing::info!("starting the orchestration listen loop");
 
-        while let Some(Ok(msg)) = receiver.next().await {
-            // process each message as they come
-            match msg {
-                Message::Binary(b) => {
-                    // deserialise
-                    let instruction: OrchestrationProtocol = serde_json::from_slice(&b)?;
-                    tracing::info!("orchestration got instruction: {:?}", &instruction.instruction);
 
-                    let _ = sender.send(Message::Text("Receiving instruction OK".to_string()))
-                        .await
-                        .context("sending acknowledgement")?;
+        loop {
 
-                    // run the instruction, if the mpsc channel returns a message from the instruction
-                    // while it is running, process that and then resume waiting for the instruction to run
-                    // ... this will also handle sending any important log messages during the
-                    // execution of the instruction to the client, that aren't the final state of
-                    // the instruction result, as seen below `serialised_response`
-                    let (run_instruction_res, mut ret_sender) = get_instruction_result(
-                        instruction,
-                        &state,
-                        &common,
-                        sender,
-                    ).await.context("getting result for instruction execution and ws sender")?;
+            // make copies (new ref as it's an Arc) in the loop so that we can move them
+            let loop_state = state.clone();
+            let loop_common = common.clone();
+            let loop_sender = sender.clone();
+            let loop_sender_cancel = sender.clone();
 
-                    // send to client the result
-                    let serialised_response = serde_json::to_string(&run_instruction_res)?;
-                    let _ = ret_sender.send(Message::Text(serialised_response))
-                        .await
-                        .context("sending instruction result")?;
+            // get message from server
+            let raw_msg = receiver.next().await;
+            // make sure it is ok and not empty
+            if let Some(Ok(msg)) = raw_msg {
 
-                    // reset the original sender with itself, that is returned from get_instruction_result
-                    // so that the next loop has it otherwise will get using moved value compile error
-                    sender = ret_sender;
+                // now we want to execute a command based on this message, but we might also receive
+                // a cancellation token ... the receiver must be free to listen to this command ...
+                // we also do not expect any other message over the socket from the client while a
+                // command is running
 
-                    if !run_instruction_res.is_success()? {
-                        bail!("there was a failed orchestration instruction, {run_instruction_res:?}");
+                // TODO - break this up into a function
+                let res = tokio::select! {
+                    close = tokio::spawn(async move {
+                        match msg {
+                            Message::Binary(b) => {
+                                // deserialise
+                                let instruction: OrchestrationProtocol = serde_json::from_slice(&b)?;
+                                tracing::info!("orchestration got instruction: {:?}", &instruction.instruction);
+
+                                let _ = loop_sender.lock().await.send(Message::Text("Receiving instruction OK".to_string()))
+                                    .await
+                                    .context("sending acknowledgement")?;
+
+                                // run the instruction, if the mpsc channel returns a message from the instruction
+                                // while it is running, process that and then resume waiting for the instruction to run
+                                // ... this will also handle sending any important log messages during the
+                                // execution of the instruction to the client, that aren't the final state of
+                                // the instruction result, as seen below `serialised_response`
+                                let (run_instruction_res, loop_sender) = get_instruction_result(
+                                    instruction,
+                                    &loop_state,
+                                    &loop_common,
+                                    loop_sender.clone(),
+                                ).await.context("getting result for instruction execution and ws sender")?;
+
+                                // send to client the result
+                                let serialised_response = serde_json::to_string(&run_instruction_res)?;
+                                let _ = loop_sender.lock().await.send(Message::Text(serialised_response))
+                                    .await
+                                    .context("sending instruction result")?;
+
+                                if !run_instruction_res.is_success()? {
+                                    bail!("there was a failed orchestration instruction, {run_instruction_res:?}");
+                                }
+
+                                // dont close
+                                Ok((false, loop_sender))
+
+                            }
+                            Message::Close(_) => {
+                                return Ok((true, loop_sender));
+                            }
+                            _ => Ok((true, loop_sender)), // TODO - unexpected message?
+                        }
+                    }) => close,
+                    Some(Ok(maybe_cancel_token)) = receiver.next() => {
+                        tracing::info!("client has sent a cancellation token, closing connection");
+                        let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
+                            code: 1000,
+                            reason: Cow::from("The client sent a cancellation token, connection closed"),
+                        }))).await.context("sending close to client websocket")?;
+                        Ok(Ok((true, loop_sender_cancel)))
                     }
+                };
 
-                }
-                Message::Close(_) => {
+                let (close_connection_bool, ret_sender) = res??;
+
+                // got a close result, exit loop
+                if close_connection_bool {
+                    tracing::info!("close connection true in orchestration websocket");
                     break;
                 }
-                _ => {} // TODO - unexpected message?
+
+            } else {
+                break;
             }
         }
         tracing::info!("end of orchestration connection");
@@ -296,14 +340,14 @@ async fn get_instruction_result(
     instruction: OrchestrationProtocol,
     state: &State,
     common: &OrchestrationCommon,
-    mut ws_sender: SplitSink<WebSocket, Message>
-) -> anyhow::Result<(OrchestrationProtocolResponse, SplitSink<WebSocket, Message>)> {
+    mut ws_sender: Arc<Mutex<SplitSink<WebSocket, Message>>>
+) -> anyhow::Result<(OrchestrationProtocolResponse, Arc<Mutex<SplitSink<WebSocket, Message>>>)> {
     // set up channel
     let (logging_send, mut logging_recv) = mpsc::channel(32);
 
     // we need to return the websocket sender `ws_sender`, since we can only have one with no clones
     // so we need to return it back to the caller of this function
-    let logging_task: JoinHandle<anyhow::Result<SplitSink<WebSocket, Message>>> = tokio::spawn(async move{
+    let logging_task: JoinHandle<anyhow::Result<Arc<Mutex<SplitSink<WebSocket, Message>>>>> = tokio::spawn(async move{
         loop {
             // message received from instruction run, send to user
             if let Some(protocol) = logging_recv.recv().await {
@@ -319,7 +363,7 @@ async fn get_instruction_result(
                     _ => {}
                 }
 
-                let _ = ws_sender.send(Message::Text(serialised_response))
+                let _ = ws_sender.lock().await.send(Message::Text(serialised_response))
                     .await
                     .context("sending instruction logging message")?;
             }
