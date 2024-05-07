@@ -92,7 +92,6 @@ async fn run(
         input: "kvm-compose.yaml".to_string(), // assume from GUI always this
         project_name: Some(gui_command.project_name.clone()),
         verbosity: Some("Info".to_string()),
-        no_ask: true,
         sub_command: gui_command.sub_command,
         server_connection: "http://localhost:3355/".to_string(),
     };

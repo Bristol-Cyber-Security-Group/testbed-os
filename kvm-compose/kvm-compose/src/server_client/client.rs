@@ -2,7 +2,7 @@ use crate::server_client::http_actions;
 use crate::get_project_name;
 use anyhow::{bail, Context};
 use kvm_compose_schemas::cli_models::{AnalysisToolsSubCmd, DeploymentCmd, DeploymentSubCommand, Opts, SubCommand};
-use kvm_compose_schemas::deployment_models::{DeploymentCommand, DeploymentState};
+use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand, DeploymentState};
 use reqwest::Client;
 use crate::orchestration::websocket::ws_orchestration_client;
 
@@ -19,6 +19,8 @@ pub async fn orchestration_action(
     // get deployment or create
     let deployment = {
         if let Ok(deployment) = http_actions::check_deployment(&client, &project_name, &opts.server_connection).await {
+            // make sure that the recorded deployment location is the same as the current folder
+            ensure_current_folder_matches_deployment(&deployment)?;
             deployment
         } else {
             tracing::info!("deployment {project_name} doesnt exist, creating");
@@ -148,4 +150,16 @@ fn get_result(
             Ok(())
         }
     }
+}
+
+/// Prevent commands running in a folder with the same name as an existing deployment, which would
+/// cause mismatch in configuration and artefact usage.
+fn ensure_current_folder_matches_deployment(
+    deployment: &Deployment
+) -> anyhow::Result<()> {
+    let current_dir = std::env::current_dir()?.display().to_string();
+    if !deployment.project_location.eq(&current_dir) {
+        bail!("there is an existing deployment with the same name '{}' at '{}'", deployment.name, deployment.project_location)
+    }
+    Ok(())
 }
