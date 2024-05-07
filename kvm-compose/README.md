@@ -9,7 +9,9 @@ It is split up into three crates:
 
 The general data schemas used in all parts of the testbed are kept in `kvm-compose-schemas`.
 
-The crate `kvm-compose` contains the CLI and Orchestrator binary, but also the core testbed logic as a library.
+The crate `kvm-compose-cli` contains the CLI for the testbed.
+
+The crate `kvm-compose` contains the core testbed logic as a library.
 
 The crate `testbedos-server` contains the server binary, which can be run in server or client mode.
 
