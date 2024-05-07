@@ -1,4 +1,4 @@
-RELEASE_VERSION=v1.0.0
+RELEASE_VERSION=v1.0.1
 
 echo "installing Frida-Tools repo"
 cd /var/lib/testbedos/tools/
