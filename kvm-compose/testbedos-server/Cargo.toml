@@ -1,0 +1,49 @@
+[package]
+name = "testbedos-server"
+version = "1.0.0"
+edition = "2021"
+
+[lib]
+name = "testbedos_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "testbedos-server"
+path = "src/server.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = { version = "0.7.4", features = ["macros", "ws"] }
+axum-extra = { version = "0.9.2", features = ["erased-json", "typed-header"] }
+futures-util = { workspace = true }
+tokio = { workspace = true}
+tokio-tungstenite = { workspace = true }
+tower = { version = "0.4.13", features = ["util", "timeout", "load-shed", "limit"] }
+tower-http = { version = "0.5.2", features = ["cors", "normalize-path", "fs"] }
+tower-layer = "0.3.2"
+tracing = { workspace = true }
+tracing-appender = "0.2.3"
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+anyhow = "1.0.71"
+kvm-compose = { path = "../kvm-compose" }
+kvm-compose-schemas = { path = "../kvm-compose-schemas" }
+service-clients = { path = "../service-clients" }
+uuid = { workspace = true }
+chrono = "0.4.26"
+reqwest = { workspace = true }
+clap = { workspace = true }
+tokio-cron-scheduler = "0.10.0"
+regex = "1.10.2"
+csv = "1.3.0"
+lazy_static = { workspace = true }
+tera = { workspace = true }
+http = "1.0.0"
+sysinfo = "0.30.5"
+virt = { workspace = true }
+glob = "0.3.1"
+nix = { workspace = true }
+async-trait = { workspace = true }

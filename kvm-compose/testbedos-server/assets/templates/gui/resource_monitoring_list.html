@@ -1,0 +1,27 @@
+{% extends "gui/base.html" %}
+
+
+{% block title %}{{ page_name }}{% endblock title %}
+
+
+{% block head %}
+{{ super() }}
+{% endblock head %}
+
+{% block content %}
+
+Placeholder for resource monitoring page - list deployments with a link to the dashboard page at http://localhost:3355/api/metrics/dashboard/:project
+
+<br><br>
+Active deployments with resource monitoring dashboards: <br>
+<div class="list-group">
+{% for deployment_name, deployment_data in deployments %}
+
+    {% if deployment_data.state == 'up' %}
+    <a href="/api/metrics/dashboard/{{deployment_name}}" class="list-group-item list-group-item-action">{{deployment_name}}</a>
+    {% endif %}
+
+{% endfor %}
+</div>
+
+{% endblock content %}

@@ -1,0 +1,19 @@
+<network>
+    <name>test-harness-network</name>
+    <forward mode='nat'>
+        <nat>
+            <port start='1024' end='65535'/>
+        </nat>
+    </forward>
+    <bridge name='test-br0' stp='on' delay='0'/>
+    <mtu size="2000"/>
+    <domain name='testbed.host' localOnly='yes'/>
+    <ip address='192.168.80.1' netmask='255.255.255.0'>
+        <dhcp>
+            <range start='192.168.80.2' end='192.168.80.254'/>
+            <host mac="52:54:00:00:00:00" name="testbed-host-one" ip="192.168.80.11"/>
+            <host mac="52:54:00:00:00:01" name="testbed-host-two" ip="192.168.80.12"/>
+            <host mac="52:54:00:00:00:02" name="testbed-host-three" ip="192.168.80.13"/>
+        </dhcp>
+    </ip>
+</network>

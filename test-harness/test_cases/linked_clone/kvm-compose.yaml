@@ -1,0 +1,77 @@
+machines:
+
+  - name: server
+    libvirt:
+      cpus: 1
+      memory_mb: 512
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 2
+          context: ./kvm-compose.yaml
+      scaling:
+        count: 3
+        shared_setup: shared_setup.sh
+        interfaces:
+          - bridge: br0
+            clones: [0]
+          - bridge: br1
+            clones: [1]
+          - bridge: br2
+            clones: [2]
+        clone_setup:
+          - script: clone_setup.sh
+            clones: [0,1,2]
+
+  - name: client
+    libvirt:
+      cpus: 1
+      memory_mb: 512
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 2
+          context: ./kvm-compose.yaml
+      scaling:
+        count: 2
+        shared_setup: shared_setup.sh
+        interfaces:
+          - bridge: br1
+            clones: [0]
+          - bridge: br0
+            clones: [1]
+        clone_setup:
+          - script: clone_setup.sh
+            clones: [0,1]
+
+  - name: nginx
+    docker:
+      image: nginx:stable
+      env_file: docker.env
+      volumes:
+        - source: ${PWD}/html
+          target: /usr/share/nginx/html
+      scaling:
+        count: 3
+        interfaces:
+          - bridge: br0
+            clones: [ 0 ]
+          - bridge: br1
+            clones: [ 1 ]
+          - bridge: br2
+            clones: [ 2 ]
+
+network:
+  bridges:
+    - name: br0
+      protocol: OpenFlow13
+    - name: br1
+      protocol: OpenFlow13
+    - name: br2
+      protocol: OpenFlow13
+
+  bridge_connections:
+    br0: br1
+    br1: br2
+
+  external_bridge: br0

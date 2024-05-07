@@ -1,0 +1,9 @@
+preserve_hostname: false
+network:
+  version: 2
+  ethernets:
+    ens3:
+      dhcp4: true
+      dhcp6: false
+      dhcp-identifier: mac
+      mtu: 1400

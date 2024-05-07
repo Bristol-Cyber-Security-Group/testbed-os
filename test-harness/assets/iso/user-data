@@ -1,0 +1,21 @@
+## template: jinja
+#cloud-config
+chpasswd:
+  list: |
+    nocloud:password
+  expire: False
+users:
+  - name: nocloud
+    gecos: nocloud
+    shell: /bin/bash
+    groups: users, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh-authorized-keys:
+      - {{ ds.meta_data.public_ssh_key }}
+ssh_pwauth: {{ ds.meta_data.password_ssh_enabled }}
+write_files:
+  - path: /etc/sysctl.d/10-disable-ipv6.conf
+    permissions: 0644
+    owner: root
+    content: |
+      net.ipv6.conf.eth0.disable_ipv6 = 1

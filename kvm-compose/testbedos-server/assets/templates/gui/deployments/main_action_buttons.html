@@ -1,0 +1,104 @@
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<script type='text/javascript' src="http://localhost:3355/assets/scripts/action_buttons.js?{{ testbed_project_version }}"></script>
+
+<div class="row margin-top mb-3">
+    <div class="col">
+        <div class="d-grid gap-2">
+            <button type="btn btn-primary" class="btn btn-primary"  data-bs-toggle="collapse" data-bs-target="#collapse-b1" aria-expanded="false" aria-controls="collapse-b1">
+                View Yaml
+            </button>
+        </div>
+    </div>
+
+    <div class="col">
+        <div class="d-grid gap-2">
+            <button type="btn btn-primary" class="btn btn-primary"  data-bs-toggle="collapse" data-bs-target="#collapse-b2" aria-expanded="false" aria-controls="collapse-b2">
+                View State
+            </button>
+        </div>
+    </div>
+
+    <div class="col">
+        <div class="d-grid gap-2">
+            <button type="btn btn-primary" class="btn btn-primary"  data-bs-toggle="collapse" data-bs-target="#collapse-b3" aria-expanded="false" aria-controls="collapse-b3">
+                View Topology
+            </button>
+        </div>
+    </div>
+
+    <div class="col">
+        <div class="d-grid gap-2">
+            <button type="btn btn-primary" class="btn btn-primary"  data-bs-toggle="collapse" data-bs-target="#collapse-b4" aria-expanded="false" aria-controls="collapse-b4">
+                Run command
+            </button>
+        </div>
+    </div>
+
+    <div class="col">
+        <div class="d-grid gap-2">
+            <button type="btn btn-primary" class="btn btn-primary"  data-bs-toggle="collapse" data-bs-target="#collapse-b5" aria-expanded="false" aria-controls="collapse-b5">
+                Resource Monitoring
+            </button>
+        </div>
+    </div>
+
+    <div class="col">
+        <div class="d-grid gap-2">
+            <button type="btn btn-outline-danger" class="btn btn-outline-danger"  data-bs-toggle="collapse" data-bs-target="#collapse-b6" aria-expanded="false" aria-controls="collapse-b6">
+                Delete
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<div id="collapseGroup">
+
+    <div class="collapse" id="collapse-b1" style="height:100vh" data-bs-parent="#collapseGroup">
+        <div class="card card-body mt-3" style="height:70vh">
+            You are able to edit this yaml and push to the server with the button below <br>
+            <textarea id="yamlTextBox" style="height:100%;"></textarea>
+            <button id="updateYamlButton" type="btn btn-primary" class="btn btn-primary">
+                Update Yaml
+            </button>
+        </div>
+    </div>
+
+    <div class="collapse" id="collapse-b2" style="height:100vh" data-bs-parent="#collapseGroup">
+        <div class="card card-body mt-3" style="height:70vh">
+            Placeholder - get state json from server, no editing <br>
+            <textarea readonly id="stateJsonTextBox" style="height:100%;"></textarea>
+        </div>
+    </div>
+
+    <div class="collapse" id="collapse-b3" style="height:100vh" data-bs-parent="#collapseGroup">
+        <div class="card card-body mt-3"  style="height:70vh">
+            <div id="topologydiv" style="width: 100%; height: 100%; display: block;"></div>
+            <div id="nodeInfoBox" style="display: none; position: absolute; z-index: 100; background-color: white; border: 1px solid #ddd; padding: 10px; border-radius: 5px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1);"></div>
+        </div>
+    </div>
+
+    <div class="collapse" id="collapse-b4" data-bs-parent="#collapseGroup">
+        {% include "gui/deployments/run_command.html" %}
+    </div>
+
+    <div class="collapse" id="collapse-b5" data-bs-parent="#collapseGroup">
+        <div class="container-fluid bg-light">
+            <div class="row">
+                <div class="col">
+                    {% include "gui/deployments/grafana.html" %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="collapse" id="collapse-b6" data-bs-parent="#collapseGroup">
+        <div class="card card-body mt-3">
+            Placeholder - delete deployment, give a confirmation popup
+            <button id="deleteDeploymentButton" type="btn btn-outline-danger" class="btn btn-outline-danger">
+                Are you sure you want to delete {{ project_name }} project?
+            </button>
+        </div>
+    </div>
+
+</div>

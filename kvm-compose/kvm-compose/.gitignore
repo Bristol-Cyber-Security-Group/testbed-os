@@ -1,0 +1,6 @@
+*.iso
+*.img
+*.qcow2
+kvm-compose
+kvm-compose.yaml
+example.sh

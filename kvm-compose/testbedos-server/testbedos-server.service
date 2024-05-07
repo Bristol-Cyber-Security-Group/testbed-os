@@ -1,0 +1,12 @@
+[Unit]
+Description=TestbedOS Server
+
+[Service]
+User=root
+WorkingDirectory=/var/lib/testbedos/server/
+ExecStart= /usr/local/bin/testbedos-server
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

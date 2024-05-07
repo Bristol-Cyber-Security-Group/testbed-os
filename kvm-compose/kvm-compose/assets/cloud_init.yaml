@@ -1,0 +1,25 @@
+## template: jinja
+#cloud-config
+chpasswd:
+  list: |
+    nocloud:password
+  expire: False
+users:
+  - name: nocloud
+    gecos: nocloud
+    shell: /bin/bash
+    groups: users, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh-authorized-keys:
+      - {{ ds.meta_data.public_ssh_key }}
+runcmd:
+  - mkdir -p /etc/nocloud/context
+  - mkdir /nocloudtmp
+  - mount /dev/sr0 /nocloudtmp
+  - tar -xf /nocloudtmp/context.tar -C /etc/nocloud/context
+  - umount /nocloudtmp
+  - rm -rf /nocloudtmp
+  - echo 'cloud-init query ds.meta_data.environment."$@"' > /etc/nocloud/env.sh
+  - chmod +x /etc/nocloud/env.sh
+  - {{ ds.meta_data.tb_set_ip }}
+  - echo "MINIMAL INSTALL COMPLETE" > /home/nocloud/COMPLETE_FLAG.txt

@@ -1,0 +1,174 @@
+machines:
+
+  - name: client1
+    network:
+      switch: sw0
+      gateway: 10.0.0.1
+      mac: "00:00:00:00:00:01"
+      ip: "dynamic"
+    libvirt:
+      cpus: 2
+      memory_mb: 2048
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 5
+
+# enable and disable guests as seen fit
+
+#  - name: client2
+#    network:
+#      switch: sw0
+#      gateway: 10.0.0.1
+#      mac: "00:00:00:00:00:02"
+#      ip: "10.0.0.10"
+#    libvirt:
+#      cpus: 2
+#      memory_mb: 2048
+#      libvirt_type:
+#        cloud_image:
+#          name: ubuntu_20_04
+#          expand_gigabytes: 5
+#
+#  - name: client3
+#    network:
+#      switch: sw0
+#      gateway: 10.0.0.1
+#      ip: "10.0.0.11"
+#      mac: "00:00:00:00:00:03"
+#    docker:
+#      image: busybox
+
+#  - name: client4
+#    network:
+#      switch: sw0
+#      gateway: 10.0.0.1
+#      mac: "00:00:00:00:00:04"
+#      ip: "10.0.0.12"
+#    android:
+#      avd:
+#        android_api_version: 28
+#        playstore_enabled: true
+
+#  - name: clone
+#    libvirt:
+#      cpus: 2
+#      memory_mb: 2048
+#      libvirt_type:
+#        cloud_image:
+#          name: ubuntu_20_04
+#          expand_gigabytes: 5
+#      scaling:
+#        count: 2
+##        shared_setup: shared_setup.sh
+#        interfaces:
+#          sw0:
+#            clones: [0]
+#            gateway: "10.0.0.1"
+#            ip_type: dynamic
+##            ip_type:
+##              ip_range:
+##                from: "10.0.0.2"
+##                to: "10.0.0.2"
+#            mac_range:
+#              from: "00:00:00:00:00:05"
+#              to: "00:00:00:00:00:05"
+#          sw1:
+#            clones: [1]
+#            gateway: "10.0.2.1"
+#            ip_type: dynamic
+##            ip_type:
+##              ip_range:
+##                from: "10.0.2.2"
+##                to: "10.0.2.2"
+#            mac_range:
+#              from: "00:00:00:00:00:06"
+#              to: "00:00:00:00:00:06"
+
+
+network:
+  ovn:
+    switches:
+
+      sw0:
+        subnet: "10.0.0.0/24"
+
+      sw1:
+        subnet: "10.0.2.0/24"
+
+      sw-mid:
+        subnet: "10.0.1.0/24"
+
+      public:
+        subnet: "172.16.1.0/24"
+        ports:
+          - name: ls-public
+            localnet:
+              network_name: public
+
+    routers:
+
+      lr0:
+        ports:
+
+          - name: lr0-sw0
+            mac: "00:00:00:00:ff:01"
+            gateway_ip: "10.0.0.1/24"
+            switch: sw0
+
+          - name: lr0-sw-mid
+            mac: "00:00:00:00:ff:02"
+            gateway_ip: "10.0.1.1/24"
+            switch: sw-mid
+
+          - name: lr0-public
+            mac: "00:00:20:20:12:13"
+            gateway_ip: "172.16.1.200/24"
+            switch: public
+            set_gateway_chassis: master
+
+        static_routes:
+          - prefix: "0.0.0.0/0"
+            nexthop: "172.16.1.1"
+
+          - prefix: "10.0.2.0/24"
+            nexthop: "10.0.1.2"
+
+        nat:
+          # allow all guests in 10.0.0.0/16 subnet to access the host networking, and internet
+          - nat_type: snat
+            external_ip: "172.16.1.200"
+            logical_ip: "10.0.0.0/16"
+        #          # give guest with ip 10.0.0.11 a static ip address 172.16.1.11 outside the logical network
+        #          - nat_type: dnat_and_snat
+        #            external_ip: "172.16.1.11"
+        #            logical_ip: "10.0.0.11"
+
+        dhcp:
+          - switch: sw0
+            exclude_ips:
+              from: "10.0.0.1"
+              to: "10.0.0.20"
+
+      lr1:
+        ports:
+
+          - name: lr1-sw-mid
+            mac: "00:00:00:00:ff:03"
+            gateway_ip: "10.0.1.2/24"
+            switch: sw-mid
+
+          - name: lr1-sw1
+            mac: "00:00:00:00:ff:04"
+            gateway_ip: "10.0.2.1/24"
+            switch: sw1
+
+        static_routes:
+          - prefix: "0.0.0.0/0"
+            nexthop: "10.0.1.1"
+
+#        dhcp:
+#          - switch: sw1
+#            exclude_ips:
+#              from: "10.0.2.1"
+#              to: "10.0.2.20"

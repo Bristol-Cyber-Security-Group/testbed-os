@@ -1,0 +1,53 @@
+machines:
+
+  - name: client1
+    network:
+      switch: sw0
+      gateway: 10.0.0.1
+      mac: "00:00:00:00:00:01"
+      ip: "dynamic"
+    libvirt:
+      cpus: 2
+      memory_mb: 6144
+      extended_graphics_support: true
+      libvirt_type:
+         existing_disk:
+           path: /var/lib/libvirt/images/avd-ubuntu22.04.qcow2
+           driver_type: qcow2
+           device_type: disk
+           readonly: false
+           run_script: ./run.sh
+           context: ./emulator/
+
+network:
+  ovn:
+    switches:
+
+      sw0:
+        subnet: "10.0.0.0/24"
+
+      public:
+        subnet: "172.16.1.0/24"
+        ports:
+          - name: ls-public
+            localnet:
+              network_name: public
+
+    routers:
+
+      lr0:
+        ports:
+
+          - name: lr0-sw0
+            mac: "00:00:00:00:ff:01"
+            gateway_ip: "10.0.0.1/24"
+            switch: sw0
+
+        static_routes:
+          - prefix: "0.0.0.0/0"
+            nexthop: "172.16.1.1"
+
+        nat:
+          - nat_type: snat
+            external_ip: "172.16.1.200"
+            logical_ip: "10.0.0.0/16"

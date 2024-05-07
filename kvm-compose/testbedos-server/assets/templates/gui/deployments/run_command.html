@@ -1,0 +1,124 @@
+<!--<div class="card card-body mt-3">-->
+<!--    Placeholder - list possible commands, show pseudo terminal for logging, update the state at top of screen once done-->
+<!--</div>-->
+
+<script type='text/javascript' src="http://localhost:3355/assets/scripts/run_command.js?{{ testbed_project_version }}"></script>
+
+<div class="container-fluid bg-light py-4">
+    <div class="row min-vh-100 gx-4">
+        <div class="col-md-4">
+            <!-- Orchestration Section -->
+            <div class="mb-3">
+                <div class="card">
+                    <div class="card-header text-white bg-secondary">Orchestration</div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+                            <button type="button" class="btn btn-success me-2 orchestration-button" id="upButton">Up</button>
+                            <div>Flag: Provision <input class="form-check-input" type="checkbox" value="" id="upProvisionFlag"></div>
+                            <div>Flag: Re-run Scripts <input class="form-check-input" type="checkbox" value="" id="upReRunScriptsFlag"></div>
+                        </div>
+                        <button type="button" class="btn btn-success mb-2 w-100 orchestration-button" id="downButton">Down</button>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <button type="button" class="btn btn-success me-2 orchestration-button" id="snapshotButton">Snapshot</button>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="subcommandDropdown">
+                                    Choose subcommand
+                                </button>
+                                <ul class="dropdown-menu" id="subcommandMenu">
+                                    <li><a class="dropdown-item" data-value="create">Create</a></li>
+                                    <li><a class="dropdown-item" data-value="delete">Delete</a></li>
+                                    <li><a class="dropdown-item" data-value="info">Info</a></li>
+                                    <li><a class="dropdown-item" data-value="list">List</a></li>
+                                    <li><a class="dropdown-item" data-value="restore">Restore</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div id="dynamicButtons"></div> <!-- Dynamic checkboxes will be added here -->
+                        <button type="button" class="btn btn-success mb-2 w-100 orchestration-button" id="generateArtefactsButton">Generate Artefacts</button>
+                        <button type="button" class="btn btn-success w-100 orchestration-button" id="clearArtefactsButton">Clear Artefacts</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Utilities Section -->
+            <div class="mb-3">
+                <div class="card">
+                    <div class="card-header text-white bg-secondary">Utilities</div>
+                    <div class="card-body">
+                        <div class="d-flex flex-row flex-wrap justify-content-between align-items-center mb-2">
+                            <button type="button" class="btn btn-success orchestration-button me-2 flex-fill" id="testbedSnapshotButton">Testbed Snapshot</button>
+                            <div class="flex-fill d-flex align-items-center">
+                                Flag: Snapshot Guests <input class="form-check-input ms-2" type="checkbox" value="" id="snapshotGuestsFlag">
+                            </div>
+                        </div>
+                        
+                        <button type="button" class="btn btn-success w-100 orchestration-button" id="listCloudImagesButton">List Cloud Images</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tooling Section -->
+            <div>
+                <div class="card">
+                    <div class="card-header text-white bg-secondary">Tooling</div>
+                    <div class="card-body">
+                        <!-- Tooling Buttons and Dropdown on the same line -->
+                        <div class="d-flex flex-row flex-wrap justify-content-between align-items-center mb-2">
+                            <button type="button" class="btn btn-success orchestration-button me-2 flex-fill" id="execButton">Exec</button>
+                            <div class="dropdown flex-fill">
+                                <button class="btn btn-secondary dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="execSubcommandDropdown">
+                                    Choose subcommand
+                                </button>
+                                <ul class="dropdown-menu" id="execSubcommandMenu">
+                                    <li><a class="dropdown-item" data-value="shell_command">Shell Command</a></li>
+                                    <li><a class="dropdown-item" data-value="tool">Tool</a></li>
+                                    <li><a class="dropdown-item" data-value="user_script">User Script</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div id="execDynamicButtons"></div> <!-- Dynamic checkboxes will be added here -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Log Output Section -->
+        <div class="col-md-8">
+            <div class="card">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                    Log output:
+                        <div id="pseudoTerminal" class="text-left text-light bg-dark overflow-auto" style="height:400px; width:100%;">
+                            Log output from commands to the left appear here...
+                        </div>
+                        <span id="pseudoTerminalConnectionState" class="badge text-bg-secondary">
+                            Command Runner Inactive
+                        </span>
+                    </li>
+                    <li class="list-group-item">
+                        <button id="cancelCommandButton" type="button" class="btn btn-danger" >Cancel Command</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Popup -->
+<div class="modal fade" id="commandAlreadyRunningModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Command Running</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                A command is already running, please wait until it finishes before running another.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,65 @@
+machines:
+
+  - name: server
+    interfaces:
+      - bridge: br0
+    libvirt:
+      cpus: 1
+      memory_mb: 512
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 2
+          context: ./kvm-compose.yaml
+          setup_script: ./setup_script.sh
+
+  - name: client
+    interfaces:
+      - bridge: br1
+    libvirt:
+      cpus: 1
+      memory_mb: 512
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 2
+          context: ./kvm-compose.yaml
+          setup_script: ./setup_script.sh
+
+  - name: client2
+    interfaces:
+      - bridge: br1
+    libvirt:
+      cpus: 1
+      memory_mb: 512
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 2
+          context: ./kvm-compose.yaml
+          setup_script: ./setup_script.sh
+
+  - name: nginx
+    interfaces:
+      - bridge: br0
+    docker:
+      image: nginx:stable
+      env_file: docker.env
+      volumes:
+        - source: ${PWD}/html
+          target: /usr/share/nginx/html
+
+network:
+  bridges:
+    - name: br0
+      protocol: OpenFlow13
+    - name: br1
+      protocol: OpenFlow13
+    - name: br2
+      protocol: OpenFlow13
+
+  bridge_connections:
+    br0: br1
+    br1: br2
+
+  external_bridge: br0

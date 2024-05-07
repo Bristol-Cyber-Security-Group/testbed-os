@@ -1,0 +1,144 @@
+{% extends "gui/base.html" %}
+
+
+{% block title %}{{ page_name }}{% endblock title %}
+
+
+{% block head %}
+{{ super() }}
+<script type='text/javascript' src="http://localhost:3355/assets/scripts/configuration_setup.js?{{ testbed_project_version }}"></script>
+{% endblock head %}
+
+{% block content %}
+
+
+<br>
+<div class="container" >
+
+
+    <br>
+
+    <div class="card">
+        <div class="card-header text-white bg-secondary">Configure the host.json</div>
+        <div class="card-body">
+            For a minimal configuration with one testbed host, you only need to edit the <span style="color:blue">user</span> and the <span style="color:blue">main_interface</span>.
+            On this page, we provide a quick way to configure a single testbed host.<br>
+            <br>
+            You must set the user to the user that has the permissions to use the testbed. This can be your current user or a dedicated testbed user.<br>
+            <br>
+            You must set the main_interface to the network interface of the host that is connected to the internet.
+            If you are using WiFi, then this will likely be <span style="color:blue">wlo1</span> or another interface that starts with <span style="color:blue">w</span> followed by letters and numbers.
+            You can find out by opening up a terminal and running the command <span style="color:blue">ip a</span>, and you should see an interface with an ip that matches this description.<br>
+            <br>
+            If need a more advanced configuration and/or you are configuring multiple testbed hosts to work as a cluster (<a href="/assets/documentation/installation/index.html#testbed-cluster">cluster documentation</a>), please see the documentation page for <a href="/assets/documentation/testbed-config/host.html">host json</a> and edit this through the CLI.
+            You will need to edit the host.json configuration on each testbed host.
+
+            <hr>
+
+            You can see the current values for <span style="color:blue">user</span> and <span style="color:blue">main_interface</span> on the <a href="/gui/configuration">configuration page</a>.<br>
+            <br>
+
+            If you have not yet configured the host.json then the current values will be empty.<br>
+            <br>
+            If in doubt and this is a single user host, in the terminal run the command <span style="color:blue">whoami</span> to get your user.<br>
+            <label for="setupConfigUser">New User:</label><input id="setupConfigUser" type="text" value=""> <label for="setupConfigUserCurrent">Current user value:</label><input id="setupConfigUserCurrent" type="text" value="" disabled>
+            <br>
+            <label for="setupConfigMainInterface">New Main Interface:</label><input id="setupConfigMainInterface" type="text" value=""> <label for="setupConfigMainInterfaceCurrent">Current main interface value:</label><input id="setupConfigMainInterfaceCurrent" type="text" value="" disabled>
+            <br>
+            <br>
+            <button type="button" class="btn btn-success w-100" id="setupConfigHostJsonSubmit">Submit</button>
+
+            <!--div to place the alert once button pressed-->
+            <div id="setupHostJsonAlertPlaceholder"></div>
+
+
+        </div>
+
+    </div>
+
+    <br>
+
+<!--    <div class="card">-->
+<!--        <div class="card-header text-white bg-secondary">Configure qemu.conf</div>-->
+<!--        <div class="card-body">-->
+<!--            To enable libvirt guests to work with the testbed, we must allow libvirt to be able to access images outside it's default images folder at <span style="color:blue">/var/lib/libvirt/images</span>.-->
+<!--            To do this, we must elevate libivrt's privileges.-->
+<!--            If in doubt, please see the libvirt documentation on <a href="https://libvirt.org/drvqemu.html#driver-security-architecture">driver security architecture</a>.-->
+<!--            By default, there is no user or group set.-->
+<!--            We will change both the user and group to root.-->
+<!--            The server will check to see what the current setting is and show you, before you make a decision to change it.<br>-->
+<!--            <br>-->
+
+<!--            <hr>-->
+
+<!--            If current value is empty, this means libvirt is not yet configured.-->
+<!--            You can either put your user or root for the user, and use root for the group.<br>-->
+<!--            <br>-->
+<!--            Make sure to include the <span style="color:blue">user = "</span> followed by the closing <span style="color:blue">"</span>, and not just your user on it's own.-->
+<!--            For example:-->
+<!--            <br><span style="color:blue">user = "root"</span><br>-->
+<!--            where root is your user or just root.-->
+<!--            Do the same for group:<br>-->
+<!--            <span style="color:blue">group = "root"</span><br>-->
+<!--            <br>-->
+
+<!--            <label for="setupConfigQemuUserCurrent">Current user value:</label><input id="setupConfigQemuUserCurrent" type="text" value="" disabled><br>-->
+<!--            <label for="setupConfigQemuGroupCurrent">Current group value:</label><input id="setupConfigQemuGroupCurrent" type="text" value="" disabled>-->
+
+<!--            <br>-->
+<!--            <button type="button" class="btn btn-success w-100" id="setupConfigQemuConfSubmit">Update User and Group, and restart Libvirt</button>-->
+<!--            &lt;!&ndash;div to place the alert&ndash;&gt;-->
+<!--            <div id="setupHostQemuConfPlaceholder"></div>-->
+
+<!--        </div>-->
+<!--    </div>-->
+
+<!--    <br>-->
+
+<!--    <div class="card">-->
+<!--        <div class="card-header text-white bg-secondary">Configure system DNS</div>-->
+<!--        <div class="card-body">-->
+<!--            The android emulator based guests will look to the host's DNS to give the emulator a working DNS.-->
+<!--            If this is set to <span style="color:blue">127.0.0.53</span>, you are likely to get DNS issues in the emulator.-->
+<!--            This section will check your host's <span style="color:blue">resolv.conf</span>.-->
+<!--            You can test the emulator to see if it is working, but if it is not, change it here, then restart the emulator for it to pick up the new DNS.<br>-->
+<!--            <br>-->
+<!--            Changing the <span style="color:blue">resolv.conf</span> directly will not persist between host restarts, you should look at your network settings to make this permanent.-->
+<!--            Your OS may be using "Network Manager" or "Resolvd" to automatically configure the <span style="color:blue">resolv.conf</span> file.-->
+
+<!--            <hr>-->
+
+<!--            Unimplemented-->
+
+<!--        </div>-->
+<!--    </div>-->
+
+<!--    <br>-->
+
+    <div class="card">
+        <div class="card-header text-white bg-secondary">Resource Monitoring</div>
+        <div class="card-body">
+            The resource monitoring stack is controlled by a docker-compose configuration.
+            By default, it is turned off.
+            If you want to use the resource monitoring feature of the testbed, you can turn it on through your terminal.
+            If you want to turn it on through your terminal, from the root of the testbed git repo, enter the <span style="color:blue">./util/resource_monitoring</span> folder and run <span style="color:blue">sudo docker-compose up -d</span> to run it in the background.
+            You can turn it off with the <span style="color:blue">sudo docker-compose down</span> command while in that folder.<br>
+            <br>
+
+            <hr>
+
+            <span id="setupConfigGrafanaBadge" class="badge text-bg-primary">Grafana</span>
+            <span id="setupConfigPrometheusBadge" class="badge text-bg-primary">Prometheus</span>
+            <span id="setupConfigNginxBadge" class="badge text-bg-primary">Nginx</span>
+
+            <!--div to place the alert once button pressed-->
+            <div id="setupResourceMonitoringAlertPlaceholder"></div>
+
+        </div>
+    </div>
+
+</div>
+
+<br>
+
+{% endblock content %}

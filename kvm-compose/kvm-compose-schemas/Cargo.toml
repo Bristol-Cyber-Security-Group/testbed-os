@@ -1,0 +1,26 @@
+[package]
+name = "kvm-compose-schemas"
+version = "1.0.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { workspace = true}
+serde_json = { workspace = true}
+clap = { workspace = true}
+tracing = { workspace = true}
+anyhow = { workspace = true}
+reqwest = { workspace = true}
+validator = {version = "0.16", features = ["derive"]}
+serde_yaml = { workspace = true}
+serde_plain = "1.0.1"
+tempfile = "3.3.0"
+indicatif = "0.17.3"
+strum = "0.26.1"
+strum_macros = "0.26.1"
+casual = "0.2.0"
+nix = { workspace = true}
+tokio = { workspace = true}
+futures = "0.3.29"
+chrono = { workspace = true }

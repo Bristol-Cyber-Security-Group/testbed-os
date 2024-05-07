@@ -1,0 +1,2 @@
+host,command
+client1,'DISPLAY=:0 bash /etc/nocloud/context/emulator.sh -r'

@@ -1,0 +1,9 @@
+.idea/
+target/
+build/
+test-harness/artefacts/*
+__pycache__/
+*.log
+
+./ovn/
+kvm-compose/testbedos-server/assets/documentation/*

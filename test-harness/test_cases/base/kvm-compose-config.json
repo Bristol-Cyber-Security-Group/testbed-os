@@ -1,0 +1,13 @@
+{
+    "testbed_host_ssh_config": {
+        "testbed-host-one": {
+            "hostname": "192.168.80.11",
+            "user": "nocloud",
+            "identity_file": "/home/nocloud/.ssh/id_ed25519",
+            "testbed_nic": "enp1s0",
+            "is_master_host": true
+        }
+    },
+    "ssh_public_key_location": "/home/nocloud/.ssh/id_ed25519_kvm.pub",
+    "ssh_private_key_location": "/home/nocloud/.ssh/id_ed25519_kvm"
+}

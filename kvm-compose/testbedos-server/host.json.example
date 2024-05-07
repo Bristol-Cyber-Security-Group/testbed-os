@@ -1,0 +1,19 @@
+{
+    "ip": "10.50.0.1",
+    "testbed_nic": "enp5s0",
+    "is_master_host": true,
+    "ovn": {
+        "chassis_name": "ovn",
+        "bridge": "br-int",
+        "encap_type": "geneve",
+        "encap_ip": "127.0.0.1",
+        "remote": "unix:/usr/local/var/run/ovn/ovnsb_db.sock",
+        "bridge_mappings": [
+            [
+                "public",
+                "br-ex",
+                "172.16.1.1/24"
+            ]
+        ]
+    }
+}

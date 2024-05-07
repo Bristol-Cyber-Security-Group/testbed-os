@@ -1,0 +1,18 @@
+{% extends "gui/base.html" %}
+
+
+{% block title %}{{ page_name }}{% endblock title %}
+
+
+{% block head %}
+{{ super() }}
+{% endblock head %}
+
+{% block content %}
+
+<div class="row flex-grow-1 overflow-hidden">
+    <iframe sandbox referrerpolicy="no-referrer" src="/assets/documentation/index.html" style="width: 100%;"></iframe>
+</div>
+
+
+{% endblock content %}

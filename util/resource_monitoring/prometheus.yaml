@@ -1,0 +1,26 @@
+
+global:
+  scrape_interval: 5s
+  evaluation_interval: 15s
+
+scrape_configs:
+
+  - job_name: "testbed_metrics_hosts"
+    static_configs:
+      - targets: [ "host.docker.internal:3355" ]
+    metrics_path: "/api/metrics/prometheus/hosts"
+
+  - job_name: "testbed_metrics_libvirt"
+    static_configs:
+      - targets: [ "host.docker.internal:3355" ]
+    metrics_path: "/api/metrics/prometheus/libvirt"
+
+  - job_name: "testbed_metrics_docker"
+    static_configs:
+      - targets: [ "host.docker.internal:3355" ]
+    metrics_path: "/api/metrics/prometheus/docker"
+
+  - job_name: "testbed_metrics_android"
+    static_configs:
+      - targets: [ "host.docker.internal:3355" ]
+    metrics_path: "/api/metrics/prometheus/android"

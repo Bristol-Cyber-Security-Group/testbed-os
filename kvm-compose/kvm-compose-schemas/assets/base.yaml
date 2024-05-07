@@ -1,0 +1,70 @@
+machines:
+  - name: base_cloudinit
+    interfaces:
+      - bridge: br0
+    libvirt:
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          environment:
+              var: test
+              test: var
+
+  - name: base_cloudinit2
+    interfaces:
+      - bridge: br0
+    libvirt:
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          run_script: /path/to/run_script.sh
+          setup_script: /path/to/setup_script.sh
+          context: local_folder/
+
+  - name: base_cloudinit_clones
+    libvirt:
+      scaling:
+        count: 2
+        interfaces:
+          - bridge: br0
+            clones: [0, 2]
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          environment:
+            var: test
+            test: var
+
+  - name: base_existingdisk
+    interfaces:
+      - bridge: br1
+    libvirt:
+      libvirt_type:
+        existing_disk:
+          path: "/path/to/disk.qcow2"
+
+  - name: docker_image_name
+    interfaces:
+      - bridge: br1
+    docker:
+      image: "docker-image:123"
+
+  - name: avd_guest
+    interfaces:
+      - bridge: br0
+    avd: {}
+
+
+network:
+  bridges:
+    - name: br0
+      protocol: OpenFlow13
+    - name: br1
+      protocol: OpenFlow13
+  bridge_connections:
+    br0: br1
+  external_bridge: br0
+
+tooling: {}
+
+testbed_options: {}

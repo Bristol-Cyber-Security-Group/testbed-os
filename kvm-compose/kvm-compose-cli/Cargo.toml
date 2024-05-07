@@ -1,0 +1,25 @@
+[package]
+name = "kvm-compose-cli"
+version = "1.0.0"
+authors = ["Bristol Cyber Security Group"]
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[[bin]]
+name = "kvm-compose"
+path = "src/main.rs"
+
+[dependencies]
+kvm-compose = { path = "../kvm-compose" }
+kvm-compose-schemas = { path = "../kvm-compose-schemas" }
+tokio = { workspace = true}
+tracing = { workspace = true}
+tracing-subscriber = { workspace = true}
+anyhow = { workspace = true}
+clap = { workspace = true}
+reqwest = { workspace = true}
+nix = { workspace = true}
+ratatui = { version = "0.26.2" }
+crossterm = { version = "0.27.0" }
+tui-textarea = { version = "0.4.0" }
+itertools = "0.12.1"

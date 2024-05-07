@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<domain type="kvm">
+    <name>{{ guest_name }}</name>
+    <cpu mode="host-model"></cpu>
+    <vcpu>{{ vcpu }}</vcpu>
+    <memory unit="MiB">{{ memory }}</memory>
+    <os>
+        <type arch="x86_64" machine="q35">hvm</type>
+    </os>
+    <devices>
+        <disk type="file" device="disk">
+            <driver name="qemu" type="{{ disk_driver }}"></driver>
+            <source file="{{ disk_path }}"></source>
+            <target dev="hda" bus="virtio"></target>
+        </disk>
+        {% if cloud_init_iso %}
+        <disk type="file" device="cdrom">
+            <driver name="qemu" type="raw"></driver>
+            <source file="{{ cloud_init_iso }}"></source>
+            <readonly></readonly>
+            <target dev="hdb" bus="sata"></target>
+        </disk>
+        {% endif %}
+
+        <graphics type="vnc" port="-1" autoport="yes"></graphics>
+
+        {% if interface %}
+        <interface type='ethernet'>
+            <mac address='{{ mac_address }}'/>
+            <target dev='{{ interface }}'/>
+            <model type='virtio'/>
+            <mtu size='1442'/>
+            <alias name='net0'/>
+            <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+        </interface>
+        {% endif %}
+
+        {% if backing_image_network %}
+        <interface type="network">
+            <source network="{{ backing_image_network }}"></source>
+            <model  type="virtio"></model >
+            <driver  name="vhost"></driver >
+        </interface>
+        {% endif %}
+    </devices>
+    <sysinfo type="smbios">
+        <system>
+            <entry name="serial">ds=nocloud;</entry>
+        </system>
+    </sysinfo>
+</domain>

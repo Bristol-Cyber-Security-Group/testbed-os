@@ -1,0 +1,29 @@
+<span>If you cannot see the metrics dashboards (unable to connect), you will need to turn on the dashboard backend in the testbed repo at "util/resource_monitoring/" with "docker-compose up -d".</span>
+<br>
+<span>If you have updated the yaml file and removed/added guests, you will need to refresh this page to reflect the changes.</span>
+<br>
+<br>
+
+<div class="container-fluid">
+    {% for host_name in host_list %}
+    Host: {{ host_name }} <br>
+    <iframe loading="lazy" src="http://localhost:8080/d-solo/a501b9c3-2632-4862-b91c-00d9575a6ba3/testbed-host-resources?orgId=1&refresh=5s&from=now-30m&to=now&panelId=1&var-host_n={{ host_name }}" width="650" height="400" ></iframe>
+    <iframe loading="lazy" src="http://localhost:8080/d-solo/a501b9c3-2632-4862-b91c-00d9575a6ba3/testbed-host-resources?orgId=1&refresh=5s&from=now-30m&to=now&panelId=2&var-host_n={{ host_name }}" width="650" height="400" ></iframe>
+    <br>
+    {% endfor %}
+</div>
+
+<div class="container-fluid">
+    Testbed Guests (all together) <br>
+    <iframe loading="lazy" src="http://localhost:8080/d-solo/c74125df-061c-43fd-9eae-3ae6c8d0d37e/testbed-guest-resources?orgId=1&refresh=5s&from=now-30m&to=now&panelId=1&var-proj_n={{ project_name }}" width="650" height="400" ></iframe>
+    <iframe loading="lazy" src="http://localhost:8080/d-solo/c74125df-061c-43fd-9eae-3ae6c8d0d37e/testbed-guest-resources?orgId=1&refresh=5s&from=now-30m&to=now&panelId=2&var-proj_n={{ project_name }}" width="650" height="400" ></iframe>
+</div>
+
+<div class="container-fluid">
+    {% for guest_name in guest_list %}
+    <br>
+    Testbed Guest: {{ guest_name }} <br>
+    <iframe loading="lazy" src="http://localhost:8080/d-solo/c74125df-061c-43fd-9eae-3ae6c8d0d37e/testbed-guest-resources?orgId=1&refresh=5s&from=now-30m&to=now&var-proj_n={{ project_name }}&var-guest_n={{ guest_name }}&panelId=3" width="650" height="400" ></iframe>
+    <iframe loading="lazy" src="http://localhost:8080/d-solo/c74125df-061c-43fd-9eae-3ae6c8d0d37e/testbed-guest-resources?orgId=1&refresh=5s&from=now-30m&to=now&var-proj_n={{ project_name }}&var-guest_n={{ guest_name }}&panelId=4" width="650" height="400" ></iframe>
+    {% endfor %}
+</div>

@@ -1,0 +1,31 @@
+{% extends "gui/base.html" %}
+
+
+{% block title %}{{ page_name }}{% endblock title %}
+
+
+{% block head %}
+{{ super() }}
+<script type='text/javascript' src="http://localhost:3355/assets/scripts/configuration.js?{{ testbed_project_version }}"></script>
+{% endblock head %}
+
+{% block content %}
+
+
+<br>
+<div class="container" style="height:100vh">
+    <div class="row align-items-start" style="height:100%">
+        <div class="col">
+            Testbed Host configuration (read only)
+            <br>
+            <textarea id="hostConfigText" style="height:70vh;width:100%"></textarea>
+        </div>
+        <div class="col">
+            Testbed Cluster configuration (read only)
+            <br>
+            <textarea readonly id="clusterConfigText" style="height:70vh;width:100%"></textarea>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}

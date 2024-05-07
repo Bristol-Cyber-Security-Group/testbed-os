@@ -1,0 +1,105 @@
+{% extends "gui/base.html" %}
+
+
+{% block title %}{{ page_name }}{% endblock title %}
+
+
+{% block head %}
+{{ super() }}
+{% endblock head %}
+
+{% block content %}
+
+<!--list deployments, otherwise view a single deployment or none-->
+{% if deployments %}
+<!--deployment list page logic-->
+
+<a href="/gui/deployments/create" class="btn btn-info" role="button">Create New Deployment</a>
+
+
+    <div class="list-group">
+    {% for deployment_name, deployment_data in deployments %}
+
+        <!--failed state needs special work due to the struct nesting-->
+        {% if 'failed' in deployment_data.state %}
+            {% set failed = true %}
+        {% else %}
+            {% set failed = false %}
+        {% endif %}
+
+        <!--set the bootstrap class and a visual aid for the state-->
+        {% if deployment_data.state == 'up' %}
+            {% set display_state_class = 'list-group-item-success' %}
+            {% set display_state = 'UP' %}
+        {% elif deployment_data.state == 'down' %}
+            {% set display_state_class = 'list-group-item-secondary' %}
+            {% set display_state = 'DOWN' %}
+        {% elif failed %}
+            {% set display_state_class = 'list-group-item-danger' %}
+            {% set display_state = 'CMD FAILED' %}
+        {% elif deployment_data.state == 'running' %}
+            {% set display_state_class = 'list-group-item-info' %}
+            {% set display_state = 'RUNNING' %}
+        {% else %}
+            {% set display_state_class = '' %}
+            {% set display_state = '' %}
+        {% endif %}
+
+        <a href="/gui/deployments/{{deployment_name}}" class="list-group-item list-group-item-action {{ display_state_class }}">{{deployment_name}} - {{ display_state }}</a>
+        {% endfor %}
+    </div>
+
+{% else %}
+
+
+{% if deployment %}
+<!--deployment view page logic-->
+
+<script>
+    // make the project name available to scripts
+    let project_name = '{{ project_name }}';
+</script>
+
+<!--failed state needs special work due to the struct nesting-->
+{% if 'failed' in deployment.state %}
+    {% set failed = true %}
+{% else %}
+    {% set failed = false %}
+{% endif %}
+<!--set the bootstrap class and a visual aid for the state-->
+{% if deployment.state == 'up' %}
+    {% set display_state = 'UP' %}
+{% elif deployment.state == 'down' %}
+    {% set display_state = 'DOWN' %}
+{% elif failed %}
+    {% set display_state = 'CMD FAILED' %}
+{% elif deployment.state == 'running' %}
+    {% set display_state = 'RUNNING' %}
+{% else %}
+    {% set display_state = '' %}
+{% endif %}
+
+<h1>{{ project_name }} <span class="badge bg-secondary" id="displayState">{{ display_state }}</span></h1>
+
+
+
+<div class="list-group">
+    <li class="list-group-item">Project location on disk: {{ deployment.project_location }}</li>
+</div>
+
+{% include "gui/deployments/main_action_buttons.html" %}
+
+
+{% else %}
+<!--no deployments found-->
+<div class="alert alert-info" role="alert">
+    No deployments found.
+</div>
+
+
+{% endif %}
+
+
+{% endif %}
+
+{% endblock content %}
