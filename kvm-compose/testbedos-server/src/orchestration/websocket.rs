@@ -432,6 +432,16 @@ async fn process_potential_cancel_token(
                 }
             }
 
+            // as this is processing the cancel request during an instruction, rather than being
+            // processed between, we should send the client back the same response
+            let serialised_response = serde_json::to_string(&OrchestrationProtocolResponse::Generic {
+                is_success: false,
+                message: "Cancel request".to_string(),
+            })?;
+            let _ = loop_sender_cancel.lock().await.send(Message::Text(serialised_response))
+                .await
+                .context("sending instruction result")?;
+
             tracing::info!("client has sent a cancellation token, closing connection");
             let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
                 code: 1000,
