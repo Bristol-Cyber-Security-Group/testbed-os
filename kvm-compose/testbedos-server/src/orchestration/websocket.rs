@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
 use anyhow::{bail, Context};
-use axum::Error;
 use axum::extract::ws::{CloseFrame, Message, WebSocket};
 use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::SplitSink;
@@ -206,11 +205,11 @@ async fn run(
                             code: 1000,
                             reason: Cow::from("The client sent a cancellation token, connection closed"),
                         }))).await.context("sending close to client websocket")?;
-                        Ok((true, loop_sender_cancel))
+                        Ok(true)
                     }
                 };
 
-                let (close_connection_bool, ret_sender) = res?;
+                let close_connection_bool = res?;
 
                 // got a close result, exit loop
                 if close_connection_bool {
@@ -357,7 +356,7 @@ async fn process_client_instruction(
     loop_sender: Arc<Mutex<SplitSink<WebSocket, Message>>>,
     loop_state: Arc<State>,
     loop_common: OrchestrationCommon
-) -> anyhow::Result<(bool, Arc<Mutex<SplitSink<WebSocket, Message>>>)> {
+) -> anyhow::Result<bool> {
     match msg {
         Message::Binary(b) => {
             // deserialise
@@ -391,12 +390,12 @@ async fn process_client_instruction(
             }
 
             // dont close
-            Ok((false, loop_sender))
+            Ok(false)
 
         }
         Message::Close(_) => {
-            return Ok((true, loop_sender));
+            return Ok(true);
         }
-        _ => Ok((true, loop_sender)), // TODO - unexpected message?
+        _ => Ok(true), // TODO - unexpected message?
     }
 }
