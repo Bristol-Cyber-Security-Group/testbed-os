@@ -202,7 +202,7 @@ async fn run(
                     // process client instruction and return whether we continue
                     close = process_client_instruction(msg, loop_sender, loop_state, loop_common) => close,
                     // process potential cancelation token
-                    Some(Ok(maybe_cancel_token)) = receiver.next() => process_potential_cancel_token(maybe_cancel_token, loop_sender_cancel).await
+                    Some(Ok(maybe_cancel_token)) = receiver.next() => process_potential_cancel_token(maybe_cancel_token, loop_sender_cancel.clone()).await
                 };
 
                 let close_connection_bool = close_connection_bool_result
@@ -211,10 +211,23 @@ async fn run(
                 // got a close result, exit loop
                 if close_connection_bool {
                     tracing::info!("close connection true in orchestration websocket");
+
+                    // normal close
+                    let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
+                        code: 1000,
+                        reason: Cow::from("Last command received, connection closed"),
+                    }))).await.context("sending close to client websocket")?;
+
                     break;
                 }
 
             } else {
+                // message from client was not Ok
+                let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
+                    code: 1011,
+                    reason: Cow::from("The server could not process the last message, connection closed"),
+                }))).await.context("sending close to client websocket")?;
+
                 break;
             }
         }
