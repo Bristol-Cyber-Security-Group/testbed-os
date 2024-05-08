@@ -25,24 +25,24 @@ $(document).ready(function() {
         // Define options for commands
         const options = {
             'create': [
-                {label: 'Guest name', type: 'text', id: 'name'},
+                {label: 'Guest name', type: 'guest', id: 'name'},
                 {label: 'Snapshot ID', type: 'text', id: 'snapshot'},
                 {label: 'Apply to all guests', type: 'checkbox', id: 'all'}
             ],
             'delete': [
-                {label: 'Guest name', type: 'text', id: 'name'},
+                {label: 'Guest name', type: 'guest', id: 'name'},
                 {label: 'Snapshot ID', type: 'text', id: 'snapshot'},
                 {label: 'Apply to all snapshots', type: 'checkbox', id: 'all'}
             ],
             'info': [
-                {label: 'Guest name', type: 'text', id: 'name'}
+                {label: 'Guest name', type: 'guest', id: 'name'}
             ],
             'list': [
-                {label: 'Guest name', type: 'text', id: 'name'},
+                {label: 'Guest name', type: 'guest', id: 'name'},
                 {label: 'Apply to all guests', type: 'checkbox', id: 'all'}
             ],
             'restore': [
-                {label: 'Guest name', type: 'text', id: 'name'},
+                {label: 'Guest name', type: 'guest', id: 'name'},
                 {label: 'Snapshot ID', type: 'text', id: 'snapshot'},
                 {label: 'Apply to all guests', type: 'checkbox', id: 'all'}
             ]
@@ -107,8 +107,8 @@ $(document).ready(function() {
     
                 generateInputs(optionsToDisplay, '#execDynamicButtons', false);
 
-                // add device text box
-                const deviceTextRow = addDeviceTextBox();
+                // add device dropdown
+                const deviceTextRow = addDeviceDropDown();
                 // TODO this is added as part of the form, while it works, the server is sent the device name twice,
                 //  once properly and once again inside the tool under "deviceName" which is currently ignored
                 //  this should be fixed
@@ -126,8 +126,8 @@ $(document).ready(function() {
             };
             generateInputs(options[selectedCommand] || [], '#execDynamicButtons', false);
 
-            // add device text box
-            const deviceTextRow = addDeviceTextBox();
+            // add device drop down
+            const deviceTextRow = addDeviceDropDown();
             execDynamicButtons.append(deviceTextRow);
         }
     });
@@ -145,6 +145,9 @@ $(document).ready(function() {
             } else if (option.type == 'text') {
                 const textRow = createTextInput(option, inputFieldId);
                 $(dynamicButtonsId).append(textRow);
+            }else if (option.type == 'guest') {
+                const checkboxDiv = addDeviceDropDown();
+                $(dynamicButtonsId).append(checkboxDiv);
             }
         });
     
@@ -159,10 +162,9 @@ $(document).ready(function() {
         }
     }
 
-    function addDeviceTextBox() {
+    function addDeviceDropDown() {
         // all tooling needs to have be assigned to a tool, this will add a textbox to enter the name
-        // TODO this should eventually be a dropdown showing all eligible devices for this deployment, taken from the
-        //  state and filtered by guest type compatible with tool
+        // TODO this should eventually be filtered by guest type compatible with tool
         const textRow = $('<div></div>', {class: 'row'});
         const textLabelCol = $('<div></div>', {class: 'col-auto'});
         const textInputCol = $('<div></div>', {class: 'col'});
@@ -173,15 +175,27 @@ $(document).ready(function() {
             text: textLabel,
             class: 'form-label'
         });
-        const textInput = $('<input>', {
-            type: 'text',
+
+        const selectInput = $('<select>', {
             class: 'form-control form-control-sm',
             id: 'guestName',
-            value: ''
+            style: 'cursor: pointer;'
+        });
+
+        // Fetch state JSON to dynamically add available guests to dropdown menu
+        $.get(server_url + '/api/deployments/' + project_name + '/state?pretty=true', function(statejson) {
+            const guests = statejson.testbed_guests;
+            const guestNames = Object.keys(guests).map(key => guests[key].name);
+            console.log(guestNames);
+
+            guestNames.forEach(function(guest) {
+                selectInput.append($('<option>', { text: guest }));
+            });
+
+            textInputCol.append(selectInput);
         });
 
         textLabelCol.append(textLabelElement);
-        textInputCol.append(textInput);
         return textRow.append(textLabelCol).append(textInputCol);
     }
     
