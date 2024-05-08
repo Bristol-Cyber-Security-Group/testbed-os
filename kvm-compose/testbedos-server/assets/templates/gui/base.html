@@ -22,11 +22,13 @@
 <!--    <script src="https://unpkg.com/htmx.org@1.9.10"></script>-->
 {% endblock head %}
 </head>
-<body class="container-fluid d-flex flex-column vh-100 ">
+<body class="container-fullwidth d-flex flex-column vh-100 ">
 
 {% include "gui/nav.html" %}
 
-{% block content %}{% endblock content %}
+<div class="container-fluid" style="padding: 15px;">
+    {% block content %}{% endblock content %}
+</div>
 
 
 </body>
