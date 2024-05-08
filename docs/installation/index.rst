@@ -76,6 +76,7 @@ The command line tools must also be downloaded from Google at https://developer.
 
 
 .. code-block:: shell
+
     sudo apt-get -y install openjdk-17-jdk
     sudo apt-get -y install android-tools-adb
     sudo mkdir -p /opt/android-sdk/cmdline-tools/
@@ -90,6 +91,7 @@ The command line tools must also be downloaded from Google at https://developer.
 You will need to add the following to your environment assuming you are using bash, do this once:
 
 .. code-block:: shell
+
     # add to ~/.bashrc
     export PATH=$PATH:/opt/android-sdk/cmdline-tools/latest/bin
     export ANDROID_HOME=/opt/android-sdk/
