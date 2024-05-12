@@ -261,7 +261,12 @@ impl OrchestrationTask for StateNetwork {
                         OrchestrationInstruction::Deploy(vec![dhcp.to_orchestration_resource()]),
                     ).await.context("requesting the creation of dhcp rule")?;
                 }
-
+                for (_, acl_record) in &ovn_state.acl {
+                    send_orchestration_instruction_over_channel(
+                        sender,
+                        OrchestrationInstruction::Deploy(vec![acl_record.to_orchestration_resource()]),
+                    ).await.context("requesting the creation of ACL")?;
+                }
             }
             StateNetwork::Ovs(_) => unimplemented!(),
         }
@@ -274,12 +279,18 @@ impl OrchestrationTask for StateNetwork {
         // no need to batch these as OVN is quick to create resources
         match &self {
             StateNetwork::Ovn(ovn_state) => {
+                for (_, acl_record) in &ovn_state.acl {
+                    send_orchestration_instruction_over_channel(
+                        sender,
+                        OrchestrationInstruction::Destroy(vec![acl_record.to_orchestration_resource()]),
+                    ).await.context("requesting the destruction of ACL")?;
+                }
                 for (_, ls_data) in &ovn_state.switches {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
                         OrchestrationInstruction::Destroy(vec![ls_data.to_orchestration_resource()]),
-                    ).await.context("requesting the creation of logical switch")?;
+                    ).await.context("requesting the destruction of logical switch")?;
 
                 }
                 for (_, lsp_data) in &ovn_state.switch_ports {
@@ -287,21 +298,21 @@ impl OrchestrationTask for StateNetwork {
                         sender,
                         // receiver,
                         OrchestrationInstruction::Destroy(vec![lsp_data.to_orchestration_resource()]),
-                    ).await.context("requesting the creation of logical switch port")?;
+                    ).await.context("requesting the destruction of logical switch port")?;
                 }
                 for (_, lr_data) in &ovn_state.routers {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
                         OrchestrationInstruction::Destroy(vec![lr_data.to_orchestration_resource()]),
-                    ).await.context("requesting the creation of logical router")?;
+                    ).await.context("requesting the destruction of logical router")?;
                 }
                 for (_, lrp_data) in &ovn_state.router_ports {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
                         OrchestrationInstruction::Destroy(vec![lrp_data.to_orchestration_resource()]),
-                    ).await.context("requesting the creation of logical router port")?;
+                    ).await.context("requesting the destruction of logical router port")?;
                 }
                 for (_, router) in &ovn_state.routers {
                     for (_, route) in &router.routing.0 {
@@ -309,7 +320,7 @@ impl OrchestrationTask for StateNetwork {
                             sender,
                             // receiver,
                             OrchestrationInstruction::Destroy(vec![route.to_orchestration_resource()]),
-                        ).await.context("requesting the creation of static route")?;
+                        ).await.context("requesting the destruction of static route")?;
                     }
                 }
                 for (_, router) in &ovn_state.routers {
@@ -318,7 +329,7 @@ impl OrchestrationTask for StateNetwork {
                             sender,
                             // receiver,
                             OrchestrationInstruction::Destroy(vec![ext.to_orchestration_resource()]),
-                        ).await.context("requesting the creation of external gateway")?;
+                        ).await.context("requesting the destruction of external gateway")?;
                     }
                 }
                 for (_, router) in &ovn_state.routers {
@@ -327,7 +338,7 @@ impl OrchestrationTask for StateNetwork {
                             sender,
                             // receiver,
                             OrchestrationInstruction::Destroy(vec![nat.to_orchestration_resource()]),
-                        ).await.context("requesting the creation of nat rule")?;
+                        ).await.context("requesting the destruction of nat rule")?;
                     }
                 }
                 for dhcp in &ovn_state.dhcp_options {
@@ -335,14 +346,14 @@ impl OrchestrationTask for StateNetwork {
                         sender,
                         // receiver,
                         OrchestrationInstruction::Destroy(vec![dhcp.to_orchestration_resource()]),
-                    ).await.context("requesting the creation of dhcp rule")?;
+                    ).await.context("requesting the destruction of dhcp rule")?;
                 }
                 for (_, ovs_data) in &ovn_state.ovs_ports {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
                         OrchestrationInstruction::Destroy(vec![ovs_data.to_orchestration_resource()]),
-                    ).await.context("requesting the creation of ovs port")?;
+                    ).await.context("requesting the destruction of ovs port")?;
                 }
 
             }
