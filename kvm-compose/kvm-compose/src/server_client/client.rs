@@ -5,6 +5,7 @@ use kvm_compose_schemas::cli_models::{AnalysisToolsSubCmd, DeploymentCmd, Deploy
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand, DeploymentState};
 use reqwest::Client;
 use crate::orchestration::websocket::ws_orchestration_client;
+use crate::server_client::deployment::reset_state;
 
 pub async fn orchestration_action(
     client: &Client,
@@ -117,14 +118,14 @@ pub fn get_deployment_action(
 }
 
 /// This set of commands will control the deployments on the server
-pub fn deployment_action(_client: &Client, _opts: &Opts, dep_cmd: &DeploymentCmd) -> anyhow::Result<()> {
+pub async fn deployment_action(client: &Client, opts: &Opts, dep_cmd: &DeploymentCmd) -> anyhow::Result<()> {
     match &dep_cmd.sub_command {
         DeploymentSubCommand::Create(_name) => unimplemented!(),
         DeploymentSubCommand::Destroy(_name) => unimplemented!(),
         DeploymentSubCommand::List => unimplemented!(),
         DeploymentSubCommand::Info(_name) => unimplemented!(),
         // allow user to set the state manually in case it is stuck on running?
-        DeploymentSubCommand::ResetState => unimplemented!(),
+        DeploymentSubCommand::ResetState(name) => reset_state(name, client, opts).await,
     }
 }
 

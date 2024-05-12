@@ -248,7 +248,7 @@ pub enum DeploymentSubCommand {
     // Update(DeploymentActionSubCommand),
     Info(DeploymentName),
     /// Set the state of a deployment
-    ResetState,
+    ResetState(DeploymentName),
 }
 
 /// This is the name of the deployment that is passed to the deployment commands

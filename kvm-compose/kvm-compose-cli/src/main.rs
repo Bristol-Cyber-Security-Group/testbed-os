@@ -97,7 +97,7 @@ pub async fn parse_command(opts: Opts) -> anyhow::Result<()> {
     let sub_command = match &opts.sub_command {
         SubCommand::GenerateArtefacts => client::orchestration_action(&client, opts).await,
         SubCommand::ClearArtefacts => client::orchestration_action(&client, opts).await,
-        SubCommand::Deployment(dep_cmd) => client::deployment_action(&client, &opts, dep_cmd),
+        SubCommand::Deployment(dep_cmd) => client::deployment_action(&client, &opts, dep_cmd).await,
         SubCommand::Up(_) => client::orchestration_action(&client, opts).await,
         SubCommand::Down => client::orchestration_action(&client, opts).await,
         SubCommand::Snapshot(_) => client::orchestration_action(&client, opts).await,
