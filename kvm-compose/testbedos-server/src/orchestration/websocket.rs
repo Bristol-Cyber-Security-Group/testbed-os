@@ -155,11 +155,11 @@ async fn run(
             .await
             .context("getting project state in orchestration websocket job")?;
         let state = Arc::new(state);
-        let (force_provision, force_rerun_scripts) = match &deployment_command_copy {
+        let (force_provision, force_rerun_scripts, reapply_acl) = match &deployment_command_copy {
             DeploymentCommand::Up { up_cmd } => {
-                (up_cmd.provision, up_cmd.rerun_scripts)
+                (up_cmd.provision, up_cmd.rerun_scripts, up_cmd.reapply_acl)
             }
-            _ => (false, false)
+            _ => (false, false, false)
         };
         tracing::info!("getting testbed config");
         let kvm_compose_config = db_config_copy.config_db
@@ -172,6 +172,7 @@ async fn run(
             &state,
             force_provision,
             force_rerun_scripts,
+            reapply_acl,
             kvm_compose_config
         ).await?;
 

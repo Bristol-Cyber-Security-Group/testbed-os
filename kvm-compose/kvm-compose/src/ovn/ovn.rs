@@ -767,6 +767,7 @@ impl OvnNetwork {
             acl_rule.priority.clone(),
             acl_rule._match.clone(),
             acl_rule.action.clone(),
+            acl_name.clone(),
         ));
 
         Ok(())

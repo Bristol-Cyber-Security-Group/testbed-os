@@ -27,12 +27,30 @@ machines:
         cloud_image:
           name: ubuntu_20_04
           expand_gigabytes: 5
+
+  - name: client3
+    network:
+      switch: sw1
+      gateway: 10.0.1.1
+      mac: "00:00:00:00:00:03"
+      ip: "10.0.1.10"
+    libvirt:
+      cpus: 2
+      memory_mb: 2048
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 5
+
 network:
   ovn:
     switches:
 
       sw0:
         subnet: "10.0.0.0/24"
+
+      sw1:
+        subnet: "10.0.1.0/24"
 
       public:
         subnet: "172.16.1.0/24"
@@ -51,6 +69,11 @@ network:
             gateway_ip: "10.0.0.1/24"
             switch: sw0
 
+          - name: lr0-sw1
+            mac: "00:00:00:00:ff:02"
+            gateway_ip: "10.0.1.1/24"
+            switch: sw1
+
           - name: lr0-public
             mac: "00:00:20:20:12:13"
             gateway_ip: "172.16.1.200/24"
@@ -60,6 +83,12 @@ network:
         static_routes:
           - prefix: "0.0.0.0/0"
             nexthop: "172.16.1.1"
+
+          - prefix: "10.0.0.0/24"
+            nexthop: "10.0.0.1"
+
+          - prefix: "10.0.1.0/24"
+            nexthop: "10.0.1.1"
 
         nat:
           - nat_type: snat

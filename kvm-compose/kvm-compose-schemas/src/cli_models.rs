@@ -113,6 +113,8 @@ pub struct UpCmd {
     pub provision: bool,
     #[clap(long, short, action, help = "Force rerunning use specified guest setup scripts")]
     pub rerun_scripts: bool,
+    #[clap(long, short='a', action, conflicts_with_all = &["provision", "rerun_scripts"], help = "Reapply ACL section of the yaml, removing old rules")]
+    pub reapply_acl: bool,
 }
 
 /// Snapshot testbed command to provide the minimal required artefacts for sharing and reproducing

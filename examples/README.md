@@ -5,6 +5,15 @@ Once you have installed the testbed, you can run `kvm-compose up` in each folder
 
 # Example Description
 
+## acl
+
+This example deploys two libvirt guests on one switch, and one libvirt guest on another switch.
+The aim is to demonstrate the OVN ACL security rules.
+Client1 and client3, which are on different switches, can communicate.
+Client2 and client3, which are on different switches cannot communicate.
+Client1 and client2, which are on the same switch, can communicate.
+This is achieved by placing a deny all rule, then placing allow rules with higher priority for communication between client1 and client3.
+
 ## avd
 
 This example deploys an android guest, that has access to the internet.

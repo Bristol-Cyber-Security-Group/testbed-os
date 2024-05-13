@@ -44,6 +44,9 @@ pub struct LogicalACLRecord {
     #[serde(rename = "match")]
     pub _match: String,
     pub action: ACLAction,
+
+    /// Give the ACL rule a human-readable name in the OVN NB database
+    pub ovn_resource_name: String,
 }
 
 impl LogicalACLRecord {
@@ -54,6 +57,7 @@ impl LogicalACLRecord {
         priority: i16,
         _match: String,
         action: ACLAction,
+        ovn_resource_name: String,
     ) -> Self {
         Self {
             entity_name,
@@ -62,6 +66,7 @@ impl LogicalACLRecord {
             priority,
             _match,
             action,
+            ovn_resource_name,
         }
     }
 
@@ -80,7 +85,8 @@ impl OvnCommand for LogicalACLRecord {
     {
         tracing::info!("creating ACL on {:?}", &self.entity_name);
 
-        let cmd = vec_of_strings!["ovn-nbctl", "--may-exist", "acl-add", &self.entity_name, &self.direction, &self.priority, &self._match, &self.action];
+        let name = format!("--name={}", &self.ovn_resource_name);
+        let cmd = vec_of_strings!["ovn-nbctl", "--may-exist", &name, "acl-add", &self.entity_name, &self.direction, &self.priority, &self._match, &self.action];
 
         f(cmd, config).await
     }
@@ -91,7 +97,7 @@ impl OvnCommand for LogicalACLRecord {
     {
         tracing::info!("destroying ACL {:?}", &self);
 
-        let cmd = vec_of_strings!["ovn-nbctl", "acl-del",  &self.entity_name, &self.direction, &self.priority, &self._match, &self.action];
+        let cmd = vec_of_strings!["ovn-nbctl", "acl-del",  &self.entity_name, &self.direction, &self.priority, &self._match];
 
         f(cmd, config).await
     }
@@ -111,10 +117,11 @@ mod tests {
             10,
             "match".to_string(),
             ACLAction::Drop,
+            "resource_name".to_string(),
         );
-        let expected_add = vec_of_strings!["ovn-nbctl", "--may-exist", "acl-add", "ovn-sw0", "to-lport", "10", "match", "drop"];
+        let expected_add = vec_of_strings!["ovn-nbctl", "--may-exist", "--name=resource_name", "acl-add", "ovn-sw0", "to-lport", "10", "match", "drop"].join(" ");
         assert_eq!(expected_add, record.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
-        let expected_del = vec_of_strings!["ovn-nbctl", "acl-del", "ovn-sw0", "to-lport", "10", "match", "drop"];
-        assert_eq!(expected_add, record.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
+        let expected_del = vec_of_strings!["ovn-nbctl", "acl-del", "ovn-sw0", "to-lport", "10", "match", "drop"].join(" ");
+        assert_eq!(expected_del, record.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
     }
 }
