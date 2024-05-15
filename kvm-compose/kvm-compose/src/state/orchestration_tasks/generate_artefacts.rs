@@ -1,6 +1,6 @@
 use kvm_compose_schemas::TESTBED_SETTINGS_FOLDER;
 use std::path::PathBuf;
-use anyhow::{bail, Context};
+use anyhow::{bail, Context, Error};
 use nix::unistd::{Gid, Uid};
 use kvm_compose_schemas::kvm_compose_yaml::machines::avd::ConfigAVDMachine;
 use kvm_compose_schemas::kvm_compose_yaml::machines::docker::ConfigDockerMachine;
@@ -12,7 +12,7 @@ use crate::components::helpers::android::{create_avd, download_system_image, get
 use crate::components::helpers::artefact_generation::{copy_and_set_permissions_orchestration, resize};
 use crate::components::helpers::cloud_init::{create_meta_data, create_network_config, create_user_data};
 use crate::components::helpers::xml::render_libvirt_domain_xml;
-use crate::orchestration::{OrchestrationCommon};
+use crate::orchestration::{OrchestrationCommon, run_testbed_orchestration_command};
 use crate::state::{State, StateTestbedGuest};
 
 /// This is the generate artefacts version for State rather than Logical testbed
@@ -219,7 +219,7 @@ async fn libvirt(
                 }
             }
         }
-        LibvirtGuestOptions::ExistingDisk { .. } => {
+        LibvirtGuestOptions::ExistingDisk { create_deep_copy, .. } => {
             if libvirt_config.is_clone_of.is_some() {
                 // is a clone, dont need to copy image as orchestration will create the linked
                 // clone image once the backing image is deployed and setup
@@ -233,13 +233,26 @@ async fn libvirt(
                         .as_ref()
                         .context("getting reference image for existing disk, must exist")?;
 
-                    // create a copy of the image into the artefacts folder
-                    copy_and_set_permissions_orchestration(
-                        &PathBuf::from(reference_image),
-                        &disk_path_on_master,
-                        0o755,
-                        common
-                    ).await?;
+                    if create_deep_copy {
+                        // create a copy of the image into the artefacts folder
+                        copy_and_set_permissions_orchestration(
+                            &PathBuf::from(reference_image),
+                            &disk_path_on_master,
+                            0o755,
+                            common
+                        ).await?;
+                    } else {
+                        // create a linked clone, unless user has specified to make a raw copy
+                        let cmd = vec!["qemu-img", "create", "-f", "qcow2", "-b", reference_image, "-F", "qcow2", &disk_path_on_master];
+                        run_testbed_orchestration_command(
+                            &common,
+                            &master_host,
+                            "sudo",
+                            cmd,
+                            false,
+                            None,
+                        ).await.context("creating a linked clone of the reference existing disk")?;
+                    }
 
                     // resize disk
                     if disk_expand > 0 {

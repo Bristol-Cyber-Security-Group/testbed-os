@@ -146,12 +146,14 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                                         path,
                                         driver_type,
                                         device_type,
-                                        readonly
+                                        readonly, 
+                                        create_deep_copy,
                                     } => LibvirtGuestOptions::ExistingDisk {
                                         path: path.clone(),
                                         driver_type: driver_type.clone(),
                                         device_type: device_type.clone(),
                                         readonly: readonly.clone(),
+                                        create_deep_copy: create_deep_copy.clone(),
                                     },
                                     LibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
                                 },
