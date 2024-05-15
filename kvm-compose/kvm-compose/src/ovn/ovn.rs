@@ -4,6 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::net::IpAddr;
 use anyhow::{bail, Context};
 use serde::{Deserialize, Serialize};
+use kvm_compose_schemas::kvm_compose_yaml::network::acl::ACLRule;
 use crate::ovn::components::logical_switch_port::{LogicalSwitchPortType};
 use crate::ovn::components::{MacAddress, OvnIpAddr};
 use crate::ovn::LogicalOperationResult;
@@ -15,6 +16,7 @@ use crate::ovn::components::logical_router_port::LogicalRouterPort;
 use crate::ovn::components::logical_switch::LogicalSwitch;
 use crate::ovn::components::logical_switch_port::LogicalSwitchPort;
 use crate::ovn::components::ovs::OvsPort;
+use crate::ovn::components::acl::{ACLRecordType, LogicalACLRecord};
 use crate::ovn::configuration::dhcp::{DhcpDatabaseEntry, SwitchDhcpOptions};
 
 
@@ -29,6 +31,7 @@ pub struct OvnNetwork {
     pub routers: HashMap<String, LogicalRouter>,
     pub router_ports: HashMap<String, LogicalRouterPort>,
     pub ovs_ports: HashMap<String, OvsPort>,
+    pub acl: HashMap<String, LogicalACLRecord>,
     // TODO - track the OVN chassis as well?
     // database entries
     pub dhcp_options: HashSet<DhcpDatabaseEntry>,
@@ -42,6 +45,7 @@ impl OvnNetwork {
             routers: Default::default(),
             router_ports: Default::default(),
             ovs_ports: Default::default(),
+            acl: Default::default(),
             dhcp_options: Default::default(),
         }
     }
@@ -744,6 +748,31 @@ impl OvnNetwork {
         })
     }
 
+    pub fn add_switch_acl(
+        &mut self,
+        acl_name: &String,
+        entity_name: String,
+        _type: ACLRecordType,
+        acl_rule: &ACLRule
+    ) -> anyhow::Result<(), LogicalOperationResult> {
+        // make sure it doesn't already exist
+        if let Some(_) = self.acl.get(acl_name) {
+            return Err(LogicalOperationResult::AlreadyExists { name: acl_name.to_string() });
+        }
+
+        self.acl.insert(acl_name.clone(), LogicalACLRecord::new(
+            entity_name,
+            _type,
+            acl_rule.direction.clone(),
+            acl_rule.priority.clone(),
+            acl_rule._match.clone(),
+            acl_rule.action.clone(),
+            acl_name.clone(),
+        ));
+
+        Ok(())
+    }
+
     /// Validate the OvnNetwork to make sure all relations are valid. While the logical switch
     /// and logical switch port, and logical router and logical router port do have a mechanism
     /// to prevent parent-less ports, we must validate everything else.
@@ -822,6 +851,7 @@ impl OvnNetwork {
 #[cfg(test)]
 mod tests {
     use std::net::Ipv4Addr;
+    use kvm_compose_schemas::kvm_compose_yaml::network::acl::{ACLAction, ACLDirection};
     use super::*;
 
     #[test]
@@ -1209,6 +1239,36 @@ mod tests {
         assert_eq!(pair.0.name, "sw1-port0".to_string());
         assert_eq!(pair.1.name, "lr0-port1".to_string());
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_acl_success() -> anyhow::Result<(), LogicalOperationResult> {
+        let mut ovn = OvnNetwork::new();
+        let acl_name = "ovn-sw0-to-lport-drop-10".to_string();
+        let rule = ACLRule {
+            direction: ACLDirection::ToLport,
+            priority: 10,
+            _match: "".to_string(),
+            action: ACLAction::AllowRelated,
+        };
+        ovn.add_switch_acl(&acl_name, "sw0".to_string(), ACLRecordType::Switch, &rule)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_acl_fail() -> anyhow::Result<(), LogicalOperationResult> {
+        let mut ovn = OvnNetwork::new();
+        let acl_name = "ovn-sw0-to-lport-drop-10".to_string();
+        let rule = ACLRule {
+            direction: ACLDirection::ToLport,
+            priority: 10,
+            _match: "".to_string(),
+            action: ACLAction::AllowRelated,
+        };
+        ovn.add_switch_acl(&acl_name, "sw0".to_string(), ACLRecordType::Switch, &rule)?;
+        let res = ovn.add_switch_acl(&acl_name, "sw0".to_string(), ACLRecordType::Switch, &rule);
+        assert_eq!(res, Err(LogicalOperationResult::AlreadyExists { name: "ovn-sw0-to-lport-drop-10".to_string() }));
         Ok(())
     }
 }

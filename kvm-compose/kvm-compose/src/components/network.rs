@@ -10,6 +10,7 @@ use kvm_compose_schemas::kvm_compose_yaml::network::switch::{SwitchPort, SwitchP
 use kvm_compose_schemas::settings::SshConfig;
 use crate::components::logical_load_balancing::LoadBalanceTopology;
 use crate::ovn::components::{MacAddress, OvnIpAddr};
+use crate::ovn::components::acl::ACLRecordType;
 use crate::ovn::components::logical_switch_port::LogicalSwitchPortType;
 use crate::ovn::configuration::nat::OvnNatType;
 use crate::ovn::ovn::OvnNetwork;
@@ -196,6 +197,29 @@ fn parse_ovn_schema(
                 }
             }
         }
+    }
+
+    // add ACL
+    if let Some(acl) = &ovn_network_schema.acl {
+        if acl.apply_deny_all {
+            // TODO
+            bail!("apply_deny_all not yet implemented")
+        }
+
+        // for each rule on a switch, make sure the switch exists
+        for (switch, acl_rules) in &acl.switches {
+            let switch_name = format!("{}-{}", &project_name, &switch);
+            if ovn.switches.contains_key(&switch_name) {
+                for rule in acl_rules {
+                    let acl_name = format!("{}-{}-{}-{}-{}", &project_name, &switch, &rule.direction, &rule.action, &rule.priority);
+                    ovn.add_switch_acl(&acl_name, switch_name.clone(), ACLRecordType::Switch, &rule)?;
+                }
+            } else {
+                bail!("switch '{switch}' in ACL ruleset was not defined in the main network topology");
+            }
+        }
+
+        // if we implement ACL for port groups, create them here and use ACLRecordType::PortGroup
     }
 
     tracing::info!("validating the OVN internal representation");

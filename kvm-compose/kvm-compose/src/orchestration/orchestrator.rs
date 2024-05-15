@@ -11,6 +11,7 @@ use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand, Depl
 use kvm_compose_schemas::settings::TestbedClusterConfig;
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationProtocol};
 use crate::orchestration::websocket::{send_orchestration_instruction_over_channel};
+use crate::state::orchestration_tasks::ovn_network::reapply_acl_action;
 
 
 pub async fn run_orchestration(
@@ -63,40 +64,106 @@ pub async fn orchestration_parse_command(
     let project_name = &deployment.name;
     let result_deployment = match command {
         DeploymentCommand::Up { ref up_cmd } => {
-            // for now, we will ignore the previous state, this will cause state drift bugs
-            // will be fixed when we move to OVN, for now just note that there is a previous state
-            // so that we can prevent re-running scripts
-            let force_provision = up_cmd.provision.clone();
-            let force_rerun_scripts = up_cmd.rerun_scripts.clone();
-            let previous_state = read_previous_state(project_location.clone(), project_name).await;
-            let mut state = match previous_state {
-                Ok(state) => {
-                    tracing::info!("There was a previous state file found");
-                    if force_provision && force_rerun_scripts {
-                        tracing::info!("Provisioning and rerun scripts flags enabled, will rebuild guest images and rerun guest scripts");
-                    } else if !force_provision && force_rerun_scripts {
-                        tracing::info!("Rerun scripts flag enabled, will rerun guest scripts");
-                    } else if force_provision && !force_rerun_scripts {
-                        tracing::info!("Provisioning flag enabled, will rebuild guest images");
-                    } else if !force_provision && !force_rerun_scripts {
-                        tracing::info!("Provisioning and rerun scripts flags not enabled, only making sure the network is up and guests are up");
-                    }
+            // if we are reapplying acl, shortcut here otherwise continue
+            let reapply_acl = up_cmd.reapply_acl.clone();
+            if reapply_acl {
+                let previous_state = read_previous_state(project_location.clone(), project_name).await?;
+                let logical_testbed = create_logical_testbed(&yaml, &deployment, &project_location, false)
+                    .await
+                    .context("Creating logical testbed")?;
+                reapply_acl_action(
+                    &previous_state,
+                    logical_testbed,
+                    sender,
+                    deployment.clone(),
+                    command.clone(),
+                    project_name.clone(),
+                    project_location.clone(),
+                ).await?;
+                Ok(deployment)
+            } else {
+                // for now, we will ignore the previous state, this will cause state drift bugs
+                // will be fixed when we move to OVN, for now just note that there is a previous state
+                // so that we can prevent re-running scripts
+                let force_provision = up_cmd.provision.clone();
+                let force_rerun_scripts = up_cmd.rerun_scripts.clone();
+                let previous_state = read_previous_state(project_location.clone(), project_name).await;
+                let mut state = match previous_state {
+                    Ok(state) => {
+                        tracing::info!("There was a previous state file found");
+                        if force_provision && force_rerun_scripts {
+                            tracing::info!("Provisioning and rerun scripts flags enabled, will rebuild guest images and rerun guest scripts");
+                        } else if !force_provision && force_rerun_scripts {
+                            tracing::info!("Rerun scripts flag enabled, will rerun guest scripts");
+                        } else if force_provision && !force_rerun_scripts {
+                            tracing::info!("Provisioning flag enabled, will rebuild guest images");
+                        } else if !force_provision && !force_rerun_scripts {
+                            tracing::info!("Provisioning and rerun scripts flags not enabled, only making sure the network is up and guests are up");
+                        }
 
-                    // need to check if artefacts exist in case state does and artefacts don't exist
-                    let mut artefacts_folder = project_location.clone();
-                    artefacts_folder.push("artefacts");
-                    if !artefacts_folder.exists() && !force_provision {
-                        bail!("Artefacts folder does not exist but state does, cannot continue. Either delete the state file or rerun up with the --provision flag.");
-                    }
+                        // need to check if artefacts exist in case state does and artefacts don't exist
+                        let mut artefacts_folder = project_location.clone();
+                        artefacts_folder.push("artefacts");
+                        if !artefacts_folder.exists() && !force_provision {
+                            bail!("Artefacts folder does not exist but state does, cannot continue. Either delete the state file or rerun up with the --provision flag.");
+                        }
 
-                    // either return a new state or the old state based on force_provision
-                    if force_provision {
+                        // either return a new state or the old state based on force_provision
+                        if force_provision {
+                            let logical_testbed = create_logical_testbed(&yaml, &deployment, &project_location, force_provision)
+                                .await
+                                .context("Creating logical testbed")?;
+                            tracing::info!("parsed {project_name} kvm-compose.yaml");
+                            let state = State::new(&logical_testbed)
+                                .context("Creating state from logical testbed")?;
+                            state
+                                .write(&project_name, &project_location)
+                                .await
+                                .context("Writing the state json file.")?;
+                            tracing::info!("written state for {project_name}");
+                            // send the deployment and the command and receive OK
+                            send_orchestration_instruction_over_channel(
+                                sender,
+                                OrchestrationInstruction::Init {
+                                    deployment: deployment.clone(),
+                                    deployment_command: command.clone(),
+                                },
+                            ).await.context("sending Init request to server")?;
+                            // generate guest images
+                            logical_testbed.request_generate_artefacts(sender)
+                                .await
+                                .context("Generating artefacts from logical testbed")?;
+                            state
+                        } else {
+                            // nothing to do, just init before continue
+                            // send the deployment and the command and receive OK
+                            send_orchestration_instruction_over_channel(
+                                sender,
+                                OrchestrationInstruction::Init {
+                                    deployment: deployment.clone(),
+                                    deployment_command: command.clone(),
+                                },
+                            ).await.context("sending Init request to server")?;
+                            // return the previous state
+                            state
+                        }
+                    }
+                    Err(_) => {
+                        tracing::info!("There was no state file found, starting a fresh testbed deployment");
                         let logical_testbed = create_logical_testbed(&yaml, &deployment, &project_location, force_provision)
                             .await
                             .context("Creating logical testbed")?;
                         tracing::info!("parsed {project_name} kvm-compose.yaml");
-                        let state = State::new(&logical_testbed)
+                        let mut state = State::new(&logical_testbed)
                             .context("Creating state from logical testbed")?;
+                        // if no state file but one or more guest images exist, dont run scripts to
+                        // preserve state, even if generate artefacts does create some images
+                        let images_already_exist = check_if_guest_images_exist(&logical_testbed)?;
+                        if images_already_exist {
+                            tracing::info!("one or more guest images found already to exist, will not run guest scripts unless --provision is set");
+                            // set this to true so that we skip setup script stage
+                            state.state_provisioning.guests_provisioned = true;
+                        }
                         state
                             .write(&project_name, &project_location)
                             .await
@@ -115,74 +182,27 @@ pub async fn orchestration_parse_command(
                             .await
                             .context("Generating artefacts from logical testbed")?;
                         state
-                    } else {
-                        // nothing to do, just init before continue
-                        // send the deployment and the command and receive OK
-                        send_orchestration_instruction_over_channel(
-                            sender,
-                            OrchestrationInstruction::Init {
-                                deployment: deployment.clone(),
-                                deployment_command: command.clone(),
-                            },
-                        ).await.context("sending Init request to server")?;
-                        // return the previous state
-                        state
                     }
-                }
-                Err(_) => {
-                    tracing::info!("There was no state file found, starting a fresh testbed deployment");
-                    let logical_testbed = create_logical_testbed(&yaml, &deployment, &project_location, force_provision)
-                        .await
-                        .context("Creating logical testbed")?;
-                    tracing::info!("parsed {project_name} kvm-compose.yaml");
-                    let mut state = State::new(&logical_testbed)
-                        .context("Creating state from logical testbed")?;
-                    // if no state file but one or more guest images exist, dont run scripts to
-                    // preserve state, even if generate artefacts does create some images
-                    let images_already_exist = check_if_guest_images_exist(&logical_testbed)?;
-                    if images_already_exist {
-                        tracing::info!("one or more guest images found already to exist, will not run guest scripts unless --provision is set");
-                        // set this to true so that we skip setup script stage
-                        state.state_provisioning.guests_provisioned = true;
-                    }
-                    state
-                        .write(&project_name, &project_location)
-                        .await
-                        .context("Writing the state json file.")?;
-                    tracing::info!("written state for {project_name}");
-                    // send the deployment and the command and receive OK
-                    send_orchestration_instruction_over_channel(
-                        sender,
-                        OrchestrationInstruction::Init {
-                            deployment: deployment.clone(),
-                            deployment_command: command.clone(),
-                        },
-                    ).await.context("sending Init request to server")?;
-                    // generate guest images
-                    logical_testbed.request_generate_artefacts(sender)
-                        .await
-                        .context("Generating artefacts from logical testbed")?;
-                    state
-                }
-            };
+                };
 
-            let common = get_orchestration_common(&state, force_provision, force_rerun_scripts, kvm_compose_config).await?;
-            // now the state has been written, we can ask the server to run orchestration
-            let up_res = state.request_create_action(&common, sender).await;
-            match up_res {
-                Ok(_) => deployment.state = DeploymentState::Up,
-                Err(err) => {
-                    deployment.state = DeploymentState::Failed(command.clone());
-                    bail!("{err:#}");
-                },
+                let common = get_orchestration_common(&state, force_provision, force_rerun_scripts, reapply_acl, kvm_compose_config).await?;
+                // now the state has been written, we can ask the server to run orchestration
+                let up_res = state.request_create_action(&common, sender).await;
+                match up_res {
+                    Ok(_) => deployment.state = DeploymentState::Up,
+                    Err(err) => {
+                        deployment.state = DeploymentState::Failed(command.clone());
+                        bail!("{err:#}");
+                    },
+                }
+                // update state with provisioning state, even if fail provisioning may have been partial
+                state.state_provisioning.guests_provisioned = true;
+                state
+                    .write(&project_name, &project_location)
+                    .await
+                    .context("Writing the state json file.")?;
+                Ok(deployment)
             }
-            // update state with provisioning state, even if fail provisioning may have been partial
-            state.state_provisioning.guests_provisioned = true;
-            state
-                .write(&project_name, &project_location)
-                .await
-                .context("Writing the state json file.")?;
-            Ok(deployment)
         }
         DeploymentCommand::Down => {
             let mut state_path = project_location.clone();
@@ -203,7 +223,7 @@ pub async fn orchestration_parse_command(
                 Ok(_) => {
                     let text = tokio::fs::read_to_string(&state_path).await?;
                     let old_state: State = serde_json::from_str(&text).unwrap();
-                    let common = get_orchestration_common(&old_state, false, false, kvm_compose_config).await?;
+                    let common = get_orchestration_common(&old_state, false, false, false, kvm_compose_config).await?;
                     match old_state.request_destroy_action(&common, sender).await {
                         Ok(_) => deployment.state = DeploymentState::Down,
                         Err(err) => {
