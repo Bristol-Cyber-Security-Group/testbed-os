@@ -134,6 +134,21 @@ async fn libvirt(
         );
     }
 
+    // if we are using an existing disk guest, we will enable further video support as the guest
+    // will likely have a desktop environment and without this there will be some significant delay
+    // and tearing in the graphics - also add for iso guest as there will also be the likelihood
+    // of a desktop environment
+    // TODO - make this an option in the yaml
+    match libvirt_config.libvirt_type {
+        LibvirtGuestOptions::ExistingDisk { .. } => {
+            tera_context.insert("extended_graphics_support", &true);
+        }
+        LibvirtGuestOptions::IsoGuest { .. } => {
+            tera_context.insert("extended_graphics_support", &true);
+        }
+        _ => {}
+    }
+
     // backing image for libvirt network, on project linux bridge and not on integration bridge
     if libvirt_config.scaling.is_some() {
         tera_context.insert("backing_image_network", &format!("{}-testbedos", common.project_name));
