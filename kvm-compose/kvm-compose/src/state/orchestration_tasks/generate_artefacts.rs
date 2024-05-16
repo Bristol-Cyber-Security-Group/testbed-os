@@ -233,7 +233,7 @@ async fn libvirt(
                         .as_ref()
                         .context("getting reference image for existing disk, must exist")?;
 
-                    if create_deep_copy {
+                    if *create_deep_copy {
                         // create a copy of the image into the artefacts folder
                         copy_and_set_permissions_orchestration(
                             &PathBuf::from(reference_image),
