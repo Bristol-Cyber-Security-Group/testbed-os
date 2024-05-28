@@ -789,14 +789,16 @@ function toolingGetGuestName() {
 }
 
 function convertCommandToListOfStrings(sub_command, command_name) {
-    // take the string with command arguments separated by whitespace and split by the whitespace to give a list of
-    // strings
+    const regex = /(?:[^\s"]+|"[^"]*")+/g; // Regex to match quoted strings or individual words
     let command = sub_command["Exec"]["command_type"]["tool"]["tool"][command_name]["command"];
+    
     // command starts as a list of one string
     let command_string = command[0];
-    command_string = command_string.split(" ");
+    let command_list = command_string.match(regex).map(arg => arg.replace(/(^"|"$)/g, ''));
+    
     // add formatted command back to json
-    sub_command["Exec"]["command_type"]["tool"]["tool"][command_name]["command"] = command_string;
+    sub_command["Exec"]["command_type"]["tool"]["tool"][command_name]["command"] = command_list;
+    
     return sub_command;
 }
 
