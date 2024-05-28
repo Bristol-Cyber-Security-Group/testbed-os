@@ -697,7 +697,7 @@ function get_button_command_json(button_id, selectedOption, selectedToolOption, 
         // Check if there are text inputs or checkboxes within the execDynamicButtons container
         $('#execDynamicButtons input').each(function() {
             let inputType = $(this).attr('type');
-            let inputValue = $(this).val();
+            let inputValue = $(this).val().trim().replace(/\s+/g, ' '); // Remove whitespace from start and end of command string
             let inputId = $(this).attr('id');
             
             if(inputType === 'checkbox') {
