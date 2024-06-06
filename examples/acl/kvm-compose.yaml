@@ -5,7 +5,7 @@ machines:
       switch: sw0
       gateway: 10.0.0.1
       mac: "00:00:00:00:00:01"
-      ip: "10.0.0.10"
+      ip: "10.0.0.11"
     libvirt:
       cpus: 2
       memory_mb: 2048
@@ -19,7 +19,7 @@ machines:
       switch: sw0
       gateway: 10.0.0.1
       mac: "00:00:00:00:00:02"
-      ip: "10.0.0.11"
+      ip: "10.0.0.12"
     libvirt:
       cpus: 2
       memory_mb: 2048
@@ -30,9 +30,23 @@ machines:
 
   - name: client3
     network:
+      switch: sw0
+      gateway: 10.0.0.1
+      mac: "00:00:00:00:00:03"
+      ip: "10.0.0.13"
+    libvirt:
+      cpus: 2
+      memory_mb: 2048
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 5
+
+  - name: client4
+    network:
       switch: sw1
       gateway: 10.0.1.1
-      mac: "00:00:00:00:00:03"
+      mac: "00:00:00:00:00:04"
       ip: "10.0.1.10"
     libvirt:
       cpus: 2
@@ -100,7 +114,44 @@ network:
       apply_deny_all: false
       switches:
         sw0:
+
+          # drop all packets to logical ports in this switch
           - direction: to-lport
-            priority: 10
-            match: "ip4.src == '10.0.0.10'"
-            action: allow
+            priority: 1001
+            match: "ip"
+            action: drop
+
+#          # allow ping between vms in logical switch, with higher priority than drop all
+#          - direction: to-lport
+#            priority: 1002
+#            match: "ip4 && ip4.src == 10.0.0.0/24 "
+#            action: allow-related
+#          - direction: from-lport
+#            priority: 1002
+#            match: "ip4 && ip4.dst == 10.0.0.0/24 "
+#            action: allow-related
+
+          # allow client1 to communicate with client2 only
+          - direction: to-lport
+            priority: 1002
+            match: "ip4 && ip4.src == 10.0.0.11 && ip4.dst == 10.0.0.12"
+            action: allow-related
+
+          # allow client2 to communicate with client1 only
+          - direction: to-lport
+            priority: 1003
+            match: "ip4 && ip4.src == 10.0.0.12 && ip4.dst == 10.0.0.11"
+            action: allow-related
+
+          # allow client2 to communicate with client3 only
+          - direction: to-lport
+            priority: 1004
+            match: "ip4 && ip4.src == 10.0.0.12 && ip4.dst == 10.0.0.13"
+            action: allow-related
+
+          # allow client3 to communicate with client2 only
+          - direction: to-lport
+            priority: 1005
+            match: "ip4 && ip4.src == 10.0.0.13 && ip4.dst == 10.0.0.12"
+            action: allow-related
+
