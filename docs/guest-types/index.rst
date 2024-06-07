@@ -25,7 +25,7 @@ The Libvirt virtual machines are split into three sub-types based on their mode 
 - existing disk (bring a preconfigured image)
 - iso guest (bring an installation .iso image)
 
-The cloud image based guests will have full automation possible, due to the ability to seed the deployment using cloud-init.
+The cloud image based guests will have full automation capabilities offered by the testbed, due to the ability to seed the deployment using cloud-init.
 We are able to customise the deployment using the cloud-init functionality.
 Additionally, this allows us to insert SSH keys to be able to remotely control the guest and customise further and run scripts etc.
 
