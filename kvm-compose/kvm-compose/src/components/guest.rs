@@ -8,7 +8,6 @@ use std::path::{PathBuf};
 use async_trait::async_trait;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
-use crate::components;
 use crate::ovn::components::MacAddress;
 
 // This file describes all the different possible guests the kvm-compose yaml file supports.
@@ -336,10 +335,6 @@ impl TestbedGuest for DockerGuest {
         self.unique_id
     }
 
-    // fn get_interface_name(&self, project_name: &String) -> String {
-    //     components::get_guest_interface_name(project_name, self.unique_id, )
-    // }
-
     fn get_reference_image(&self) -> anyhow::Result<Option<String>> {
         // TODO - this might refer to a local image that is not in dockerhub
         Ok(None)
@@ -438,10 +433,6 @@ impl TestbedGuest for AndroidGuest {
     fn get_guest_id(&self) -> u32 {
         self.unique_id
     }
-
-    // fn get_interface_name(&self, project_name: &String) -> String {
-    //     components::get_guest_interface_name(project_name, self.unique_id, )
-    // }
 
     fn get_reference_image(&self) -> anyhow::Result<Option<String>> {
         Ok(None)

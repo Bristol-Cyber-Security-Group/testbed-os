@@ -1,8 +1,7 @@
 use kvm_compose_schemas::TESTBED_SETTINGS_FOLDER;
 use std::path::PathBuf;
-use anyhow::{bail, Context, Error};
+use anyhow::{bail, Context};
 use nix::unistd::{Gid, Uid};
-use kvm_compose_schemas::cli_models::Common;
 use kvm_compose_schemas::kvm_compose_yaml::MachineNetwork;
 use kvm_compose_schemas::kvm_compose_yaml::machines::avd::ConfigAVDMachine;
 use kvm_compose_schemas::kvm_compose_yaml::machines::docker::ConfigDockerMachine;
