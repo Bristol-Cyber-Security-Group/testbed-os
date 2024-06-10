@@ -2,6 +2,8 @@ use kvm_compose_schemas::TESTBED_SETTINGS_FOLDER;
 use std::path::PathBuf;
 use anyhow::{bail, Context, Error};
 use nix::unistd::{Gid, Uid};
+use kvm_compose_schemas::cli_models::Common;
+use kvm_compose_schemas::kvm_compose_yaml::MachineNetwork;
 use kvm_compose_schemas::kvm_compose_yaml::machines::avd::ConfigAVDMachine;
 use kvm_compose_schemas::kvm_compose_yaml::machines::docker::ConfigDockerMachine;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
@@ -122,16 +124,29 @@ async fn libvirt(
     // create the interface name for the guest
     // add to integration bridge
     if libvirt_config.scaling.is_none() {
-        let interface = get_guest_interface_name(&common.project_name, guest_config.guest_id);
-        tera_context.insert("interface", &interface);
-        // the network should be Some as it is not a scaling guest
-        tera_context.insert(
-            "mac_address",
-            &network_def
-                .clone()
-                .context("getting network definition for non backing image guest")?
-                .mac
-        );
+        // there may not be any network defined
+        if let Some(some_network_def) = network_def {
+            // vec of vec, outer vec is interface, inner vec is interface name+mac
+            let mut guest_interfaces = Vec::new();
+            for (idx, yaml_interface) in some_network_def.iter().enumerate() {
+                if idx > 9 {
+                    bail!("currently don't support a guest with more than 10 interfaces");
+                }
+                let interface = get_guest_interface_name(&common.project_name, guest_config.guest_id, idx);
+                let mac = yaml_interface.mac.clone();
+                let mut interface_id = format!("{idx}");
+                if interface_id.len() == 1 {
+                    interface_id = format!("0{interface_id}");
+                }
+                let interface_and_mac = vec![interface, mac, interface_id];
+                guest_interfaces.push(interface_and_mac);
+
+            }
+            if !guest_interfaces.is_empty() {
+                tera_context.insert("interfaces", &guest_interfaces);
+            }
+        }
+
     }
 
     // if we are using an existing disk guest, we will enable further video support as the guest
@@ -303,145 +318,14 @@ async fn libvirt(
 
     // set up cloud init data only for cloud images
     match libvirt_config.libvirt_type {
-        LibvirtGuestOptions::CloudImage { .. } => {
-            // cloud init options, place cloud init assets into guest artefacts folder
-            let public_ssh_key_contents =
-                tokio::fs::read_to_string(&common.kvm_compose_config.ssh_public_key_location)
-                    .await
-                    .context(
-                        format!(
-                            "Could not read ssh public key at {}",
-                            &common.kvm_compose_config.ssh_public_key_location
-                        ),
-                    )?;
-            // if the guest's ip is not dynamic, then we need to add a line in the cloud init
-            // script
-            let set_ip = match network_def {
-                None => {
-                    // use dhcp as we have the libvirt network
-                    if libvirt_config.scaling.is_some() {
-                        "sudo dhclient".to_string()
-                    } else {
-                        bail!("guest {} has not been given an ip address or dynamic during artefact generation", &client_name)
-                    }
-                }
-                Some(network) => {
-                    if network.ip.eq(&"dynamic".to_string()) {
-                        // nothing to do, just return empty strings
-                        // DHCP will set gateway for us
-                        "".to_string()
-                    } else {
-                        // we need to run a few commands
-                        let gateway = if network.gateway.is_some() {
-                            format!("&& sudo ip route add default via {} dev ens3", network.gateway.as_ref().unwrap())
-                        } else {
-                            "".to_string()
-                        };
-
-                        // TODO - how to know the interface name?
-                        format!("sudo ip addr add {}/24 dev ens3 \
-                            && sudo ip link set ens3 up \
-                            {gateway}", &network.ip)
-                    }
-                }
-            };
-            let meta_data = create_meta_data(
-                client_name,
-                public_ssh_key_contents,
-                match &libvirt_config.libvirt_type {
-                    LibvirtGuestOptions::CloudImage { environment, ..  } => {
-                        environment.clone()
-                    }
-                    _ => {
-                        unreachable!()
-                    }
-                },
-                set_ip
-            );
-            let meta_dest_str = format!("{}/meta-data", &project_artefacts_folder);
-            let meta_data_dest = if !check_file_exists(&meta_dest_str) || common.force_provisioning {
-                let meta_data_dest = serialisation::write_file_with_permissions(
-                    meta_dest_str,
-                    meta_data,
-                    0o755,
-                    Uid::from_raw(common.fs_user),
-                    Gid::from_raw(common.fs_group),
-                ).await.context("writing meta-data file")?;
-                Some(meta_data_dest)
-            } else {
-                None
-            };
-            let user_data = create_user_data();
-            let user_data_str = format!("{}/user-data", &project_artefacts_folder);
-            let user_data_dest = if !check_file_exists(&user_data_str) || common.force_provisioning {
-                let user_data_dest = serialisation::write_file_vecu8_with_permissions_orchestration(
-                    user_data_str,
-                    user_data,
-                    0o755,
-                    common,
-                ).await.context("writing user-data file")?;
-                Some(user_data_dest)
-            } else {
-                None
-            };
-            let network_config = create_network_config();
-            let network_config_str = format!("{}/network-config", &project_artefacts_folder);
-            let network_config_dest = if !check_file_exists(&network_config_str) || common.force_provisioning {
-                let network_config_dest = serialisation::write_file_vecu8_with_permissions_orchestration(
-                    network_config_str,
-                    network_config,
-                    0o755,
-                    common,
-                ).await.context("writing network-config file")?;
-                Some(network_config_dest)
-            } else {
-                None
-            };
-            // write cloud init iso
-            if meta_data_dest.is_some() && user_data_dest.is_some() && network_config_dest.is_some() {
-                let mut cloud_init_inputs = vec![
-                    meta_data_dest.unwrap(),
-                    user_data_dest.unwrap(),
-                    network_config_dest.unwrap(),
-                ];
-                let iso_dest = if libvirt_config.is_clone_of.is_some() {
-                    format!(
-                        "{}/{}-linked-clone.iso",
-                        &project_artefacts_folder, &guest_config.guest_type.name
-                    )
-                } else {
-                    format!(
-                        "{}/{}-cloud-init.iso",
-                        &project_artefacts_folder, &guest_config.guest_type.name
-                    )
-                };
-                // add context if present in yaml
-                match &libvirt_config.libvirt_type {
-                    LibvirtGuestOptions::CloudImage { context, .. } => match &context {
-                        None => {}
-                        Some(context) => {
-                            let context_dest = PathBuf::from(format!("{}/context.tar", &project_artefacts_folder));
-                            serialisation::tar_cf(&context_dest, &context).await?;
-                            cloud_init_inputs.push(context_dest);
-                        }
-                    },
-                    LibvirtGuestOptions::ExistingDisk { .. } => {
-                        unreachable!()
-                    }
-                    LibvirtGuestOptions::IsoGuest { .. } => {
-                        unreachable!()
-                    }
-                }
-                serialisation::genisoimage_orchestration(PathBuf::from(&iso_dest).as_path(), cloud_init_inputs.clone(), common)
-                    .await
-                    .context("Could not create cloud init iso image")?;
-
-                // delete the iso image files
-                for ff in cloud_init_inputs {
-                    tokio::fs::remove_file(ff).await?;
-                }
-            }
-        }
+        LibvirtGuestOptions::CloudImage { .. } => cloud_init_setup(
+            &common,
+            network_def,
+            libvirt_config,
+            client_name.clone(),
+            project_artefacts_folder.clone(),
+            guest_config,
+        ).await?,
         _ => {}
     }
 
@@ -512,6 +396,168 @@ async fn android(
     }
 
     common.apply_user_file_perms(&avd_path.into())?;
+
+    Ok(())
+}
+
+async fn cloud_init_setup(
+    common: &OrchestrationCommon,
+    network_def: &Option<Vec<MachineNetwork>>,
+    libvirt_config: &ConfigLibvirtMachine,
+    client_name: String,
+    project_artefacts_folder: String,
+    guest_config: &StateTestbedGuest,
+) -> anyhow::Result<()> {
+    // // cloud init options, place cloud init assets into guest artefacts folder
+    // let public_ssh_key_contents =
+    //     tokio::fs::read_to_string(&common.kvm_compose_config.ssh_public_key_location)
+    //         .await
+    //         .context(
+    //             format!(
+    //                 "Could not read ssh public key at {}",
+    //                 &common.kvm_compose_config.ssh_public_key_location
+    //             ),
+    //         )?;
+    //
+    // // TODO - need to go through each network interface definition in the yaml, to then create
+    // //  an entry in the cloud init script to either run dhclient or add static ip as shell cmds
+    //
+    //
+    //
+    // // TODO - per interface, need to set the interface name and the appropriate command
+    //
+    // // if the guest's ip is not dynamic, then we need to add a line in the cloud init
+    // // script
+    // let set_ip = match network_def {
+    //     None => {
+    //         // use dhcp as we have the libvirt network
+    //         if libvirt_config.scaling.is_some() {
+    //             "sudo dhclient".to_string()
+    //         } else {
+    //             bail!("guest {} has not been given an ip address or dynamic during artefact generation", &client_name)
+    //         }
+    //     }
+    //     Some(network) => {
+    //         if network.ip.eq(&"dynamic".to_string()) {
+    //             // nothing to do, just return empty strings
+    //             // DHCP will set gateway for us
+    //             "".to_string()
+    //         } else {
+    //             // we need to run a few commands
+    //             let gateway = if network.gateway.is_some() {
+    //                 format!("&& sudo ip route add default via {} dev ens3", network.gateway.as_ref().unwrap())
+    //             } else {
+    //                 "".to_string()
+    //             };
+    //
+    //             // TODO - how to know the interface name?
+    //             format!("sudo ip addr add {}/24 dev ens3 \
+    //                         && sudo ip link set ens3 up \
+    //                         {gateway}", &network.ip)
+    //         }
+    //     }
+    // };
+    //
+    //
+    //
+    // let meta_data = create_meta_data(
+    //     client_name,
+    //     public_ssh_key_contents,
+    //     match &libvirt_config.libvirt_type {
+    //         LibvirtGuestOptions::CloudImage { environment, ..  } => {
+    //             environment.clone()
+    //         }
+    //         _ => {
+    //             unreachable!()
+    //         }
+    //     },
+    //     set_ip
+    // );
+    // let meta_dest_str = format!("{}/meta-data", &project_artefacts_folder);
+    // let meta_data_dest = if !check_file_exists(&meta_dest_str) || common.force_provisioning {
+    //     let meta_data_dest = serialisation::write_file_with_permissions(
+    //         meta_dest_str,
+    //         meta_data,
+    //         0o755,
+    //         Uid::from_raw(common.fs_user),
+    //         Gid::from_raw(common.fs_group),
+    //     ).await.context("writing meta-data file")?;
+    //     Some(meta_data_dest)
+    // } else {
+    //     None
+    // };
+    //
+    //
+    // let user_data = create_user_data();
+    // let user_data_str = format!("{}/user-data", &project_artefacts_folder);
+    // let user_data_dest = if !check_file_exists(&user_data_str) || common.force_provisioning {
+    //     let user_data_dest = serialisation::write_file_vecu8_with_permissions_orchestration(
+    //         user_data_str,
+    //         user_data,
+    //         0o755,
+    //         common,
+    //     ).await.context("writing user-data file")?;
+    //     Some(user_data_dest)
+    // } else {
+    //     None
+    // };
+    // let network_config = create_network_config();
+    // let network_config_str = format!("{}/network-config", &project_artefacts_folder);
+    // let network_config_dest = if !check_file_exists(&network_config_str) || common.force_provisioning {
+    //     let network_config_dest = serialisation::write_file_vecu8_with_permissions_orchestration(
+    //         network_config_str,
+    //         network_config,
+    //         0o755,
+    //         common,
+    //     ).await.context("writing network-config file")?;
+    //     Some(network_config_dest)
+    // } else {
+    //     None
+    // };
+    // // write cloud init iso
+    // if meta_data_dest.is_some() && user_data_dest.is_some() && network_config_dest.is_some() {
+    //     let mut cloud_init_inputs = vec![
+    //         meta_data_dest.unwrap(),
+    //         user_data_dest.unwrap(),
+    //         network_config_dest.unwrap(),
+    //     ];
+    //     let iso_dest = if libvirt_config.is_clone_of.is_some() {
+    //         format!(
+    //             "{}/{}-linked-clone.iso",
+    //             &project_artefacts_folder, &guest_config.guest_type.name
+    //         )
+    //     } else {
+    //         format!(
+    //             "{}/{}-cloud-init.iso",
+    //             &project_artefacts_folder, &guest_config.guest_type.name
+    //         )
+    //     };
+    //     // add context if present in yaml
+    //     match &libvirt_config.libvirt_type {
+    //         LibvirtGuestOptions::CloudImage { context, .. } => match &context {
+    //             None => {}
+    //             Some(context) => {
+    //                 let context_dest = PathBuf::from(format!("{}/context.tar", &project_artefacts_folder));
+    //                 serialisation::tar_cf(&context_dest, &context).await?;
+    //                 cloud_init_inputs.push(context_dest);
+    //             }
+    //         },
+    //         LibvirtGuestOptions::ExistingDisk { .. } => {
+    //             unreachable!()
+    //         }
+    //         LibvirtGuestOptions::IsoGuest { .. } => {
+    //             unreachable!()
+    //         }
+    //     }
+    //     serialisation::genisoimage_orchestration(PathBuf::from(&iso_dest).as_path(), cloud_init_inputs.clone(), common)
+    //         .await
+    //         .context("Could not create cloud init iso image")?;
+    //
+    //     // delete the iso image files
+    //     for ff in cloud_init_inputs {
+    //         tokio::fs::remove_file(ff).await?;
+    //     }
+    // }
 
     Ok(())
 }

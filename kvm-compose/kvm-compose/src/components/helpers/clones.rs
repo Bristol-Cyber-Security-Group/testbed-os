@@ -120,7 +120,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                         // };
                         let clone_config_machine = Machine {
                             name: format!("{}-{}", machine.name.clone(), clone_n),
-                            network: Some(clone_interfaces),
+                            network: Some(vec![clone_interfaces]),
                             guest_type: GuestType::Libvirt(ConfigLibvirtMachine {
                                 memory_mb: libvirt_guest.memory_mb.clone(),
                                 cpus: libvirt_guest.cpus.clone(),
@@ -193,7 +193,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
 
                         let clone_config_machine = Machine {
                             name: format!("{}-{}", machine.name.clone(), clone_n),
-                            network: Some(clone_interfaces),
+                            network: Some(vec![clone_interfaces]),
                             guest_type: GuestType::Docker(ConfigDockerMachine {
                                 image: docker_guest.image.clone(),
                                 command: docker_guest.command.clone(),
@@ -234,7 +234,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
 
                         let clone_config_machine = Machine {
                             name: format!("{}-{}", machine.name.clone(), clone_n),
-                            network: Some(clone_interfaces),
+                            network: Some(vec![clone_interfaces]),
                             guest_type: GuestType::Android(ConfigAVDMachine {
                                 static_ip: None,
                                 avd_type: match &avd_guest.avd_type {
