@@ -1,23 +1,11 @@
 machines:
 
-  - name: server
+  - name: client1
     network:
       - switch: sw0
         gateway: 10.0.0.1
         mac: "00:00:00:00:00:01"
         ip: "10.0.0.10"
-    libvirt:
-      cpus: 2
-      memory_mb: 2048
-      libvirt_type:
-        cloud_image:
-          name: ubuntu_20_04
-          expand_gigabytes: 20
-          setup_script: ./server.sh
-          context: ./server
-
-  - name: client1
-    network:
       - switch: sw0
         gateway: 10.0.0.1
         mac: "00:00:00:00:00:02"
@@ -28,12 +16,7 @@ machines:
       libvirt_type:
         cloud_image:
           name: ubuntu_20_04
-          expand_gigabytes: 15
-          setup_script: ./client.sh
-          context: ./use_custom_server.patch
-          environment:
-            number: "+447722000001"
-            code: "111111"
+          expand_gigabytes: 5
 
   - name: client2
     network:
@@ -47,12 +30,7 @@ machines:
       libvirt_type:
         cloud_image:
           name: ubuntu_20_04
-          expand_gigabytes: 15
-          setup_script: ./client.sh
-          context: ./use_custom_server.patch
-          environment:
-            number: "+447722000002"
-            code: "222222"
+          expand_gigabytes: 5
 
 network:
   ovn:
@@ -92,3 +70,23 @@ network:
           - nat_type: snat
             external_ip: "172.16.1.200"
             logical_ip: "10.0.0.0/16"
+
+    acl:
+      apply_deny_all: false
+      switches:
+        sw0:
+          - direction: to-lport
+            priority: 1001
+            match: "ip"
+            action: drop
+          # allow client1 to communicate with client2 via second interface
+          - direction: to-lport
+            priority: 1002
+            match: "ip4 && ip4.src == 10.0.0.11 && ip4.dst == 10.0.0.12"
+            action: allow-related
+          # allow client2 to communicate with client1 only via first interface
+          - direction: to-lport
+            priority: 1003
+            match: "ip4 && ip4.src == 10.0.0.12 && ip4.dst == 10.0.0.11"
+            action: allow-related
+

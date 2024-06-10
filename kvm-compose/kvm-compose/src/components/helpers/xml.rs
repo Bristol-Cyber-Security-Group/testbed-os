@@ -12,6 +12,7 @@ lazy_static! {
         };
         let _ = tera.add_raw_template("libvirt_network", include_str!("templates/libvirt_network.xml"));
         let _ = tera.add_raw_template("libvirt_domain", include_str!("templates/libvirt_domain.xml"));
+        let _ = tera.add_raw_template("cloud_init_network", include_str!("templates/network-config.yaml"));
         tera
     };
 }

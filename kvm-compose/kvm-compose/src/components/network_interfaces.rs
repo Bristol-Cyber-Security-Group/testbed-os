@@ -47,10 +47,6 @@ impl TestbedComponent for LogicalNetworkInterface {
         &self.testbed_host
     }
 
-    fn set_static_ip(&mut self, in_ip: String) {
-        self.static_ip = Some(in_ip);
-    }
-
     fn get_static_ip(&self) -> Option<String> {
         self.static_ip.clone()
     }

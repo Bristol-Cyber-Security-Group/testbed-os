@@ -1,0 +1,27 @@
+preserve_hostname: false
+network:
+  version: 2
+  {% if interfaces %}
+  ethernets:
+    {% for network_data in interfaces %}
+    {{ network_data.name }}:
+      match:
+        macaddress: "{{ network_data.mac_address }}"
+      set-name: {{ network_data.name }}
+      dhcp4: {{ network_data.dhcp4 }}
+      dhcp6: false
+#      optional: true
+      dhcp-identifier: mac
+      mtu: 1400
+      {% if network_data.addresses %}
+      addresses: [{{ network_data.addresses }}/24]
+      {% endif %}
+      {% if network_data.routes %}
+      routes:
+        - to: default
+          via: {{ network_data.routes }}
+      {% endif %}
+      nameservers:
+        addresses: [{{ network_data.nameservers }}]
+    {% endfor %}
+  {% endif %}

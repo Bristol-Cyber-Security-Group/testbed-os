@@ -2,7 +2,7 @@ use crate::components::{LogicalGuests};
 use std::collections::{HashMap};
 use std::net::{IpAddr};
 use anyhow::{bail, Context};
-use kvm_compose_schemas::kvm_compose_yaml::Machine;
+use kvm_compose_schemas::kvm_compose_yaml::{Machine, MachineNetwork};
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::network::{OvnNetworkSchema, OvsNetwork};
 use kvm_compose_schemas::kvm_compose_yaml::network::router::{NatType, RouterPort};
@@ -11,7 +11,6 @@ use kvm_compose_schemas::settings::SshConfig;
 use crate::components::logical_load_balancing::LoadBalanceTopology;
 use crate::ovn::components::{MacAddress, OvnIpAddr};
 use crate::ovn::components::acl::ACLRecordType;
-use crate::ovn::components::logical_switch_port::LogicalSwitchPortType;
 use crate::ovn::configuration::nat::OvnNatType;
 use crate::ovn::ovn::OvnNetwork;
 
@@ -167,14 +166,18 @@ fn parse_ovn_schema(
         }
         let net = &guest_config.network.as_ref()
             .context("getting guest network while creating ovn network internal representation")?;
-        add_guest_switch_port(
-            &mut ovn,
-            &guest_config,
-            &net.switch,
-            load_balance_topology,
-            &tb_config,
-            project_name,
-        )?;
+
+        for (idx, interface) in net.iter().enumerate() {
+            add_guest_switch_port(
+                idx,
+                &mut ovn,
+                &guest_config,
+                &interface,
+                load_balance_topology,
+                &tb_config,
+                project_name,
+            )?;
+        }
     }
     // add_guest_switch_port
 
@@ -313,24 +316,23 @@ fn add_switch_port(
 /// This function adds switch ports for each guest defined in the yaml file. The port name will be
 /// derived from the project name, switch name and guest name to make it unique.
 fn add_guest_switch_port(
+    idx: usize,
     ovn: &mut OvnNetwork,
     guest_config: &Machine,
-    parent_switch: &String,
+    interface_definition: &MachineNetwork,
     load_balance_topology: &LoadBalanceTopology,
     tb_config: &HashMap<String, SshConfig>,
     project_name: &String,
 ) -> anyhow::Result<()> {
     // create a composite name that is unique to this guest and project
-    let net = guest_config.network.as_ref()
-        .context("getting guest network when adding guest switch port")?;
-    let port_name = format!("{}-{}-{}", project_name, net.switch, guest_config.name);
+    let port_name = format!("{}-{}-{}-{}", project_name, interface_definition.switch, guest_config.name, idx);
     tracing::info!("defining guest switch port {}", &port_name);
-    let ip = ip_string_to_ovn_ip(&net.ip, &port_name)?;
+    let ip = ip_string_to_ovn_ip(&interface_definition.ip, &port_name)?;
     let host = load_balance_topology.guest_to_host.get(&guest_config.name)
         .context(format!("getting host for guest {} to assign chassis to switch port", &guest_config.name))?;
     let host_config = tb_config.get(host)
         .context(format!("getting host config {}", host))?;
-    let parent_switch = format!("{}-{}", project_name, parent_switch);
+    let parent_switch = format!("{}-{}", project_name, interface_definition.switch);
     // guest ports are always internal
     ovn.add_lsp_internal(
         port_name.clone(),
@@ -339,8 +341,8 @@ fn add_guest_switch_port(
         port_name.clone(),
         ip,
         Some(host_config.ovn.chassis_name.clone()),
-        MacAddress::new(net.mac.clone())?,
-        net.network_name.clone(),
+        MacAddress::new(interface_definition.mac.clone())?,
+        interface_definition.network_name.clone(),
     )?;
     Ok(())
 }
@@ -411,43 +413,43 @@ fn add_router_port(
 //     Ok(())
 // }
 
-/// Each guest needs to be assigned the ip address of the port they are assigned to in OVN. The port
-/// can be set to dynamic if using DHCP.
-pub fn assign_and_validate_guest_ip(
-    logical_guests: &mut LogicalGuests,
-    ovn: &LogicalNetwork,
-    project_name: &String,
-) -> anyhow::Result<()> {
-    for guest in logical_guests {
-        match guest.get_machine_definition().guest_type {
-            GuestType::Libvirt(libvirt) => if libvirt.scaling.is_some() {continue;},
-            GuestType::Docker(docker) => if docker.scaling.is_some() {continue;},
-            GuestType::Android(android) => if android.scaling.is_some() {continue;},
-        }
-        match ovn {
-            LogicalNetwork::Ovn(ovn) => {
-                // add project name prefix to interface, at this point the OVN components have been given
-                // the project name already
-                let interface = format!(
-                    "{}-{}-{}",
-                    project_name,
-                    guest.get_network().context("getting guest network when validating guest ip")?,
-                    guest.get_guest_name()
-                );
-                let port = ovn.switch_ports.get(&interface)
-                    .context("getting logical switch port for guest to assign ip")?;
-                match &port.port_type {
-                    LogicalSwitchPortType::Internal { ip, .. } => {
-                        guest.set_static_ip(ip.to_string());
-                    }
-                    _ => unreachable!(),
-                }
-            }
-            LogicalNetwork::Ovs(_) => unimplemented!(),
-        }
-    }
-    Ok(())
-}
+// /// Each guest needs to be assigned the ip address of the port they are assigned to in OVN. The port
+// /// can be set to dynamic if using DHCP.
+// pub fn assign_and_validate_guest_ip(
+//     logical_guests: &mut LogicalGuests,
+//     ovn: &LogicalNetwork,
+//     project_name: &String,
+// ) -> anyhow::Result<()> {
+//     for guest in logical_guests {
+//         match guest.get_machine_definition().guest_type {
+//             GuestType::Libvirt(libvirt) => if libvirt.scaling.is_some() {continue;},
+//             GuestType::Docker(docker) => if docker.scaling.is_some() {continue;},
+//             GuestType::Android(android) => if android.scaling.is_some() {continue;},
+//         }
+//         match ovn {
+//             LogicalNetwork::Ovn(ovn) => {
+//                 // add project name prefix to interface, at this point the OVN components have been given
+//                 // the project name already
+//                 let interface = format!(
+//                     "{}-{}-{}",
+//                     project_name,
+//                     guest.get_network().context("getting guest network when validating guest ip")?,
+//                     guest.get_guest_name(),
+//                 );
+//                 let port = ovn.switch_ports.get(&interface)
+//                     .context("getting logical switch port for guest to assign ip")?;
+//                 match &port.port_type {
+//                     LogicalSwitchPortType::Internal { ip, .. } => {
+//                         guest.set_static_ip(ip.to_string());
+//                     }
+//                     _ => unreachable!(),
+//                 }
+//             }
+//             LogicalNetwork::Ovs(_) => unimplemented!(),
+//         }
+//     }
+//     Ok(())
+// }
 
 // pub fn assign_guest_gateway(
 //     logical_guests: &mut LogicalGuests,

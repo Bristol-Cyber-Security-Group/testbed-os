@@ -2,10 +2,10 @@ machines:
 
   - name: client1
     network:
-      switch: sw0
-      gateway: 10.0.0.1
-      mac: "00:00:00:00:00:01"
-      ip: "10.0.0.11"
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:01"
+        ip: "10.0.0.11"
     libvirt:
       cpus: 2
       memory_mb: 2048
@@ -16,10 +16,10 @@ machines:
 
   - name: client2
     network:
-      switch: sw0
-      gateway: 10.0.0.1
-      mac: "00:00:00:00:00:02"
-      ip: "10.0.0.12"
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:02"
+        ip: "10.0.0.12"
     libvirt:
       cpus: 2
       memory_mb: 2048
@@ -30,10 +30,10 @@ machines:
 
   - name: client3
     network:
-      switch: sw0
-      gateway: 10.0.0.1
-      mac: "00:00:00:00:00:03"
-      ip: "10.0.0.13"
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:03"
+        ip: "10.0.0.13"
     libvirt:
       cpus: 2
       memory_mb: 2048
@@ -44,10 +44,10 @@ machines:
 
   - name: client4
     network:
-      switch: sw1
-      gateway: 10.0.1.1
-      mac: "00:00:00:00:00:04"
-      ip: "10.0.1.10"
+      - switch: sw1
+        gateway: 10.0.1.1
+        mac: "00:00:00:00:00:04"
+        ip: "10.0.1.10"
     libvirt:
       cpus: 2
       memory_mb: 2048

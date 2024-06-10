@@ -101,6 +101,15 @@ Logical ports on this logical switch with ip="dynamic" will be allocated an IP s
 Currently, there is some incompatibility in using OVN's native DHCP and giving guests a static external IP address.
 We look to resolve this in the future.
 
+Multiple Interfaces on Guests
+=============================
+
+In the kvm-compose.yaml file you can specify one or more interfaces for guests.
+Currently, only libvirt guests support multiple interfaces.
+
+The libvirt guests will have their domain.xml generated with the list of interfaces defined in the yaml file.
+For libvirt cloud-init guests, this interface information is placed in the cloud-init network config and will boot with the interfaces configured automatically.
+
 External Networking
 ===================
 
