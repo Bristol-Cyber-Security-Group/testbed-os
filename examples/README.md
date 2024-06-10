@@ -46,3 +46,10 @@ You will need to update the line with `path: /var/lib/libvirt/images/avd-ubuntu2
 
 This example deploys two libvirt guests with the signal cli, and one guest with the open source signal server.
 There is a README in this example to explain how to further set up and connect the cli clients to the signal server.
+
+## multi interface
+
+This example showcases two libvirt guests, where guest one has two interfaces.
+The second interface will be used to communicate with guest two.
+Guest two can only communicate with guest one on this second interface, and we utilise ACL rules to prevent this second guest communicating to the first interface on guest one.
+
