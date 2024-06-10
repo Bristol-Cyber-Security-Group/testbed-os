@@ -2,10 +2,10 @@ machines:
 
   - name: client1
     network:
-      switch: sw0
-      gateway: 10.0.0.1
-      mac: "00:00:00:00:00:01"
-      ip: "dynamic"
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:01"
+        ip: "dynamic"
     libvirt:
       cpus: 2
       memory_mb: 6144
