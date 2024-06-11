@@ -18,5 +18,6 @@ jobs:
         toolchain: stable
 
     - name: Run cargo check
-      working-directory: kvm-compose
-      run: cargo check --all-targets -- -D warnings
+      run: |
+        RUSTFLAGS="-D warnings" cargo check --all-targets
+      working-directory: ./testbed-os/kvm-compose
