@@ -18,9 +18,9 @@ jobs:
         toolchain: stable
 
     - name: Run cargo check
-      working-directory: ./testbed-os/kvm-compose
+      working-directory: kvm-compose
       run: cargo check --all-targets
 
     - name: Run cargo clippy
-      working-directory: ./testbed-os/kvm-compose
+      working-directory: kvm-compose
       run: cargo clippy --all-targets -- -D warnings
