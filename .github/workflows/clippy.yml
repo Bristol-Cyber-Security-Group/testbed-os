@@ -1,0 +1,22 @@
+name: Clippy Linting
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  clippy-linting:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Run cargo clippy
+      working-directory: kvm-compose
+      run: cargo clippy --all-targets -- -D warnings
