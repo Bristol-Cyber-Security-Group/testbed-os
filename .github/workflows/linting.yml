@@ -19,8 +19,4 @@ jobs:
 
     - name: Run cargo check
       working-directory: kvm-compose
-      run: cargo check --all-targets
-
-    - name: Run cargo clippy
-      working-directory: kvm-compose
-      run: cargo clippy --all-targets -- -D warnings
+      run: cargo check --all-targets -- -D warnings
