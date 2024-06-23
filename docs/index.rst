@@ -2,7 +2,7 @@
 Welcome to Testbed-OS documentation!
 ====================================
 
-``Testbed-OS`` is a testbed for launching virtual machines on abstract topologies to support research and testing.
+``Testbed-OS`` [#f1]_ is a testbed for launching virtual machines on abstract topologies to support research and testing.
 In addition to the tooling in the testbed, we aim to deliver a variety of example test cases that showcase the capability of the testbed as a reference to build your own test cases.
 The testbed uses yaml files to describe the testbed components to be deployed.
 The testbed will parse the yaml file and create the artefacts in the yaml file, create the network described in the yaml and then deploy the various virtual machines on this network.
@@ -43,3 +43,8 @@ To get started with your first test case, see the |examples| topic which will wa
 .. |examples| replace:: :ref:`examples/index:Examples`
 .. |host.json| replace:: :ref:`testbed-config/index:Testbed Config`
 .. |getting-started| replace:: :ref:`getting-started/index:Getting Started`
+
+
+.. rubric:: Footnotes
+
+.. [#f1] The term testbed operating system was being used by Professor Steve Wong at the Singapore Institute of Technology.
