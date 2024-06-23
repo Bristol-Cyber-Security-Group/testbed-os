@@ -25,20 +25,18 @@ To get started with your first test case, see the |examples| topic which will wa
 
     getting-started/index
     installation/index
-    kvm-compose/index
-    kvm-compose-yaml/index
     testbed-config/index
+    kvm-compose/index
     orchestration/index
-    exec/index
+    interfaces/index
     guest-types/index
-    gui/index
     testbedos-server/index
     networking/index
     resource-monitoring/index
     test-harness/index
     examples/index
 
-.. |kvm-compose.yaml| replace:: :ref:`kvm-compose-yaml/index:kvm-compose Yaml`
+.. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`
 .. |orchestration| replace:: :ref:`orchestration/index:orchestration`
 .. |networking| replace:: :ref:`networking/index:Networking`
 .. |installation| replace:: :ref:`installation/index:Testbed OS Installation`

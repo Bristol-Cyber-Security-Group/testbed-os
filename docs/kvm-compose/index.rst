@@ -20,6 +20,7 @@ The tool also offers the use of analysis tools for security under `analysis-tool
     :caption: Contents:
 
     architecture
+    kvm-compose-yaml/index
     analysis-tools
     usage
 
