@@ -628,9 +628,6 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
             cmd_string.push(command.clone());
         }
 
-        // get bridge from config, logical testbed should ensure that this is Some
-        let ip = self.static_ip.as_ref().context("docker guest has no IP, something went wrong")?;
-
         let mut ovs_cmd = vec!["sudo".to_string(), "ovs-docker".to_string(), "add-port".to_string()];
 
         let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
@@ -651,6 +648,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
                         .context(format!("Getting LSP for docker guest {}", &guest_name))?;
                     // do ip address
                     // if guest has been given a dynamic ip, need to check on OVN for the assigned ip
+                    let ip = &net[0].ip;
                     if ip.eq("dynamic") {
                         let dynamic_ip = get_lsp_dynamic_ip(&lsp_name, testbed_host, &common).await?;
                         ovs_cmd.push(format!("--ipaddress={dynamic_ip}/24"));
@@ -942,6 +940,7 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
         let net = &machine_config.guest_type.network
             .context("getting guest network in android create action")?;
         if !net.is_empty() {
+            // only one interface allowed
             let guest_interface = get_guest_interface_name(&common.project_name, machine_config.guest_id, 0);
             let lsp_name = format!("{}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
             let mac = match &common.network {
@@ -1022,31 +1021,26 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
                 None,
             ).await?;
             // set ip of ovs port
-            if let Some(namespace_ip) = &self.static_ip {
-                let ip = if namespace_ip.eq("dynamic") {
-                    let lsp_name = format!("{}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
-                    let dynamic_ip = get_lsp_dynamic_ip(&lsp_name, testbed_host, &common).await?;
-                    dynamic_ip
-                } else {
-                    namespace_ip.clone()
-                };
-                // TODO - get mask for this ip
-                let namespace_ip = format!("{ip}/24");
-                let cmd = vec![
-                    "ip", "netns", "exec", &namespace, "ip", "addr", "add", &namespace_ip, "dev", &guest_interface,
-                ];
-                run_testbed_orchestration_command_allow_fail(
-                    &common,
-                    testbed_host,
-                    "sudo",
-                    cmd,
-                    false,
-                    None,
-                ).await?;
+            let ip = if net[0].ip.eq("dynamic") {
+                let lsp_name = format!("{}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
+                let dynamic_ip = get_lsp_dynamic_ip(&lsp_name, testbed_host, &common).await?;
+                dynamic_ip
             } else {
-                bail!("guest {guest_name} was not given an ip address");
-            }
-
+                net[0].ip.clone()
+            };
+            // TODO - get mask for this ip
+            let namespace_ip = format!("{ip}/24");
+            let cmd = vec![
+                "ip", "netns", "exec", &namespace, "ip", "addr", "add", &namespace_ip, "dev", &guest_interface,
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
 
             // set ovs port up
             let cmd = vec![

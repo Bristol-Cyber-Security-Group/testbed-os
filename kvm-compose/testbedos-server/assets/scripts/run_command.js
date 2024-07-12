@@ -269,6 +269,9 @@ function request_command(init_schema) {
     // enable cancel button
     cancel_button.prop("disabled", false);
 
+    // track if the command generation was successful
+    let command_generation_failure = false;
+
     // we must wait for the socket to be open before sending and receiving, specifically on open, send the
     // init command but defer to the onmessage to handle the processing on the web page
     command_generator_websocket.onopen = function (event) {
@@ -306,6 +309,7 @@ function request_command(init_schema) {
                     append_terminal_text(terminal, "Executing the following command: <br>" + server_message['message']);
                 } else {
                     append_terminal_text(terminal, "Command sent to server was not understood: <br>" + server_message['message']);
+                    command_generation_failure = true;
                 }
 
             } else {
@@ -315,6 +319,7 @@ function request_command(init_schema) {
                     append_terminal_text(terminal, server_message['message']);
                 } else {
                     append_terminal_text(terminal, server_message['message'] + '<br>Please see server logs for more details.');
+                    command_generation_failure = true;
                 }
             }
         } else {
@@ -344,8 +349,13 @@ function request_command(init_schema) {
 
     // once the command generation socket closed, lets run the next socket
     command_generator_websocket.addEventListener('close', function () {
-        // console.log(generated_commands);
-        run_orchestration(generated_commands, websocket_url, terminal, connection_state);
+        // console.log("generated commands: " +generated_commands);
+        if (command_generation_failure === false) {
+            run_orchestration(generated_commands, websocket_url, terminal, connection_state);
+        } else {
+            append_terminal_text(terminal, "Due to an error in command generation, will not continue to orchestration.");
+            reset_running_state(connection_state);
+        }
     })
 
 }
@@ -476,19 +486,24 @@ function run_orchestration(generated_commands, websocket_url, terminal, connecti
         append_terminal_text(terminal, '<br>' + event['reason']);
 
         // set state badge to inactive
-        set_connection_state_inactive(connection_state);
-
-        // disable cancel button
-        let cancel_button = $('#cancelCommandButton');
-        cancel_button.prop("disabled", true);
-
-        // check deployment page and check for state
-        get_last_command_state();
+        reset_running_state(connection_state);
     }
 
 
     // command_runner_websocket.close();
 
+}
+
+function reset_running_state(connection_state) {
+    // set state badge to inactive
+    set_connection_state_inactive(connection_state);
+
+    // disable cancel button
+    let cancel_button = $('#cancelCommandButton');
+    cancel_button.prop("disabled", true);
+
+    // check deployment page and check for state
+    get_last_command_state();
 }
 
 function blobToString(blob) {
@@ -612,6 +627,7 @@ function get_button_command_json(button_id, selectedOption, selectedToolOption, 
             "Up": {
                 "provision": $('#upProvisionFlag').is(':checked'),
                 "rerun_scripts": $('#upReRunScriptsFlag').is(':checked'),
+                "reapply_acl": $('upReRunACLFlag').is(':checked'),
             }
         };
 
