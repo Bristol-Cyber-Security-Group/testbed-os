@@ -79,6 +79,8 @@ However, at this time we are currently not taking pull requests while we work on
 We will be reviewing any issues raised and triage internally.
 Watch this space for when we open this up to contributions.
 
-# Acknowledgement
+# Acknowledgements
 
 We would like to thank Jacob Halsey https://github.com/jacob-pro/individual-project for his prototype as the basis of this project.
+
+The term testbed OS was first used by [Professor Steven Wong](https://www.singaporetech.edu.sg/directory/faculty/steven-wong).
