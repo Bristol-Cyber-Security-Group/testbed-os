@@ -131,7 +131,19 @@ pub async fn frida_setup(
 
     // Added -D to daemonize and -C to ignore crashes, which seems to prevent frida from holding
     // up the terminal so it exits - unclear if this is causing side effects yet
-    adb_command(namespace, &vec!["shell".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86 -D -C".to_string()], &logging_send).await?;
+    let res = adb_command(namespace, &vec!["shell".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86 -D -C".to_string()], &logging_send).await;
+    match res {
+        Ok(_) => {}
+        Err(e) => {
+            // we want to ignore the address already in use error, otherwise continue with the error
+            if !e.to_string().contains("Address already in use") {
+                bail!(e);
+            } else {
+                logging_send.send(OrchestrationLogger::info("Address already in use, continuing".to_string())).await?;
+            }
+        }
+    }
+
     tracing::info!("frida server now running in the emulator");
 
     Ok(())
