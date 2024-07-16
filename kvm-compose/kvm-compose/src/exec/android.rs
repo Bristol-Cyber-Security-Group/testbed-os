@@ -119,7 +119,17 @@ pub async fn frida_setup(
     }
 
     // Run adb as root, push frida server to emulator and make it executable
-    adb_command(namespace, &vec!["root".to_string()], &logging_send).await?;
+    let res = adb_command(namespace, &vec!["root".to_string()], &logging_send).await;
+    match res {
+        Ok(_) => {}
+        Err(e) => {
+            if e.to_string().contains("daemon not running; starting now at tcp:") && e.to_string().contains("daemon started successfully") {
+                // daemon was already installed previously, ignore error
+            } else {
+                bail!(e);
+            }
+        }
+    }
 
     // there seems to be a small race condition here after rooting, we will just add a sleep for now
     // TODO - can we check if the device is rooted with adb before continuing? a sleep is not robust
