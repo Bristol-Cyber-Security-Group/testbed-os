@@ -9,7 +9,7 @@ machines:
     android:
       avd:
         android_api_version: 28
-        playstore_enabled: true
+        playstore_enabled: false
 
 network:
   ovn:
