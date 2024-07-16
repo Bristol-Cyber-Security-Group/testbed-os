@@ -27,4 +27,4 @@ $FRIDA_VENV/bin/pip install poetry
 sudo PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring $FRIDA_VENV/bin/poetry install
 
 # update the python path in test privacy script to the environment created just now
-#sudo sed -i 's#PYTHON="/path/to/poetry/env/bin/python"#PYTHON="/var/lib/testbedos/tools/frida_tools_venv/bin/python"#g' /var/lib/testbedos/tools/Frida-Tools/test-privacy.sh
+sudo sed -i 's#PYTHON="/path/to/poetry/env/bin/python"#PYTHON="/var/lib/testbedos/tools/frida_tools_venv/bin/poetry run python"#g' /var/lib/testbedos/tools/Frida-Tools/test-privacy.sh
