@@ -124,14 +124,15 @@ async fn main() {
             let config_db = get_cluster_config_db();
             let config_db: Arc<RwLock<Box<(dyn TestbedConfigProvider + Sync + Send)>>> =
                 Arc::new(RwLock::new(config_db));
+            // given the mode, make sure settings are correct
+            try_configure_host(&mode, &config_db).await;
+
             let app_state = Arc::new(ClientAppState {
                 config_db,
                 master_server_url: client_mode.master_ip.clone(),
                 system_monitor: Arc::new(RwLock::new(System::new_all())),
                 service_clients: Arc::new(ServiceClients::new().await)
             });
-            // given the mode, make sure settings are correct
-            try_configure_host(&mode, &app_state.config_db).await;
             // set up cron job to check master is online
             match set_up_cluster_master_check_cron_jobs(
                 client_mode.master_ip.clone(),
