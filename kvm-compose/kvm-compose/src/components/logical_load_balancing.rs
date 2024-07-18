@@ -15,6 +15,7 @@ use kvm_compose_schemas::kvm_compose_yaml::testbed_options::LoadBalancing;
 pub fn load_balance(logical_testbed: &mut LogicalTestbed) -> anyhow::Result<LoadBalanceTopology> {
     Ok(match logical_testbed.common.config.testbed_options.clone().load_balancing {
         LoadBalancing::NaiveRoundRobin => naive_round_robin(logical_testbed)?,
+        LoadBalancing::Balanced => balanced(logical_testbed)?,
     })
 }
 
@@ -59,4 +60,40 @@ fn naive_round_robin(logical_testbed: &mut LogicalTestbed) -> anyhow::Result<Loa
         guest_to_host,
         // interface_to_host,
     })
+}
+
+/// Assign guests to each testbed host to maximise free resources across the testbed cluster.
+/// This only considers memory usage of the host for now.
+fn balanced(logical_testbed: &mut LogicalTestbed) -> anyhow::Result<LoadBalanceTopology> {
+    // first get the list of testbed hosts in the current cluster
+    // TODO
+
+    // find out how much memory is free on each host
+    // TODO
+
+    // work out how much memory each guest needs
+    // TODO
+
+    // we can find out directly for libvirt guests from the config
+    // android lets assign 4GB, as this can change
+    // docker can use an unbounded amount, we currently don't re-export the mem max for containers in our yaml
+
+    // since, we don't know how much docker containers will use, we will assign them last and on
+    // hosts with the most free memory
+    // we will assign libvirt, then android
+
+    // the guests will crash if out of memory, by assigning docker last it is likely the user has
+    // oversubscribed their hosts and available memory anyway with their yaml definition
+
+    // as we assign guests, decrease the free memory on that host
+    // assign libvirt, then android
+    // TODO - algorithm to optimally fill space (doesn't need to be too complicated)
+    // TODO - write tests for this
+
+    // depending on how many docker guests and free space, assign the guests in a ratio from the
+    // memory of the host with the least free memory, so that we can spread out containers evenly
+    // TODO - write algorithm with tests
+
+
+    unimplemented!()
 }
