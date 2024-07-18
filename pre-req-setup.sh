@@ -3,6 +3,10 @@
 
 echo "pre-requisite script will check for existing dependencies before continuing ..."
 
+package_installed() {
+    local package="$1"
+    dpkg-query -l "$package" &> /dev/null
+}
 
 ### NETWORK
 echo -e "\nchecking for existing OVS and OVN installation ..."
@@ -111,6 +115,17 @@ fi
 ### LIBVIRT
 echo -e "\nchecking for libvirt installation ..."
 LIBVIRT_EXISTS=
+MISSING_LIBVIRT_DEPS=false
+
+libvirt_deps=("qemu-kvm" "libvirt-daemon-system" "virt-manager" "libvirt-dev")
+for dep in "${libvirt_deps[@]}"; do
+  if package_installed "$dep"; then
+    echo "$dep is installed."
+  else
+    echo -e "$dep is \e[31mNOT\e[0m installed."
+    MISSING_LIBVIRT_DEPS=true
+  fi
+done
 
 if libvirtd --version &> /dev/null
 then
@@ -128,6 +143,17 @@ PYENV_EXISTS=
 POETRY_EXISTS=
 PYENV_NOT_IN_PATH=
 POETRY_NOT_IN_PATH=
+MISSING_PYTHON_DEPS=
+
+python_deps=("python3.10" "python3.10-venv" "python3.10-dev")
+for dep in "${python_deps[@]}"; do
+  if package_installed "$dep"; then
+    echo "$dep is installed."
+  else
+    echo -e "$dep is \e[31mNOT\e[0m installed."
+    MISSING_PYTHON_DEPS=true
+  fi
+done
 
 if python3 --version &> /dev/null
 then
@@ -176,10 +202,7 @@ fi
 echo -e "\nchecking for general dependencies installation ..."
 apt_dependencies=("genisoimage" "git" "gcc" "make" "libssl-dev" "build-essential" "curl")
 MISSING_DEPS=false
-package_installed() {
-    local package="$1"
-    dpkg-query -l "$package" &> /dev/null
-}
+
 for dep in "${apt_dependencies[@]}"; do
   if package_installed "$dep"; then
     echo "$dep is installed."
@@ -269,20 +292,20 @@ else
 fi
 
 # check libvirt installation
-if [ "$LIBVIRT_EXISTS" = true ]; then
+if [ "$LIBVIRT_EXISTS" = true ] && [ "$MISSING_LIBVIRT_DEPS" = false ]; then
   echo -e "\e[32mLibvirt is installed, nothing to do.\e[0m"
   INSTALL_LIBVIRT=false
 else
-  echo "Libvirt will be installed"
+  echo "Libvirt and dependencies will be installed"
   INSTALL_LIBVIRT=true
 fi
 
 # check python installation
-if [ "$PYTHON3_EXISTS" = true ]; then
+if [ "$PYTHON3_EXISTS" = true ] && [ "$MISSING_PYTHON_DEPS" = false ]; then
   echo -e "\e[32mPython 3 is installed, nothing to do.\e[0m"
   INSTALL_PYTHON=false
 else
-  echo "Python 3 will be installed"
+  echo "Python 3 and dependencies will be installed"
   INSTALL_PYTHON=true
 fi
 if [ "$PYENV_EXISTS" = true ]; then
@@ -339,7 +362,7 @@ if [ "$INSTALL_GENERAL_DEPENDENCIES" = true ]; then
   for dep in "${apt_dependencies[@]}"; do
     if package_installed "$dep"; then
       # nothing to do
-      echo
+      true
     else
       sudo apt install "$dep" -y || exit 1
     fi
@@ -366,16 +389,52 @@ if [ "$INSTALL_CARGO" = true ]; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y || exit 1
 fi
 
+if [ "$MISSING_LIBVIRT_DEPS" = true ]; then
+  for dep in "${libvirt_deps[@]}"; do
+    if package_installed "$dep"; then
+      # nothing to do
+      true
+    else
+      sudo apt install "$dep" -y || exit 1
+    fi
+  done
+fi
 if [ "$INSTALL_LIBVIRT" = true ]; then
   echo "installing Libvirt"
-  sudo apt install qemu-kvm libvirt-daemon-system virt-manager libvirt-dev -y || exit 1
+#  sudo apt install qemu-kvm libvirt-daemon-system virt-manager libvirt-dev -y || exit 1
+  for dep in "${libvirt_deps[@]}"; do
+    if package_installed "$dep"; then
+      # nothing to do
+      true
+    else
+      sudo apt install "$dep" -y || exit 1
+    fi
+  done
   sudo adduser $USER libvirt || exit 1
   sudo systemctl restart libvirtd || exit 1
 fi
 
+if [ "$MISSING_PYTHON_DEPS" = true ]; then
+  for dep in "${python_deps[@]}"; do
+    if package_installed "$dep"; then
+      # nothing to do
+      true
+    else
+      sudo apt install "$dep" -y || exit 1
+    fi
+  done
+fi
 if [ "$INSTALL_PYTHON" = true ]; then
   echo "installing Python 3"
-  sudo apt install python3.10 python3.10-venv python3.10-dev || exit 1
+#  sudo apt install python3.10 python3.10-venv python3.10-dev || exit 1
+  for dep in "${python_deps[@]}"; do
+    if package_installed "$dep"; then
+      # nothing to do
+      true
+    else
+      sudo apt install "$dep" -y || exit 1
+    fi
+  done
 fi
 
 if [ "$INSTALL_PYENV" = true ]; then
