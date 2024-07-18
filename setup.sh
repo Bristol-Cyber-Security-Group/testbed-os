@@ -10,8 +10,17 @@ then
 elif ! poetry --version &> /dev/null && ! test -f ~/.local/bin/poetry
 then
   echo "Poetry not installed, cannot continue."
-else
-  echo "Poetry installed"
+fi
+
+if ! pyenv --version &> /dev/null && test -f ~/.pyenv/bin/pyenv
+then
+  echo -e "\e[31mERROR\e[0m Please place Pyenv in your shell PATH, as it is already installed."
+  echo "See documentation at https://github.com/pyenv/pyenv?tab=readme-ov-file#set-up-your-shell-environment-for-pyenv"
+  echo "This script requires Pyenv to be in the PATH to run ... Exiting."
+  exit 1
+elif ! pyenv --version &> /dev/null && ! test -f ~/.pyenv/bin/pyenv
+then
+  echo "Pyenv not installed, cannot continue."
 fi
 
 
