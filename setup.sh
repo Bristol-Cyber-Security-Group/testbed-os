@@ -1,18 +1,19 @@
 #!/bin/bash
 
-# TODO check python version 
-# we use pyenv to manage python environments with poetry
-# pyenv local 3.10.5
-# poetry env use 3.10.5
+if ! poetry --version &> /dev/null && test -f ~/.local/bin/poetry
+then
+  echo -e "\e[31mERROR\e[0m Please place Poetry in your shell PATH, as it is already installed."
+  echo -e "You can add the following line to your ~/.bashrc\n"
+  echo 'export PATH=$PATH:/home/$USER/.local/bin'
+  echo "This script requires Poetry to be in the PATH to run ... Exiting."
+  exit 1
+elif ! poetry --version &> /dev/null && ! test -f ~/.local/bin/poetry
+then
+  echo "Poetry not installed, cannot continue."
+else
+  echo "Poetry installed"
+fi
 
-# TODO - we removed virt-install dependency causing this 8+ but it is untested whether it generally works on rather old libvirt versions
-## check to make sure minimum libvirt version 8.0.0+
-#VIRSHION=$(printf %.1s `sudo virsh -version`)
-#if [ "$VIRSHION" -lt 8 ]; then
-#    echo "the libvirt major version installed must be greater than 8, current = $VIRSHION"
-#    echo "cannot install the testbed, please update libvirt"
-#    exit 1
-#fi
 
 echo "installing testbed os poetry environment"
 # create poetry environment
