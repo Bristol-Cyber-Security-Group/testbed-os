@@ -1,20 +1,6 @@
 #!/bin/bash
 
 
-
-
-
-
-# TODO - do all checks first, then record the outcomes and print to the user before continuing so we can
-#  report and explain and ask what to do next
-
-
-
-
-
-
-# TODO - apt consolidate - check each software install requirements
-
 echo "pre-requisite script will check for existing dependencies before continuing ..."
 
 
@@ -140,6 +126,8 @@ echo -e "\nchecking for python installations ..."
 PYTHON3_EXISTS=
 PYENV_EXISTS=
 POETRY_EXISTS=
+PYENV_NOT_IN_PATH=
+POETRY_NOT_IN_PATH=
 
 if python3 --version &> /dev/null
 then
@@ -155,16 +143,31 @@ then
   echo "pyenv exists"
   PYENV_EXISTS=true
 else
-  echo "pyenv missing"
+  # check if pyenv is installed but not in path
+  if test -f ~/.pyenv/bin/pyenv
+  then
+    echo "pyenv is installed but not in PATH"
+    PYENV_NOT_IN_PATH=true
+  else
+   echo "pyenv missing"
+  fi
   PYENV_EXISTS=false
 fi
 
 if poetry --version &> /dev/null
 then
-  echo "pyenv exists"
+  echo "poetry exists"
   POETRY_EXISTS=true
 else
-  echo "pyenv missing"
+  # check if poetry is installed but not in PATH
+  if test -f ~/.local/bin/poetry
+  then
+    echo "poetry is installed but not in PATH"
+    POETRY_NOT_IN_PATH=true
+  else
+    echo "poetry missing"
+  fi
+
   POETRY_EXISTS=false
 fi
 
@@ -376,17 +379,34 @@ if [ "$INSTALL_PYTHON" = true ]; then
 fi
 
 if [ "$INSTALL_PYENV" = true ]; then
-  echo "installing Pyenv"
-  curl https://pyenv.run | bash
-  sudo apt install zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev -y || exit 1
-  # TODO - ask user if they want to add pyenv to the shell PATH
-  ~/.pyenv/bin/pyenv install 3.10.5 || exit 1
+  echo -e "\ninstalling Pyenv"
+
+  if [ "$PYENV_NOT_IN_PATH" = true ]; then
+    echo -e "\e[38;5;214mWARNING\e[0m Please place Pyenv in your shell PATH, as it is already installed."
+    echo "See documentation at https://github.com/pyenv/pyenv?tab=readme-ov-file#set-up-your-shell-environment-for-pyenv"
+  else
+
+    curl https://pyenv.run | bash
+    sudo apt install zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev -y || exit 1
+    # TODO - ask user if they want to add pyenv to the shell PATH
+    ~/.pyenv/bin/pyenv install 3.10.5 || exit 1
+
+  fi
 fi
 
 if [ "$INSTALL_POETRY" = true ]; then
-  echo "installing Poetry"
-  curl -sSL https://install.python-poetry.org | python3 -
-  # TODO - ask user if they want to add poetry to the shell PATH
+  echo -e "\ninstalling Poetry"
+
+  if [ "$POETRY_NOT_IN_PATH" = true ]; then
+      echo -e "\e[38;5;214mWARNING\e[0m Please place poetry in your shell PATH, as it is already installed"
+      echo -e "You can add the following line to your ~/.bashrc\n"
+      echo 'export PATH=$PATH:/home/$USER/.local/bin'
+  else
+    curl -sSL https://install.python-poetry.org | python3 -
+    # TODO - ask user if they want to add poetry to the shell PATH
+  fi
 fi
 
-echo "Installation complete, make sure to restart your shell or run: source ~/.bashrc"
+echo -e "\nInstallation complete, make sure to add Pyenv and Poetry to your shell PATH. Then, restart your shell or run:"
+echo "source ~/.bashrc"
+echo "You will need to do this before running the setup.sh script."
