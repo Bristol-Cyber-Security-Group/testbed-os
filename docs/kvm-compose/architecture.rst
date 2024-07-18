@@ -110,7 +110,7 @@ You will need to also create a new entry for `Config` so that the new component 
 This abstraction allows you to focus only in how a testbed `Component` is converted from a `Config` and into artefacts.
 
 
-.. |kvm-compose.yaml| replace:: :ref:`kvm-compose-yaml/index:kvm-compose Yaml`
+.. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`
 .. |kvm-compose-config.json| replace:: :ref:`testbed-config/index:Testbed Config`
 .. |orchestration| replace:: :ref:`orchestration/index:orchestration`
 .. |networking| replace:: :ref:`networking/index:Networking`

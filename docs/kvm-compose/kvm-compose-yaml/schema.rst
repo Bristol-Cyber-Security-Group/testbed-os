@@ -244,4 +244,4 @@ No options implemented at the moment.
 .. |cloud-images| replace:: :ref:`kvm-compose/usage:subcommands`
 .. |networking| replace:: :ref:`networking/index:Networking`
 .. |scaling| replace:: :ref:`kvm-compose/architecture:Scaling`
-.. |libvirt machines| replace:: :ref:`kvm-compose-yaml/libvirt:Libvirt Type`
+.. |libvirt machines| replace:: :ref:`kvm-compose/kvm-compose-yaml/libvirt:Libvirt Type`

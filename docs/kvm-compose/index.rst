@@ -30,6 +30,6 @@ The tool also offers the use of analysis tools for security under `analysis-tool
     * Yaml Schema |kvm-compose.yaml|
     * Server Config Schema |kvm-compose-config.json|
 
-.. |kvm-compose.yaml| replace:: :ref:`kvm-compose-yaml/index:kvm-compose Yaml`
+.. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`
 .. |kvm-compose-config.json| replace:: :ref:`testbed-config/index:Testbed Config`
 .. |orchestration| replace:: :ref:`orchestration/index:orchestration`

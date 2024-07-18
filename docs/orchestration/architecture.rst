@@ -183,4 +183,4 @@ If any logging events are emitted from the instruction, the serer will emit this
 
 .. |state JSON| replace:: :ref:`state JSON <kvm-compose/architecture:State JSON>`
 .. |artefacts| replace:: :ref:`artefacts <kvm-compose/architecture:artefacts>`
-.. |kvm-compose.yaml| replace:: :ref:`kvm-compose-yaml/index:kvm-compose Yaml`
+.. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`

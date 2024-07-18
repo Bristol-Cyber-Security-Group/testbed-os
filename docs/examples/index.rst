@@ -101,9 +101,9 @@ The guest will be destroyed and the networking components will also be destroyed
 Note that the artefacts folder will remain,
 You can run an `up` again and bring back the test case without running `generate-artefacts`, but note that the libvirt guest images can retain state.
 
-For more examples for the yaml, see the yaml |kvm-compose.yaml examples|.
+For more examples for the yaml, see the yaml schema |kvm-compose.yaml examples|.
 
-.. |kvm-compose.yaml| replace:: :ref:`kvm-compose-yaml/index:kvm-compose Yaml`
-.. |kvm-compose.yaml examples| replace:: :ref:`kvm-compose-yaml/schema:Schema`
+.. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`
+.. |kvm-compose.yaml examples| replace:: :ref:`kvm-compose/kvm-compose-yaml/schema:Schema`
 .. |kvm-compose-config.json| replace:: :ref:`testbed-config/index:Testbed Config`
 
