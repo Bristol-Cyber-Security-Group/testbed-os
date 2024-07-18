@@ -5,7 +5,7 @@ Schema
 The top level of the schema has four main sections:
 
 :machines: a list of machine definitions that specify the guest type and further specialisations
-:network: the network definition, including bridges and topology definition
+:network: the network definition, including switch and topology definition
 :tooling: a list of tools and specialisation to be used with the testbed
 :testbed_options: a list of options to customise the testbed that doesn't fall under the above sections
 
@@ -21,7 +21,7 @@ The schema for machines have a few levels of hierarchy to help you define and sp
 At the top level, you can specify the following:
 
 :name: the unique name of the machine
-:interfaces: optional, a list of bridges the guest will be connected to
+:network: optional, a list of interface definitions for the guest
 :machine type: this is the first level of specialisation, you must pick one of the supported guest types
 
 For example, the following are snippets of the relevant parts possible machine definitions:
@@ -29,24 +29,33 @@ For example, the following are snippets of the relevant parts possible machine d
 .. code-block:: yaml
 
     - name: libvirt-guest
-      interfaces:
-        - bridge: br0
+      network:
+        - switch: sw0
+          gateway: 10.0.0.1
+          mac: "00:00:00:00:00:01"
+          ip: "10.0.0.10"
       libvirt:
         ...
 
 .. code-block:: yaml
 
     - name: docker-guest
-      interfaces:
-        - bridge: br0
+      network:
+        - switch: sw0
+          gateway: 10.0.0.1
+          mac: "00:00:00:00:00:01"
+          ip: "10.0.0.10"
       docker:
         ...
 
 .. code-block:: yaml
 
     - name: avd-guest
-      interfaces:
-        - bridge: br0
+      network:
+        - switch: sw0
+          gateway: 10.0.0.1
+          mac: "00:00:00:00:00:01"
+          ip: "10.0.0.10"
       avd:
         ...
 
@@ -102,7 +111,7 @@ For example, the following are snippets of the relevant parts possible scaling d
 .. code-block:: yaml
 
     # 1) this snippet will create 2 clones from a cloud image definition (ommited with ...)
-    # 2) the clones are assigned to separate bridges
+    # 2) the clones are assigned to separate switches
     # 3) the clones will be cloned from an image created with the shared script already executed
     # 4) the clones will have a setup script executed on them when they are setup, they both have the same script
 
@@ -114,10 +123,20 @@ For example, the following are snippets of the relevant parts possible scaling d
         scaling:
           count: 2
           interfaces: # 2)
-            - bridge: br0
+            sw0:
               clones: [0]
-            - bridge: br1
+              gateway: "10.0.0.1"
+              ip_type: dynamic
+              mac_range:
+                from: "00:00:00:00:00:01"
+                to: "00:00:00:00:00:01"
+            sw1:
               clones: [1]
+              gateway: "10.0.0.1"
+              ip_type: dynamic
+              mac_range:
+                from: "00:00:00:00:00:02"
+                to: "00:00:00:00:00:02"
           shared_setup: shared.sh # 3)
           clone_setup:
             - script: install.sh
@@ -146,8 +165,11 @@ For example, the following are snippets of the relevant parts possible docker ma
 .. code-block:: yaml
 
     - name: nginx
-      interfaces:
-        - bridge: br0
+      network:
+        - switch: sw0
+          gateway: 10.0.0.1
+          mac: "00:00:00:00:00:01"
+          ip: "10.0.0.10"
       docker:
         image: nginx:stable
         env_file: docker.env
@@ -156,8 +178,11 @@ For example, the following are snippets of the relevant parts possible docker ma
             target: /usr/share/nginx/html
 
     - name: one-off
-      interfaces:
-        - bridge: br0
+      network:
+        - switch: sw0
+          gateway: 10.0.0.1
+          mac: "00:00:00:00:00:01"
+          ip: "10.0.0.10"
       docker:
         image: busybox:latest
         command: "curl project-nginx:80"  # assuming the deployment name is "project"
@@ -184,10 +209,20 @@ For example, the following are snippets of the relevant parts possible scaling d
         scaling:
           count: 2
           interfaces:
-           - bridge: br0
-             clones: [0]
-           - bridge: br1
-             clones: [1]
+          sw0:
+            clones: [0]
+            gateway: "10.0.0.1"
+            ip_type: dynamic
+            mac_range:
+              from: "00:00:00:00:00:01"
+              to: "00:00:00:00:00:01"
+          sw1:
+            clones: [1]
+            gateway: "10.0.0.1"
+            ip_type: dynamic
+            mac_range:
+              from: "00:00:00:00:00:02"
+              to: "00:00:00:00:00:02"
 
 This example creates two nginx containers on different bridges, but they both share the same config - in this case the same set of mounted HTML.
 
@@ -207,37 +242,106 @@ Not yet implemented.
 Network
 -------
 
-The network section offers the following options:
+The network section offers the following option, currently only one network schema available:
 
-:bridges: a list of bridges to be created
-:bridge_connections: a list mapping between bridges to define the topology
-:external_bridge: the bridge in the topology defined to connect to the external networking
+:ovn: the main network schema
 
-The bridges have optional settings for protocol and controller.
-If not specified, these are set to the default.
-The controller defaults to the controller on the master testbed host.
+Under OVN schema the following elements are available:
 
-For example, the following are snippets of the relevant parts possible network definitions:
+:switches: these are the logical switches
+:routers: these are the logical routers
+
+Both of these have different options for creating your logical network topology.
+
+Switches
+********
+
+You can create a basic logical switch with the following:
 
 .. code-block:: yaml
 
-    network:
-      bridges:
-        - name: br0
-          protocol: OpenFlow13
-        - name: br1
-          protocol: OpenFlow13
-      bridge_connections:
-        br0: br1
-      external_bridge: br0
+    sw0:
+      subnet: "10.0.0.0/24"
+
+This logical switch will have the subnet defined as metadata.
+The subnet doesn't limit the ip addresses you statically assign, but it is used for other features of OVN such as DHCP.
+
+You can create special logical switches that expose the host's networking to the logical switch, via the external OVS bridge usually called `br-ex`.
+For example:
+
+.. code-block:: yaml
+
+      public:
+        subnet: "172.16.1.0/24"
+        ports:
+          - name: ls-public
+            localnet:
+              network_name: public
+
+For this switch, you must specify a port of type `localnet` that is mapped to the bridge mapping for the `br-ex` OVS bridge.
+This means, in the `host.json` file, you will have defined at least one `bridge_mappings` value such as:
+
+.. code-block:: text
+
+    "bridge_mappings": [
+      [
+        "public",
+        "br-ex",
+        "172.16.1.1/24"
+      ]
+    ]
+
+You must use the name `public`.
+
+Note, to connect switches together, you must use logical routers.
+
+Routers
+*******
+
+Logical routers allow traffic to flow between logical switches.
+This can be achieved by creating router ports that will be connected to logical switches.
+You can also then set static routes to send traffic to specific ports, such as routing traffic to other logical switches or to the internet.
+These routers are also responsible for providing network address translation (NAT) and dynamic host configuration protocol (DHCP).
+
+A basic router with a port on a logical switch can be defined with:
+
+.. code-block:: yaml
+
+    routers:
+
+      lr0:
+        ports:
+
+          - name: lr0-sw0
+            mac: "00:00:00:00:ff:01"
+            gateway_ip: "10.0.0.1/24"
+            switch: sw0
+
+This definition will create a router port connecting logical router `lr0` to logical switch `sw0`.
+The port needs a mac address and an IP address.
+These are important as guests need to know the gateway.
+
+If the router port is to be connected to a switch that is exposing the logical network to a testbed host's network.
+This means an extra element is required, similar to the logical switch example above on exposing host networking:
+
+.. code-block:: yaml
+
+    - name: lr0-public
+      mac: "00:00:20:20:12:13"
+      gateway_ip: "172.16.1.200/24"
+      switch: public
+      set_gateway_chassis: main
+
+You must use the same chassis name for the testbed host that you want to expose the network on.
+In your `host.json` file, if the testbed host is named `main`, you must place `main` here as well.
 
 Tooling
 -------
-No tooling implemented at the moment.
+No tooling options via the yaml are implemented at the moment.
 
 Testbed Options
 ---------------
-No options implemented at the moment.
+No options options via the yaml are implemented at the moment.
 
 
 .. |kvm-compose| replace:: :ref:`kvm-compose/index:kvm-compose`
