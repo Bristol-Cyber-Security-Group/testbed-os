@@ -6,8 +6,10 @@ There are various dependencies needed to be installed with some based configurat
 This installation guide will outline each component needed.
 
 The following dependency install has been packaged together into the ``pre-req-setup.sh`` script in the root of the repo (for ubuntu/debian based distros, replace ``apt`` with your distributions package manager i.e. ``pacman``).
+You may need to find the appropriate name for the same package, for your package manager.
+The script will check if the software is already installed and if the version is correct.
 Note that this script will try to edit your bash profile such as ``~/.bashrc``, please check the script and comment out anything you do not want to be executed.
-This script is used in the projects test quite (see test-harness folder in the root of the repo), so will be working on a fresh ubuntu install.
+This script is used in the projects test suite (see test-harness folder in the root of the repo), so will be working on a fresh ubuntu install.
 
 You can either follow the instructions in this document, or run ``./pre-req-setup.sh`` script in the root of the repo automate the pre-requisite dependencies installation.
 
@@ -67,6 +69,8 @@ Docker
 ^^^^^^
 
 Docker is used to allow the user to deploy containers on the testbed, the installation steps for docker are the same as in `https://docs.docker.com/desktop/install/linux-install/`.
+If you are already using Docker Desktop, do not install docker via this documentation or scripts.
+We can re-use the Docker installation.
 
 Android Emulator
 ^^^^^^^^^^^^^^^^
