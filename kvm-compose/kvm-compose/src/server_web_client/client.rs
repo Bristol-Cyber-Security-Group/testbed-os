@@ -1,11 +1,11 @@
-use crate::server_client::http_actions;
+use crate::server_web_client::http_actions;
 use crate::get_project_name;
 use anyhow::{bail, Context};
 use kvm_compose_schemas::cli_models::{AnalysisToolsSubCmd, DeploymentCmd, DeploymentSubCommand, Opts, SubCommand};
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand, DeploymentState};
 use reqwest::Client;
 use crate::orchestration::websocket::ws_orchestration_client;
-use crate::server_client::deployment::reset_state;
+use crate::server_web_client::deployment::reset_state;
 
 pub async fn orchestration_action(
     client: &Client,
