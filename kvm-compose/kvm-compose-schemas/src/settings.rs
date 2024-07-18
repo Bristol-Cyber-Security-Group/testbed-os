@@ -72,7 +72,7 @@ impl SshConfig {
             let config: SshConfig = serde_json::from_str(&text)?;
             Ok(config)
         } else {
-            bail!("could not read host.json")
+            bail!("could not read host.json - this needs to be set in /var/lib/testbedos/config/host.json")
         }
     }
 }
