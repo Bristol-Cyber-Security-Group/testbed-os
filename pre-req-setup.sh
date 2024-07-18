@@ -215,6 +215,10 @@ done
 
 echo -e "\nfinished checking for existing dependencies, evaluating what needs to be installed.\n"
 
+### This section will combine any of the previous checks for each software to determine what should
+### be installed. Some software has more than one check, some only have one but a new variable with
+### the same naming convention is created to keep things more readable.
+
 INSTALL_OVS_OVN=
 INSTALL_DOCKER=
 INSTALL_ANDROID_EMULATOR=
