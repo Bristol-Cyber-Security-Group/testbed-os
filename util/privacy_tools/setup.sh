@@ -16,7 +16,7 @@ fi
 
 # set up a pip environment just for the frida tools
 FRIDA_VENV=/var/lib/testbedos/tools/frida_tools_venv
-sudo mkdir $FRIDA_VENV
+sudo mkdir -p $FRIDA_VENV
 sudo chmod 777 $FRIDA_VENV
 python3 -m venv $FRIDA_VENV
 $FRIDA_VENV/bin/pip install -U pip setuptools
