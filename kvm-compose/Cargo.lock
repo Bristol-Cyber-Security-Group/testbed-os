@@ -1216,7 +1216,7 @@ dependencies = [
 
 [[package]]
 name = "kvm-compose"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1249,7 +1249,7 @@ dependencies = [
 
 [[package]]
 name = "kvm-compose-cli"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1268,7 +1268,7 @@ dependencies = [
 
 [[package]]
 name = "kvm-compose-schemas"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "casual",
@@ -2424,7 +2424,7 @@ dependencies = [
 
 [[package]]
 name = "testbedos-server"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "async-trait",

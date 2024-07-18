@@ -44,9 +44,9 @@ author = 'Bristol Cyber Security Group'
 # built documents.
 #
 # The short X.Y version.
-version = '1.0'
+version = '1.1'
 # The full version, including alpha/beta/rc tags.
-release = '1.0.0'
+release = '1.1.0'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
