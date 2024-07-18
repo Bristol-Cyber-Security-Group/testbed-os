@@ -1,8 +1,11 @@
 ====================================
-Welcome to Testbed-OS documentation!
+Welcome to TestbedOS documentation!
 ====================================
 
-``Testbed-OS`` [#f1]_ is a testbed for launching virtual machines on abstract topologies to support research and testing.
+``TestbedOS`` [#f1]_ is a testbed for launching virtual machines on abstract topologies to support research and testing.
+
+GitHub repository: `https://github.com/Bristol-Cyber-Security-Group/testbed-os <https://github.com/Bristol-Cyber-Security-Group/testbed-os>`_
+
 In addition to the tooling in the testbed, we aim to deliver a variety of example test cases that showcase the capability of the testbed as a reference to build your own test cases.
 The testbed uses yaml files to describe the testbed components to be deployed.
 The testbed will parse the yaml file and create the artefacts in the yaml file, create the network described in the yaml and then deploy the various virtual machines on this network.

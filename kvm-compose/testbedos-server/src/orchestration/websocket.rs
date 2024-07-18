@@ -218,7 +218,7 @@ async fn run(
                     let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
                         code: 1000,
                         reason: Cow::from("Last command received, connection closed"),
-                    }))).await.context("sending close to client websocket");
+                    }))).await.context("sending close to client websocket"); // TODO - need ? here?
 
                     break;
                 }
