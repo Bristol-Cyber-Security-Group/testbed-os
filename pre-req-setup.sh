@@ -378,6 +378,7 @@ fi
 if [ "$INSTALL_PYENV" = true ]; then
   echo "installing Pyenv"
   curl https://pyenv.run | bash
+  sudo apt install zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev -y || exit 1
   # TODO - ask user if they want to add pyenv to the shell PATH
   ~/.pyenv/bin/pyenv install 3.10.5 || exit 1
 fi
@@ -387,3 +388,5 @@ if [ "$INSTALL_POETRY" = true ]; then
   curl -sSL https://install.python-poetry.org | python3 -
   # TODO - ask user if they want to add poetry to the shell PATH
 fi
+
+echo "Installation complete, make sure to restart your shell or run: source ~/.bashrc"

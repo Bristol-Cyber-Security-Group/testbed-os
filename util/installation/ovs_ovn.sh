@@ -1,3 +1,5 @@
+sudo apt install autoconf libtool -y || exit 1
+
 ## OVN - we will build from source and place the git repo in the local testbed folder
 ## we will also build OVS so that the versions match
 git clone https://github.com/ovn-org/ovn.git
