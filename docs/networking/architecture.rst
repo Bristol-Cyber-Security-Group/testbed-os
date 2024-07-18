@@ -1,7 +1,7 @@
-Testbed-OS Networking Architecture
+TestbedOS Networking Architecture
 ##################################
 
-This document describe the components of the Testbed-OS networking system and its components.
+This document describe the components of the TestbedOS networking system and its components.
 
 Background
 **********

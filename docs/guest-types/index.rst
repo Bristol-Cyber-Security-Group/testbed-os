@@ -72,7 +72,7 @@ where `android-test` is the namespace name.
 
 However you can also use the built in `exec` commands to run commands via ADB but note that since the command runs from the testbed server, you cannot open a shell to the guest - only one time commands.
 
-Additionally, due to how we deploy and control guests through the testbed-os server, the AVD configuration will be under the root user.
+Additionally, due to how we deploy and control guests through the TestbedOS server, the AVD configuration will be under the root user.
 This is a critical detail to allow the ADB connection to authenticate using the key that is found in the `$USER` directory, which in this case will be under root.
 If the emulator is not under the root user, say you are bringing in a pre-configured emulator you may need to use the command as following:
 
