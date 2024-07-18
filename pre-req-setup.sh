@@ -368,7 +368,7 @@ fi
 
 if [ "$INSTALL_LIBVIRT" = true ]; then
   echo "installing Libvirt"
-  sudo apt install qemu-kvm libvirt-daemon-system virt-manager -y || exit 1
+  sudo apt install qemu-kvm libvirt-daemon-system virt-manager libvirt-dev -y || exit 1
   sudo adduser $USER libvirt || exit 1
   sudo systemctl restart libvirtd || exit 1
 fi

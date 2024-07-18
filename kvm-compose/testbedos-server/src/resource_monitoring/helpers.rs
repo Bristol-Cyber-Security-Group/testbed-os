@@ -12,7 +12,7 @@ pub fn get_libvirt_domain(
     project_name: &String,
     guest_name: &String,
 ) -> anyhow::Result<Domain> {
-    let conn = Connect::open("qemu:///system")
+    let conn = Connect::open(Some("qemu:///system"))
         .context("connecting to libvirt to get guest metrics")?;
     let guest_project_name = format!("{project_name}-{guest_name}");
     let domain = virt::domain::Domain::lookup_by_name(&conn, &guest_project_name)
