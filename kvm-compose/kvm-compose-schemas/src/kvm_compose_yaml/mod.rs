@@ -10,7 +10,7 @@ use crate::kvm_compose_yaml::testbed_options::*;
 use crate::kvm_compose_yaml::tooling::*;
 use anyhow::{Result, Context, Error};
 use serde::{Deserialize, Serialize};
-use tracing::{info, error};
+use tracing::{info};
 use std::fmt;
 use std::fmt::Formatter;
 use std::path::Path;

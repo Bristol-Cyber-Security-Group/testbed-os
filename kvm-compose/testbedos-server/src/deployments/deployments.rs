@@ -8,7 +8,6 @@ use serde_yaml::Value;
 use anyhow::{Result, Context, Error};
 use nix::unistd::{Gid, Uid};
 use kvm_compose_schemas::kvm_compose_yaml::Config;
-use tracing::{info, error};
 use crate::AppState;
 
 #[derive(Serialize, Deserialize)]
