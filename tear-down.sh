@@ -30,7 +30,21 @@ echo "kvm-ui-tui installed dir removed $KVMTUILOC_ABSOLUTE"
 
 # remove man pages from system TODO
 
-# delete testbed configuration folder in /var/lib/testbedos/ TODO
+sudo rm -rf /var/lib/testbedos/tools/*
+echo "testbed tooling has been removed from the data directory"
+
+# delete testbed data directory with all deployment information etc
+read -p "Do you want to also clear the whole TestbedOS data directory, including all deployment information?"
+answer=${answer,,}
+if [[ "$answer" == "y" ]]; then
+    sudo rm -rf /var/lib/testbedos/
+    echo "testbed data directory cleared"
+elif [[ "$answer" == "n" ]]; then
+    echo "Will not delete the data directory"
+else
+    echo "Please enter 'y' or 'n'. Exiting ..."
+    exit 1
+fi
 
 
 echo "done."

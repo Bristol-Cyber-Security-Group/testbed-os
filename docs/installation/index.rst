@@ -5,11 +5,13 @@ Testbed OS Installation
 There are various dependencies needed to be installed with some based configuration needed to get the testbed ready to deploy test cases.
 This installation guide will outline each component needed.
 
-The following dependency install has been packaged together into the ``pre-req-setup.sh`` script in the root of the repo (for ubuntu/debian based distros, replace ``apt`` with your distributions package manager i.e. ``pacman``).
+The following dependency install has been packaged together into the ``pre-req-setup.sh`` script in the root of the repo designed for ubuntu/debian based distros.
+The script will check if the software is already installed and if the version is correct.
 Note that this script will try to edit your bash profile such as ``~/.bashrc``, please check the script and comment out anything you do not want to be executed.
-This script is used in the projects test quite (see test-harness folder in the root of the repo), so will be working on a fresh ubuntu install.
+This script is used in the projects test suite (see test-harness folder in the root of the repo), so will be working on a fresh ubuntu install.
 
 You can either follow the instructions in this document, or run ``./pre-req-setup.sh`` script in the root of the repo automate the pre-requisite dependencies installation.
+Note that the script will ask you to confirm what it will install after it has run checks.
 
 Host Dependencies
 -----------------
@@ -27,19 +29,16 @@ While it is possible to use others, you will need to manually replace the use of
 The use of ``poetry run`` for ad-hoc use of the python environment to remove the need to load the virtual environment in the current session.
 
 
-Compile-time
-^^^^^^^^^^^^
-
-``sudo apt install libvirt-dev libssl-dev gcc make zlib1g zlib1g-dev libssl-dev libbz2-dev libsqlite3-dev libffi-dev libncurses5 libncurses5-dev libncursesw5 libreadline-dev lzma liblzma-dev libbz2-dev libtool autoconf``
-
-For building python with pyenv
-
-``sudo apt install libffi-dev libncurses5 libncurses5-dev libncursesw5 libreadline-dev lzma liblzma-dev libbz2-dev``
-
 Runtime
 ^^^^^^^
 
-``sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients libnss-libvirt genisoimage``
+The dependency ``genisoimage`` is used to create .iso files for cloud-image guest startup configuration.
+
+The dependency ``virt-manager`` is used as a graphical viewer for libvirt guests.
+Virtual Machine manager is a useful GUI for libvirt, which allows you to inspect the network and guest configuration.
+It also allows you to open a graphical window to the guest which will either be a terminal or the graphical desktop if installed.
+
+Consider using ``sudo virsh console <guest name>`` to open a TTY to the guest as the graphical window may not support copy paste etc without guest tools installed.
 
 OVN and OVS
 ^^^^^^^^^^^
@@ -67,6 +66,8 @@ Docker
 ^^^^^^
 
 Docker is used to allow the user to deploy containers on the testbed, the installation steps for docker are the same as in `https://docs.docker.com/desktop/install/linux-install/`.
+If you are already using Docker Desktop, do not install docker via this documentation or scripts.
+We can re-use the Docker installation.
 
 Android Emulator
 ^^^^^^^^^^^^^^^^
@@ -104,15 +105,6 @@ You must accept the licenses with `sdkmanager --licenses` or `yes | sdkmanager -
 
 Then you will need to install the emulator with `sdkmanager --install "emulator" "platform-tools"`.
 
-Optional
-^^^^^^^^
-
-``sudo apt install virt-manager``
-
-Virtual Machine manager is a useful GUI for libvirt, which allows you to inspect the network and guest configuration.
-It also allows you to open a graphical window to the guest which will either be a terminal or the graphical desktop if installed.
-
-Consider using ``sudo virsh console <guest name>`` to open a TTY to the guest as the graphical window may not support copy paste etc without guest tools installed.
 
 Setup Testbed
 -------------
@@ -124,16 +116,6 @@ Execute::
 
 to compile the rust code, build the poetry virtual environments and documentation for the project.
 
-
-Setup local DNS
----------------
-
-With the libnss-libvirt package, you will need to edit the following file /etc/nsswitch.conf and add libvirt to the hosts config as so (your list may differ, that is fine just add libvirt to the end)::
-
-    hosts:          files mdns4_minimal resolve dns mymachines libvirt
-
-This will allow you to SSH directly to the guest via their hostname which will resolve to their local IP address.
-You must do this or the ``kvm-orchestrator`` tool will not work.
 
 Configure Libvirt User Permissions
 ----------------------------------
@@ -170,7 +152,7 @@ The target supported platform for the testbed currently assumes you have adminis
 Setup kvm-compose Config
 ------------------------
 
-You will need to create the ``kvm-compose-config.json`` file and enumerate it with the testbed host information that will participate in the testbed.
+You will need to create the ``host.json`` file and enumerate it with the testbed host information that will participate in the testbed.
 You must do this before running the testbed or it will not know what are the testbed hosts.
 See |kvm-compose-config| documentation for more information.
 

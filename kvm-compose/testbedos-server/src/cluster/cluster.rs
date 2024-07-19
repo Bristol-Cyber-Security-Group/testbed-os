@@ -57,6 +57,20 @@ pub async fn configure_testbed_host(
     // make sure libvirt, docker are up
     ensure_services_up().await?;
 
+    // if in client mode, make sure ssh server is running for main testbed to be able to control
+    match mode {
+        ServerModeCmd::Client(_) => {
+            tracing::info!("making sure sshd is up");
+            run_subprocess_command_allow_fail(
+                "sudo",
+                vec!["systemctl", "start", "sshd"],
+                false,
+                None,
+            ).await?;
+        }
+        _ => {}
+    }
+
     match mode {
         ServerModeCmd::Client(client) => {
             // request to join cluster

@@ -4,7 +4,7 @@ use anyhow::{anyhow, bail, Context};
 use clap::Parser;
 use tracing_subscriber::prelude::*;
 use tracing::level_filters::LevelFilter;
-use kvm_compose_lib::server_client::client;
+use kvm_compose_lib::server_web_client::client;
 use kvm_compose_schemas::cli_models::{Opts, SubCommand};
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt_image_download::OnlineCloudImage;
 use reqwest::Client;

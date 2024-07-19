@@ -9,7 +9,7 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use kvm_compose_schemas::handlers::PrettyQueryParams;
 use crate::deployments::deployments::{ProjectAndPath, validate_project_name, validate_yaml};
-use crate::deployments::{get_state_json};
+use kvm_compose_lib::state::State as KvmComposeState;
 
 /// List all deployments the database contains.
 /// Requires a read lock on the database.
@@ -94,9 +94,11 @@ pub async fn get_state(
     Path(name): Path<String>,
     Query(params): Query<PrettyQueryParams>,
 ) -> Result<ErasedJson, AppError> {
-    let db = &db_config.deployment_config_db;
-    let deployment = db.read().await.get_deployment(name).await?;
-    let state_json = get_state_json(deployment).await?;
+    let state_json = db_config.deployment_config_db
+        .read()
+        .await
+        .get_state(name)
+        .await?;
 
     // format json with pretty formatting if query parameter present and true
     if let Some(pretty) = params.pretty {
@@ -105,6 +107,20 @@ pub async fn get_state(
         }
     }
     Ok(ErasedJson::new(state_json))
+}
+
+/// Set the state for a specific deployment, in its project folder
+pub async fn set_state(
+    State(db_config): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    Json(state): Json<KvmComposeState>, // this State has been aliased, see imports
+) -> Result<impl IntoResponse, AppError> {
+    db_config.deployment_config_db
+        .write()
+        .await
+        .set_state(name, state)
+        .await?;
+    Ok(())
 }
 
 pub async fn get_deployment_yaml(

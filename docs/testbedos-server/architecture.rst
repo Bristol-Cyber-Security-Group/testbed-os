@@ -102,10 +102,10 @@ The server has a development mode, where there are checks for cargo's debug mode
 This will change the logging level, and enable hot reloading of templates i.e. HTML for the GUI.
 You can do this via (provide the server with root permissions):
 
-``bash
+```bash
 # make sure youre in the root of the server crate i.e.
 # testbed-os/kvm-compose/testbedos-server/
 # then run the following
 sudo -E bash -c  'cargo run -- master' $USER
-``
+```
 

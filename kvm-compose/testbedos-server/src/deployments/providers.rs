@@ -1,9 +1,11 @@
 use crate::deployments::models::*;
-use anyhow::{bail};
+use anyhow::{bail, Context};
 use tokio::fs::File;
 use std::path::PathBuf;
 use async_trait::async_trait;
 use tokio::io::AsyncWriteExt;
+use kvm_compose_lib::state::State;
+use crate::deployments::{get_state_json, set_state_json};
 
 /// The `DeploymentProvider` is a trait to describe the database that backs the server. This is used
 /// together with the `DatabaseProvider` enum, which will wrap the types of database implementation.
@@ -19,6 +21,8 @@ pub trait DeploymentProvider {
     async fn update_deployment(&self, name: String, deployment: Deployment)
         -> anyhow::Result<Deployment>;
     async fn delete_deployment(&self, name: String) -> anyhow::Result<()>;
+    async fn get_state(&self, name: String) -> anyhow::Result<State>;
+    async fn set_state(&self, name: String, state: State) -> anyhow::Result<()>;
 }
 
 /// This enum wraps the `DeploymentProvider` implementations to be called in the server
@@ -194,6 +198,21 @@ impl DeploymentProvider for FileBasedProvider {
         }
     }
 
+    async fn get_state(&self, name: String) -> anyhow::Result<State> {
+        let deployment = self.get_deployment(name)
+            .await.context("get deployment")?;
+        let state_json = get_state_json(deployment)
+            .await
+            .context("get state json");
+        state_json
+    }
+
+    async fn set_state(&self, name: String, state: State) -> anyhow::Result<()> {
+        let deployment = self.get_deployment(name)
+            .await.context("get deployment")?;
+        set_state_json(deployment, state).await?;
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -226,4 +245,11 @@ impl DeploymentProvider for SQLiteProvider {
         todo!()
     }
 
+    async fn get_state(&self, name: String) -> anyhow::Result<State> {
+        todo!()
+    }
+
+    async fn set_state(&self, name: String, state: State) -> anyhow::Result<()> {
+        todo!()
+    }
 }

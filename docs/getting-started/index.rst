@@ -47,5 +47,5 @@ Please see the |yaml examples| to construct your own |kvm-compose.yaml|.
 .. |kvm-compose-config| replace:: :ref:`testbed-config/index:Testbed Config`
 .. |run the testbed| replace:: :ref:`installation/index:Run Testbed`
 .. |testbed cluster| replace:: :ref:`installation/index:Testbed Cluster`
-.. |kvm-compose.yaml| replace:: :ref:`kvm-compose-yaml/index:kvm-compose Yaml`
+.. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`
 .. |yaml examples| replace:: :ref:`examples/index:Examples`

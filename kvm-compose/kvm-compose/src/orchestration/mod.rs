@@ -7,6 +7,7 @@ use tokio::process::Command;
 use tokio::io::AsyncReadExt;
 use futures_util::stream::{SplitSink, SplitStream};
 use nix::unistd::{Gid, Uid};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::{Sender};
@@ -315,17 +316,31 @@ async fn _run_testbed_orchestration_command(
 
 }
 
-pub async fn read_previous_state(
-    project_location: PathBuf,
-    project_name: &String,
+/// Read the state json file via that server's api
+pub async fn read_previous_state_request(
+    http_client: &Client,
+    server_conn: &String,
+    project_name: &String
 ) -> anyhow::Result<State> {
-    let mut state_path = project_location.clone();
-    state_path.push(format!("{}-state.json", project_name));
-    // tracing::info!("reading existing state at {state_path:?}");
-    // get state from file, should destroy only what is up
-    let text = tokio::fs::read_to_string(&state_path).await?;
-    let old_state: State = serde_json::from_str(&text)?;
-    Ok(old_state)
+    let previous_state_json = http_client.get(format!("{}api/deployments/{}/state", server_conn, project_name))
+        .send()
+        .await
+        .context("getting state file for project")?
+        .text()
+        .await?;
+    let previous_state: State = serde_json::from_str(&previous_state_json).context("parsing state with serde")?;
+    Ok(previous_state)
+}
+
+/// Send new state to be written on server
+pub async fn write_state_request(
+    http_client: &Client,
+    server_conn: &String,
+    project_name: &String,
+    state: &State,
+) -> anyhow::Result<()> {
+    http_client.post(format!("{}api/deployments/{}/state", server_conn, project_name)).json(&state).send().await?;
+    Ok(())
 }
 
 pub async fn create_logical_testbed(

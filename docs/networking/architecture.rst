@@ -1,7 +1,7 @@
-Testbed-OS Networking Architecture
+TestbedOS Networking Architecture
 ##################################
 
-This document describe the components of the Testbed-OS networking system and its components.
+This document describe the components of the TestbedOS networking system and its components.
 
 Background
 **********
@@ -210,5 +210,5 @@ Note that `ovs-tcpdump` is a specific version of `tcp-dump` for OVS bridges, we 
 OVN also provides ways to virtually test traffic from two endpoints, to test if your network works as intended.
 Please see the documentation on `ovn-trace <https://www.ovn.org/support/dist-docs/ovn-trace.8.html>`_.
 
-.. |kvm-compose.yaml| replace:: :ref:`kvm-compose-yaml/index:kvm-compose Yaml`
+.. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`
 

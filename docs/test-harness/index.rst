@@ -16,7 +16,7 @@ If this is not possible/available, then consider disabling the three testbed hos
 Architecture
 ------------
 
-The test harness will create a base image using ubuntu cloud-init, to install all the testbed-os dependencies and source code.
+The test harness will create a base image using ubuntu cloud-init, to install all the TestbedOS dependencies and source code.
 There are a few tests here to make sure everything installed correctly.
 Once this install has completed, this base image is turned off and is used as a backing image for clones, so that each test case starts with a fresh pre-installed testbed.
 

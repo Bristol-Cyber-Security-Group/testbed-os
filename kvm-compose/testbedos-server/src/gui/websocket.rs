@@ -8,7 +8,7 @@ use tokio::sync::{mpsc};
 use tokio::sync::mpsc::Receiver;
 use kvm_compose_lib::orchestration::api::{OrchestrationInstruction, OrchestrationProtocol};
 use kvm_compose_lib::orchestration::orchestrator::run_orchestration;
-use kvm_compose_lib::server_client::client::get_deployment_action;
+use kvm_compose_lib::server_web_client::client::get_deployment_action;
 use kvm_compose_schemas::cli_models::{Opts};
 use kvm_compose_schemas::gui_models::{GUICommand, GUIResponse};
 use crate::AppState;

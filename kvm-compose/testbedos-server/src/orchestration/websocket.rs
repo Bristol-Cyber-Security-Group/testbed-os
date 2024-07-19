@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::path::PathBuf;
 use std::sync::Arc;
 use anyhow::{bail, Context};
 use axum::extract::ws::{CloseFrame, Message, WebSocket};
@@ -8,7 +7,7 @@ use futures_util::stream::SplitSink;
 use tokio::sync::{mpsc, Mutex};
 use tokio::task::JoinHandle;
 use kvm_compose_lib::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationProtocol, OrchestrationProtocolResponse};
-use kvm_compose_lib::orchestration::{OrchestrationCommon, read_previous_state};
+use kvm_compose_lib::orchestration::{OrchestrationCommon};
 use kvm_compose_lib::state::orchestration_tasks::get_orchestration_common;
 use kvm_compose_lib::state::State;
 use kvm_compose_schemas::deployment_models::{DeploymentCommand, DeploymentState};
@@ -150,10 +149,12 @@ async fn run(
 
         tracing::info!("getting project state");
         // get some of the deployment specific data to be used later
-        let project_location = PathBuf::from(deployment_copy.project_location.clone());
-        let state = read_previous_state(project_location, &deployment_copy.name.clone())
+        let state = db_config_copy.deployment_config_db
+            .read()
             .await
-            .context("getting project state in orchestration websocket job")?;
+            .get_state(deployment_copy.name)
+            .await.context("getting state from provider")?;
+
         let state = Arc::new(state);
         let (force_provision, force_rerun_scripts, reapply_acl) = match &deployment_command_copy {
             DeploymentCommand::Up { up_cmd } => {
@@ -287,7 +288,8 @@ async fn run(
                 }
             }
         }
-        Err(_) => {
+        Err(err) => {
+            tracing::error!("error in orchestration websocket: {err:#}");
             // set state to failed with the deployment command attempted
             deployment.state = DeploymentState::Failed(deployment_command);
             db_config.deployment_config_db

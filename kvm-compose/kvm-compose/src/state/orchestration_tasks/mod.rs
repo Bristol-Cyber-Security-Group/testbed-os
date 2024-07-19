@@ -309,6 +309,7 @@ impl OrchestrationTask for State {
             // receiver,
             OrchestrationInstruction::TestbedHostCheck,
         ).await.context("requesting if testbed hosts are up")?;
+
         send_orchestration_instruction_over_channel(
             sender,
             // receiver,

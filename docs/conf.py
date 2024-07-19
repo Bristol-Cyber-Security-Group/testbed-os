@@ -44,9 +44,9 @@ author = 'Bristol Cyber Security Group'
 # built documents.
 #
 # The short X.Y version.
-version = '1.0'
+version = '1.1'
 # The full version, including alpha/beta/rc tags.
-release = '1.0.0'
+release = '1.1.0'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -74,18 +74,16 @@ html_theme = 'sphinx_rtd_theme'
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ("index", "testbed-os", "High level description of testbed OS", "BCSG", "1"),
-    ("installation/index", "testbed-os-installation", "Installation steps for the testbed OS", "BCSG", "1"),
     ("getting-started/index", "testbed-os-getting-started", "Guide to getting started with the testbed OS", "BCSG", "1"),
-    ("gui/index", "testbed-os-gui", "Documentation on the GUI for the testbed OS", "BCSG", "1"),
-    ("kvm-compose/index", "kvm-compose", "Documentation on kvm-compose", "BCSG", "1"),
+    ("installation/index", "testbed-os-installation", "Installation steps for the testbed OS", "BCSG", "1"),
     ("testbed-config/index", "testbed-os-config", "Documentation on the configuration of the testbed", "BCSG", "1"),
-    ("kvm-compose-yaml/index", "kvm-compose-yaml", "Documentation on the yaml file used to describe test cases for the testbed", "BCSG", "1"),
+    ("kvm-compose/index", "kvm-compose", "Documentation on kvm-compose", "BCSG", "1"),
     ("orchestration/index", "kvm-orchestrator", "Documentation on the orchestration for the testbed", "BCSG", "1"),
-    ("exec/index", "exec", "Documentation on the exec commands for guests", "BCSG", "1"),
+    ("interfaces/index", "interfaces", "Documentation on interfaces for the testbed", "BCSG", "1"),
     ("guest-types/index", "guest-types", "Documentation on the types of guests available", "BCSG", "1"),
-    ("networking/index", "kvm-compose-networking", "Documentation on the networking architecture for the testbed", "BCSG", "1"),
-    ("test-harness/index", "test-harness", "Documentation on the test harness test suite for the testbed", "BCSG", "1"),
-    ("resource-monitoring/index", "resource-monitoring", "Documentation on the resource monitoring for the testbed", "BCSG", "1"),
     ("testbedos-server/index", "testbedos-server", "Documentation on the testbedos server", "BCSG", "1"),
+    ("networking/index", "kvm-compose-networking", "Documentation on the networking architecture for the testbed", "BCSG", "1"),
+    ("resource-monitoring/index", "resource-monitoring", "Documentation on the resource monitoring for the testbed", "BCSG", "1"),
+    ("test-harness/index", "test-harness", "Documentation on the test harness test suite for the testbed", "BCSG", "1"),
     ("examples/index", "examples", "Examples on how to use the testbed and create test cases", "BCSG", "1"),
 ]

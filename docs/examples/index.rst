@@ -6,6 +6,9 @@ This document will outline how to set up a test case for the testbed.
 It is assumed you have installed the testbed dependencies and testbed code (see installation documentation).
 It is also assumed you have configured the |kvm-compose-config.json|.
 
+Please see the example projects in the `example/` folder in the root of the git repo.
+These example projects have been created to showcase different features of the testbed.
+
 Creating a minimal test case
 ----------------------------
 
@@ -29,8 +32,11 @@ The contents of your file for this example:
     machines:
 
       - name: server
-        interfaces:
-          - bridge: br0
+        network:
+          - switch: sw0
+            gateway: 10.0.0.1
+            mac: "00:00:00:00:00:01"
+            ip: "10.0.0.10"
         libvirt:
           cpus: 1
           memory_mb: 1024
@@ -39,13 +45,15 @@ The contents of your file for this example:
               name: ubuntu_20_04
               expand_gigabytes: 2
 
-    bridges:
-      - name: br0
-        protocol: OpenFlow13
+    network:
+      ovn:
+        switches:
 
-    external_bridge: br0
+          sw0:
+            subnet: "10.0.0.0/24"
 
-This is a simple example, with one openvswitch bridge and one cloud-init virtual machine attached to this bridge.
+
+This is a simple example, with one logical switch and one cloud-init virtual machine attached to this switch.
 Please see the |kvm-compose.yaml| documentation and schema for more information on each element in the yaml.
 
 We are now ready to deploy this minimal test case.
@@ -56,7 +64,7 @@ You can do this by first generating the artefacts:
     # make sure you are still inside the example folder
     kvm-compose generate-artefacts
 
-You will see an `artefacts` folder and a `example-state.json` file have been created.
+You will see an `artefacts` folder and an `example-state.json` file have been created.
 Have a look inside these to find out more at what has been created.
 Once you are happy, we can now run the orchestration:
 
@@ -66,31 +74,22 @@ Once you are happy, we can now run the orchestration:
     kvm-compose up
 
 If you installed `virtual-manager`, you can open it up to see the guest appear shortly.
-Once the orchestration has finished, you are able to access your guest through `virtual-manager` or SSH.
+Once the orchestration has finished, you are able to access your guest through `virtual-manager`.
 For virtual manager, you can just double click the guest in the list and a console window will open.
-You can log in with the default credentials `nocloud` and `password`.
-If you want to connect with SSH, you must use the location of the key specified in the |kvm-compose-config.json| for guests and run:
 
-.. code-block:: bash
-
-    ssh -i path/to/your/guest/key nocloud@example-server
-
-Note that the hostname for the guest is {project name}-{guest name}.
 
 If you want to look at the networking components created, you can use:
 
 .. code-block:: bash
 
+    # at the host level
     ip a
-
-and you will see `example-br0` has been created, `example-prjbr0` and some veths.
-You can then also run:
-
-.. code-block:: bash
-
+    # at the openvswitch level (virtual)
     sudo ovs-vsctl show
+    # at the open virtual networks level (logical)
+    sudo ovn-nbctl show
 
-and you will see information about the openvswitch bridge created (example-br0).
+You will see the different components created at each level to support the networking of the virtual machine.
 
 Once you are done, you can destroy the test case with:
 
@@ -102,9 +101,9 @@ The guest will be destroyed and the networking components will also be destroyed
 Note that the artefacts folder will remain,
 You can run an `up` again and bring back the test case without running `generate-artefacts`, but note that the libvirt guest images can retain state.
 
-For more examples for the yaml, see the yaml |kvm-compose.yaml examples|.
+For more examples for the yaml, see the yaml schema |kvm-compose.yaml examples|.
 
-.. |kvm-compose.yaml| replace:: :ref:`kvm-compose-yaml/index:kvm-compose Yaml`
-.. |kvm-compose.yaml examples| replace:: :ref:`kvm-compose-yaml/schema:Schema`
+.. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`
+.. |kvm-compose.yaml examples| replace:: :ref:`kvm-compose/kvm-compose-yaml/schema:Schema`
 .. |kvm-compose-config.json| replace:: :ref:`testbed-config/index:Testbed Config`
 

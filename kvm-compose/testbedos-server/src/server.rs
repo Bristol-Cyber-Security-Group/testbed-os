@@ -124,14 +124,15 @@ async fn main() {
             let config_db = get_cluster_config_db();
             let config_db: Arc<RwLock<Box<(dyn TestbedConfigProvider + Sync + Send)>>> =
                 Arc::new(RwLock::new(config_db));
+            // given the mode, make sure settings are correct
+            try_configure_host(&mode, &config_db).await;
+
             let app_state = Arc::new(ClientAppState {
                 config_db,
                 master_server_url: client_mode.master_ip.clone(),
                 system_monitor: Arc::new(RwLock::new(System::new_all())),
                 service_clients: Arc::new(ServiceClients::new().await)
             });
-            // given the mode, make sure settings are correct
-            try_configure_host(&mode, &app_state.config_db).await;
             // set up cron job to check master is online
             match set_up_cluster_master_check_cron_jobs(
                 client_mode.master_ip.clone(),
@@ -207,7 +208,7 @@ pub fn master_app(app_state: Arc<AppState>) -> Router {
                 .put(update_deployment),
         )
         // .route("/api/deployments/:name/action", post(action_deployment))
-        .route("/api/deployments/:name/state", get(get_state))
+        .route("/api/deployments/:name/state", get(get_state).post(set_state))
         .route("/api/metrics/prometheus/hosts", get(prometheus_scrape_endpoint_for_hosts))
         .route("/api/metrics/prometheus/libvirt", get(prometheus_scrape_endpoint_for_libvirt))
         .route("/api/metrics/prometheus/android", get(prometheus_scrape_endpoint_for_android))
