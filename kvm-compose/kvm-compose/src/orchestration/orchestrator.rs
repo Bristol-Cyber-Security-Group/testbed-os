@@ -82,7 +82,6 @@ pub async fn orchestration_parse_command(
                     deployment.clone(),
                     command.clone(),
                     project_name.clone(),
-                    project_location.clone(),
                     &http_client,
                     &server_conn,
                 ).await?;

@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::path::PathBuf;
 use anyhow::{bail, Context};
 use async_trait::async_trait;
 use reqwest::Client;
@@ -7,7 +6,7 @@ use tokio::sync::mpsc::{Sender};
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use crate::components::LogicalTestbed;
 use crate::components::network::LogicalNetwork;
-use crate::orchestration::{OrchestrationCommon, OrchestrationTask, read_previous_state_request, run_subprocess_command, run_subprocess_command_allow_fail, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail};
+use crate::orchestration::{OrchestrationCommon, OrchestrationTask, read_previous_state_request, run_subprocess_command, run_subprocess_command_allow_fail, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail, write_state_request};
 use crate::orchestration::api::*;
 use crate::orchestration::websocket::{send_orchestration_instruction_over_channel};
 use crate::ovn::OvnCommand;
@@ -377,7 +376,6 @@ pub async fn reapply_acl_action(
     deployment: Deployment,
     command: DeploymentCommand,
     project_name: String,
-    project_location: PathBuf,
     http_client: &Client,
     server_conn: &String,
 ) -> anyhow::Result<()> {
@@ -450,10 +448,10 @@ pub async fn reapply_acl_action(
     // if successful update the current state, only the ACL part, then save to disk
     let mut previous_state = read_previous_state_request(&http_client, &server_conn, &project_name).await?;
     previous_state.network = new_state.network;
-    previous_state
-        .write(&project_name, &project_location)
+
+    write_state_request(&http_client, &server_conn, &project_name, &previous_state)
         .await
-        .context("Writing the state json file.")?;
+        .context("Sending the state json file to server to save to disk.")?;
 
     Ok(())
 }
