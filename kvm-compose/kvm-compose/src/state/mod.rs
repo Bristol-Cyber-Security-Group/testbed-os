@@ -174,7 +174,7 @@ impl State {
         let mut output = File::create(&file_name).await?;
         output.write_all(format!("{self}").as_bytes()).await?;
         // set owner:group to the same as parent folder
-        let metadata = fs::metadata(".")?;
+        let metadata = fs::metadata(path_str)?;
         let uid = metadata.st_uid();
         let gid = metadata.st_gid();
         nix::unistd::chown(&PathBuf::from(file_name), Some(Uid::from(uid)), Some(Gid::from(gid)))?;
