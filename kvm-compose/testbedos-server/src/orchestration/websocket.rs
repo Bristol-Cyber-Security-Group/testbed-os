@@ -13,6 +13,8 @@ use kvm_compose_lib::state::State;
 use kvm_compose_schemas::deployment_models::{DeploymentCommand, DeploymentState};
 use crate::AppState;
 
+type LoggingTaskHandle = JoinHandle<anyhow::Result<Arc<Mutex<SplitSink<WebSocket, Message>>>>>;
+
 /// This function completely handles the orchestration command requested by the client. This is the websocket
 /// implementation. Depending on the result of the orchestration or any runtime errors, the result is updated here
 /// before the websocket is closed.
@@ -318,7 +320,7 @@ async fn get_instruction_result(
 
     // we need to return the websocket sender `ws_sender`, since we can only have one with no clones
     // so we need to return it back to the caller of this function
-    let logging_task: JoinHandle<anyhow::Result<Arc<Mutex<SplitSink<WebSocket, Message>>>>> = tokio::spawn(async move{
+    let logging_task: LoggingTaskHandle = tokio::spawn(async move{
         loop {
             // message received from instruction run, send to user
             if let Some(protocol) = logging_recv.recv().await {
