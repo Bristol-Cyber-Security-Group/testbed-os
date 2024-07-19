@@ -25,23 +25,23 @@ pub async fn ovn_run_cmd(
         .map(|x| x.as_str())
         .collect();
     if let Some(testbed_name) = remote_config.0 {
-        let res = run_testbed_orchestration_command(
+        
+        run_testbed_orchestration_command(
             &remote_config.1,
             &testbed_name,
             "sudo",
             cmd,
             false,
             None,
-        ).await;
-        res
+        ).await
     } else {
-        let res = run_subprocess_command(
+        
+        run_subprocess_command(
             "sudo",
             cmd,
             false,
             None,
-        ).await;
-        res
+        ).await
     }
 }
 
@@ -59,23 +59,23 @@ pub async fn ovn_run_cmd_allow_fail(
         .collect();
     // allow fail as consecutive up/down could mean we try to do something twice
     if let Some(testbed_name) = remote_config.0 {
-        let res = run_testbed_orchestration_command_allow_fail(
+        
+        run_testbed_orchestration_command_allow_fail(
             &remote_config.1,
             &testbed_name,
             "sudo",
             cmd,
             false,
             None,
-        ).await;
-        res
+        ).await
     } else {
-        let res = run_subprocess_command_allow_fail(
+        
+        run_subprocess_command_allow_fail(
             "sudo",
             cmd,
             false,
             None,
-        ).await;
-        res
+        ).await
     }
 }
 
@@ -87,47 +87,47 @@ impl OrchestrationTask for StateNetwork {
         // create all OVN resources
         match &self {
             StateNetwork::Ovn(ovn_state) => {
-                for (_, ls_data) in &ovn_state.switches {
-                    ls_data.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                for ls_data in ovn_state.switches.values() {
+                    ls_data.create_command(ovn_run_cmd, (None, common.clone())).await?;
                 }
-                for (_, lsp_data) in &ovn_state.switch_ports {
-                    lsp_data.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                for lsp_data in ovn_state.switch_ports.values() {
+                    lsp_data.create_command(ovn_run_cmd, (None, common.clone())).await?;
                 }
-                for (_, lr_data) in &ovn_state.routers {
-                    lr_data.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                for lr_data in ovn_state.routers.values() {
+                    lr_data.create_command(ovn_run_cmd, (None, common.clone())).await?;
                 }
-                for (_, lrp_data) in &ovn_state.router_ports {
-                    lrp_data.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                for lrp_data in ovn_state.router_ports.values() {
+                    lrp_data.create_command(ovn_run_cmd, (None, common.clone())).await?;
                 }
-                for (_, lrp_data) in &ovn_state.ovs_ports {
+                for lrp_data in ovn_state.ovs_ports.values() {
                     // OVS ports may need to be created on remote testbed hosts
                     lrp_data.create_command(
-                        &ovn_run_cmd,
+                        ovn_run_cmd,
                         (
-                            Some(chassis_to_tb_host(&lrp_data.chassis, &common)?),
+                            Some(chassis_to_tb_host(&lrp_data.chassis, common)?),
                             common.clone(),
                         )
                     ).await?;
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, route) in &router.routing.0 {
-                        route.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                for router in ovn_state.routers.values() {
+                    for route in router.routing.0.values() {
+                        route.create_command(ovn_run_cmd, (None, common.clone())).await?;
                     }
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, ext) in &router.external_gateway.0 {
-                        ext.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                for router in ovn_state.routers.values() {
+                    for ext in router.external_gateway.0.values() {
+                        ext.create_command(ovn_run_cmd, (None, common.clone())).await?;
                     }
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, nat) in &router.nat.0 {
-                        nat.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                for router in ovn_state.routers.values() {
+                    for nat in router.nat.0.values() {
+                        nat.create_command(ovn_run_cmd, (None, common.clone())).await?;
                     }
                 }
                 for dhcp in &ovn_state.dhcp_options {
                     // we want to send common which has the OVN data structure, will repurpose the
                     // "remote_config" for this - should probably consider renaming it
-                    dhcp.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                    dhcp.create_command(ovn_run_cmd, (None, common.clone())).await?;
                 }
 
             }
@@ -144,41 +144,41 @@ impl OrchestrationTask for StateNetwork {
         match &self {
             StateNetwork::Ovn(ovn_state) => {
                 for dhcp in &ovn_state.dhcp_options {
-                    dhcp.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                    dhcp.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, route) in &router.routing.0 {
-                        route.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                for router in ovn_state.routers.values() {
+                    for route in router.routing.0.values() {
+                        route.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                     }
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, ext) in &router.external_gateway.0 {
-                        ext.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                for router in ovn_state.routers.values() {
+                    for ext in router.external_gateway.0.values() {
+                        ext.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                     }
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, nat) in &router.nat.0 {
-                        nat.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                for router in ovn_state.routers.values() {
+                    for nat in router.nat.0.values() {
+                        nat.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                     }
                 }
-                for (_, lsp_data) in &ovn_state.switch_ports {
-                    lsp_data.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                for lsp_data in ovn_state.switch_ports.values() {
+                    lsp_data.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                 }
-                for (_, lrp_data) in &ovn_state.router_ports {
-                    lrp_data.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                for lrp_data in ovn_state.router_ports.values() {
+                    lrp_data.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                 }
-                for (_, sw_data) in &ovn_state.switches {
-                    sw_data.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                for sw_data in ovn_state.switches.values() {
+                    sw_data.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                 }
-                for (_, lr_data) in &ovn_state.routers {
-                    lr_data.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                for lr_data in ovn_state.routers.values() {
+                    lr_data.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                 }
-                for (_, lrp_data) in &ovn_state.ovs_ports {
+                for lrp_data in ovn_state.ovs_ports.values() {
                     // OVS ports may need to be destroyed on remote testbed hosts
                     lrp_data.destroy_command(
-                        &ovn_run_cmd_allow_fail,
+                        ovn_run_cmd_allow_fail,
                         (
-                            Some(chassis_to_tb_host(&lrp_data.chassis, &common)?),
+                            Some(chassis_to_tb_host(&lrp_data.chassis, common)?),
                             common.clone(),
                         )).await?;
                 }
@@ -196,7 +196,7 @@ impl OrchestrationTask for StateNetwork {
         // create all OVN resources
         match &self {
             StateNetwork::Ovn(ovn_state) => {
-                for (_, ls_data) in &ovn_state.switches {
+                for ls_data in ovn_state.switches.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
@@ -204,36 +204,36 @@ impl OrchestrationTask for StateNetwork {
                     ).await.context("requesting the creation of logical switch")?;
 
                 }
-                for (_, lsp_data) in &ovn_state.switch_ports {
+                for lsp_data in ovn_state.switch_ports.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
                         OrchestrationInstruction::Deploy(vec![lsp_data.to_orchestration_resource()]),
                     ).await.context("requesting the creation of logical switch port")?;
                 }
-                for (_, lr_data) in &ovn_state.routers {
+                for lr_data in ovn_state.routers.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
                         OrchestrationInstruction::Deploy(vec![lr_data.to_orchestration_resource()]),
                     ).await.context("requesting the creation of logical router")?;
                 }
-                for (_, lrp_data) in &ovn_state.router_ports {
+                for lrp_data in ovn_state.router_ports.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
                         OrchestrationInstruction::Deploy(vec![lrp_data.to_orchestration_resource()]),
                     ).await.context("requesting the creation of logical router port")?;
                 }
-                for (_, ovs_data) in &ovn_state.ovs_ports {
+                for ovs_data in ovn_state.ovs_ports.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
                         OrchestrationInstruction::Deploy(vec![ovs_data.to_orchestration_resource()]),
                     ).await.context("requesting the creation of ovs port")?;
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, route) in &router.routing.0 {
+                for router in ovn_state.routers.values() {
+                    for route in router.routing.0.values() {
                         send_orchestration_instruction_over_channel(
                             sender,
                             // receiver,
@@ -241,8 +241,8 @@ impl OrchestrationTask for StateNetwork {
                         ).await.context("requesting the creation of static route")?;
                     }
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, ext) in &router.external_gateway.0 {
+                for router in ovn_state.routers.values() {
+                    for ext in router.external_gateway.0.values() {
                         send_orchestration_instruction_over_channel(
                             sender,
                             // receiver,
@@ -250,8 +250,8 @@ impl OrchestrationTask for StateNetwork {
                         ).await.context("requesting the creation of external gateway")?;
                     }
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, nat) in &router.nat.0 {
+                for router in ovn_state.routers.values() {
+                    for nat in router.nat.0.values() {
                         send_orchestration_instruction_over_channel(
                             sender,
                             // receiver,
@@ -266,7 +266,7 @@ impl OrchestrationTask for StateNetwork {
                         OrchestrationInstruction::Deploy(vec![dhcp.to_orchestration_resource()]),
                     ).await.context("requesting the creation of dhcp rule")?;
                 }
-                for (_, acl_record) in &ovn_state.acl {
+                for acl_record in ovn_state.acl.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         OrchestrationInstruction::Deploy(vec![acl_record.to_orchestration_resource()]),
@@ -284,13 +284,13 @@ impl OrchestrationTask for StateNetwork {
         // no need to batch these as OVN is quick to create resources
         match &self {
             StateNetwork::Ovn(ovn_state) => {
-                for (_, acl_record) in &ovn_state.acl {
+                for acl_record in ovn_state.acl.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         OrchestrationInstruction::Destroy(vec![acl_record.to_orchestration_resource()]),
                     ).await.context("requesting the destruction of ACL")?;
                 }
-                for (_, ls_data) in &ovn_state.switches {
+                for ls_data in ovn_state.switches.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
@@ -298,29 +298,29 @@ impl OrchestrationTask for StateNetwork {
                     ).await.context("requesting the destruction of logical switch")?;
 
                 }
-                for (_, lsp_data) in &ovn_state.switch_ports {
+                for lsp_data in ovn_state.switch_ports.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
                         OrchestrationInstruction::Destroy(vec![lsp_data.to_orchestration_resource()]),
                     ).await.context("requesting the destruction of logical switch port")?;
                 }
-                for (_, lr_data) in &ovn_state.routers {
+                for lr_data in ovn_state.routers.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
                         OrchestrationInstruction::Destroy(vec![lr_data.to_orchestration_resource()]),
                     ).await.context("requesting the destruction of logical router")?;
                 }
-                for (_, lrp_data) in &ovn_state.router_ports {
+                for lrp_data in ovn_state.router_ports.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
                         OrchestrationInstruction::Destroy(vec![lrp_data.to_orchestration_resource()]),
                     ).await.context("requesting the destruction of logical router port")?;
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, route) in &router.routing.0 {
+                for router in ovn_state.routers.values() {
+                    for route in router.routing.0.values() {
                         send_orchestration_instruction_over_channel(
                             sender,
                             // receiver,
@@ -328,8 +328,8 @@ impl OrchestrationTask for StateNetwork {
                         ).await.context("requesting the destruction of static route")?;
                     }
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, ext) in &router.external_gateway.0 {
+                for router in ovn_state.routers.values() {
+                    for ext in router.external_gateway.0.values() {
                         send_orchestration_instruction_over_channel(
                             sender,
                             // receiver,
@@ -337,8 +337,8 @@ impl OrchestrationTask for StateNetwork {
                         ).await.context("requesting the destruction of external gateway")?;
                     }
                 }
-                for (_, router) in &ovn_state.routers {
-                    for (_, nat) in &router.nat.0 {
+                for router in ovn_state.routers.values() {
+                    for nat in router.nat.0.values() {
                         send_orchestration_instruction_over_channel(
                             sender,
                             // receiver,
@@ -353,7 +353,7 @@ impl OrchestrationTask for StateNetwork {
                         OrchestrationInstruction::Destroy(vec![dhcp.to_orchestration_resource()]),
                     ).await.context("requesting the destruction of dhcp rule")?;
                 }
-                for (_, ovs_data) in &ovn_state.ovs_ports {
+                for ovs_data in ovn_state.ovs_ports.values() {
                     send_orchestration_instruction_over_channel(
                         sender,
                         // receiver,
@@ -369,6 +369,7 @@ impl OrchestrationTask for StateNetwork {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn reapply_acl_action(
     current_state: &State,
     logical_testbed: LogicalTestbed,
@@ -394,15 +395,9 @@ pub async fn reapply_acl_action(
     // we compare the existing switch list, and the new yaml acl switch list so that the new acl
     // list doesn't try to place rules on switches that don't already exist
     // TODO - what do we compare here to make sure the network is still the same, just the switch names under ACL section?
-    let current_switch_list: HashSet<_> = current_network.switches
-        .iter()
-        .map(|(sw, _)| {
-            sw
-        })
+    let current_switch_list: HashSet<_> = current_network.switches.keys()
         .collect();
-    let yaml_acl_switch_list: HashSet<_> = new_network.acl
-        .iter()
-        .map(|(_, acl)| {
+    let yaml_acl_switch_list: HashSet<_> = new_network.acl.values().map(|acl| {
             &acl.entity_name
         })
         .collect();
@@ -420,7 +415,7 @@ pub async fn reapply_acl_action(
     // if Ok, then destroy current acl rules, then create the new ones
     match &current_state.network {
         StateNetwork::Ovn(ovn_state) => {
-            for (_, acl_record) in &ovn_state.acl {
+            for acl_record in ovn_state.acl.values() {
                 send_orchestration_instruction_over_channel(
                     sender,
                     OrchestrationInstruction::Destroy(vec![acl_record.to_orchestration_resource()]),
@@ -435,7 +430,7 @@ pub async fn reapply_acl_action(
         .context("Creating state from logical testbed")?;
     match &new_state.network {
         StateNetwork::Ovn(ovn_state) => {
-            for (_, acl_record) in &ovn_state.acl {
+            for acl_record in ovn_state.acl.values() {
                 send_orchestration_instruction_over_channel(
                     sender,
                     OrchestrationInstruction::Deploy(vec![acl_record.to_orchestration_resource()]),
@@ -446,10 +441,10 @@ pub async fn reapply_acl_action(
     }
 
     // if successful update the current state, only the ACL part, then save to disk
-    let mut previous_state = read_previous_state_request(&http_client, &server_conn, &project_name).await?;
+    let mut previous_state = read_previous_state_request(http_client, server_conn, &project_name).await?;
     previous_state.network = new_state.network;
 
-    write_state_request(&http_client, &server_conn, &project_name, &previous_state)
+    write_state_request(http_client, server_conn, &project_name, &previous_state)
         .await
         .context("Sending the state json file to server to save to disk.")?;
 
@@ -464,7 +459,7 @@ fn ensure_yaml_acl_switches_already_exist(
     let difference: HashSet<_> = yaml_acl_switch_list
         .difference(&current_switch_list)
         .collect();
-    if difference.len() > 0 {
+    if !difference.is_empty() {
         bail!("there are switches in the ACL list that don't exist in the current state")
     }
 

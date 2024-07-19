@@ -10,8 +10,8 @@ use kvm_compose_schemas::deployment_models::NewDeployment;
 use kvm_compose_schemas::gui_models::GUICreateDeploymentJson;
 use kvm_compose_schemas::kvm_compose_yaml::Config;
 use crate::{AppError, AppState, debug_reload_templates, PROJECT_VERSION};
-use crate::deployments::deployments::{validate_project_name};
-use crate::gui::gui::create_deployment_files;
+use crate::deployments::helpers::{validate_project_name};
+use crate::gui::create_deployment_files;
 use crate::gui::testbed_user_folder;
 use crate::resource_monitoring::collector::{get_active_guests_for_deployment, get_active_hosts_for_deployment};
 
@@ -152,7 +152,7 @@ pub async fn gui_deployments_view(
     let tera = db_config.template_env.read().await;
     let mut tera_context = Context::new();
 
-    add_base_tera_context(&mut tera_context, &format!("{}", &project), &db_config).await;
+    add_base_tera_context(&mut tera_context, &project.to_string(), &db_config).await;
     tera_context.insert("project_name", &project);
 
     // get specific deployment
@@ -167,9 +167,9 @@ pub async fn gui_deployments_view(
         .ok_or(anyhow!("Deployment does not exist"))?;
 
     // add guest data for resource monitoring grafana dashboards
-    let guest_list = get_active_guests_for_deployment(&deployment_data).await.unwrap_or_else(|_| Vec::new());
+    let guest_list = get_active_guests_for_deployment(deployment_data).await.unwrap_or_else(|_| Vec::new());
     tera_context.insert("guest_list", &guest_list);
-    let host_list = get_active_hosts_for_deployment(&deployment_data).await.unwrap_or_else(|_| Vec::new());
+    let host_list = get_active_hosts_for_deployment(deployment_data).await.unwrap_or_else(|_| Vec::new());
     tera_context.insert("host_list", &host_list);
 
     tera_context.insert("deployment", deployment_data);

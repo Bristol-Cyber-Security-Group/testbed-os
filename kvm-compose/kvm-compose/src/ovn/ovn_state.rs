@@ -120,6 +120,7 @@ impl OvnNetwork {
 
     /// Adds a logical switch port of type internal. Will not update the definition if it already
     /// exists.
+    #[allow(clippy::too_many_arguments)]
     pub fn add_lsp_internal(
         &mut self,
         name: String,
@@ -364,7 +365,7 @@ impl OvnNetwork {
     ) -> anyhow::Result<(), LogicalOperationResult> {
         // check it exists
         if self.ovs_exists(&name) {
-            return Err(LogicalOperationResult::AlreadyExists { name: name.into() });
+            return Err(LogicalOperationResult::AlreadyExists { name });
         }
         self.ovs_ports.insert(
             name.clone(),
@@ -383,7 +384,7 @@ impl OvnNetwork {
         name: &String,
     ) -> anyhow::Result<(), LogicalOperationResult> {
         // check it exists
-        if !self.ovs_exists(&name) {
+        if !self.ovs_exists(name) {
             return Err(LogicalOperationResult::DoesNotExist { name: name.into() });
         }
         self.ovs_ports.remove(name);
@@ -400,7 +401,7 @@ impl OvnNetwork {
         let route = OvnRoute::new(
             router_name.clone(),
             prefix.clone(),
-            next_hop.clone(),
+            next_hop,
         );
         if route.is_err() {
             return Err(LogicalOperationResult::Error {
@@ -631,7 +632,7 @@ impl OvnNetwork {
         &mut self,
         router_name: &String,
         switch_name: &String,
-        exclude_ips: &String,
+        exclude_ips: &str,
     ) -> anyhow::Result<(), LogicalOperationResult> {
 
         // borrow checker avoidance - we will work on their names up here then below once we have
@@ -652,24 +653,18 @@ impl OvnNetwork {
         let mut lsp_dynamic = Vec::new();
         for (lsp_name, lsp_data) in self.switch_ports.iter() {
             if lsp_data.parent_switch.eq(&sw) {
-                match &lsp_data.port_type {
-                    LogicalSwitchPortType::Internal { ip, .. } => {
-                        match ip {
-                            OvnIpAddr::Dynamic => {
-                                // only take LSP type internal AND has dynamic as IP address for
-                                // this switch
-                                // take a copy as we will get the mutable version later
-                                lsp_dynamic.push(lsp_name.clone());
-                            }
-                            _ => {}
-                        }
+                if let LogicalSwitchPortType::Internal { ip, .. } = &lsp_data.port_type {
+                    if ip == &OvnIpAddr::Dynamic {
+                        // only take LSP type internal AND has dynamic as IP address for
+                        // this switch
+                        // take a copy as we will get the mutable version later
+                        lsp_dynamic.push(lsp_name.clone());
                     }
-                    _ => {}
                 }
             }
         }
 
-        if lsp_dynamic.len() == 0 {
+        if lsp_dynamic.is_empty() {
             return Err(LogicalOperationResult::Error {
                 msg: format!("the switch {} did not have any internal switch ports with a dynamic ip", &sw)
             })
@@ -699,13 +694,13 @@ impl OvnNetwork {
         for lsp_name in lsp_dynamic {
             let lsp = self.switch_ports.get_mut(&lsp_name)
                 .unwrap(); // unwrap as we know it definitely exists
-            lsp.dhcp_options_uuid = Some(dhcp_hash.clone());
+            lsp.dhcp_options_uuid = Some(dhcp_hash);
         }
 
         // add config to logical switch
         let switch = self.switches.get_mut(&sw)
             .unwrap(); // unwrap as we definitely know it exists
-        switch.dhcp = Some(SwitchDhcpOptions { exclude_ips: exclude_ips.clone() });
+        switch.dhcp = Some(SwitchDhcpOptions { exclude_ips: exclude_ips.to_owned() });
 
         Ok(())
     }
@@ -722,25 +717,22 @@ impl OvnNetwork {
         // the switch should have a switch port with type router, and this port will point to it's
         // router port pair, which will have a parent router ... if we cannot find this link, then
         // there is no pair
-        for (_, lsp_data) in &self.switch_ports {
+        for lsp_data in self.switch_ports.values() {
             // LSP must have the parent port specified
             if !lsp_data.parent_switch.eq(&switch.name) {continue;}
             // must be type router
-            match &lsp_data.port_type {
-                LogicalSwitchPortType::Router { router_port_name, .. } => {
-                    // LSP is type router, now try to match to the LRP
-                    for (lrp_name, lrp_data) in &self.router_ports {
-                        // find the LRP with our router as parent
-                        if lrp_data.parent_router.eq(&router.name) {
-                            // see if the pair router port for this switch port type router match
-                            if lrp_name.eq(router_port_name) {
-                                // we have found the pair
-                                return Ok((&lsp_data, &lrp_data))
-                            }
+            if let LogicalSwitchPortType::Router { router_port_name, .. } = &lsp_data.port_type {
+                // LSP is type router, now try to match to the LRP
+                for (lrp_name, lrp_data) in &self.router_ports {
+                    // find the LRP with our router as parent
+                    if lrp_data.parent_router.eq(&router.name) {
+                        // see if the pair router port for this switch port type router match
+                        if lrp_name.eq(router_port_name) {
+                            // we have found the pair
+                            return Ok((lsp_data, lrp_data))
                         }
                     }
                 }
-                _ => {}
             }
         }
         Err(LogicalOperationResult::Error {
@@ -756,7 +748,7 @@ impl OvnNetwork {
         acl_rule: &ACLRule
     ) -> anyhow::Result<(), LogicalOperationResult> {
         // make sure it doesn't already exist
-        if let Some(_) = self.acl.get(acl_name) {
+        if self.acl.contains_key(acl_name) {
             return Err(LogicalOperationResult::AlreadyExists { name: acl_name.to_string() });
         }
 
@@ -764,7 +756,7 @@ impl OvnNetwork {
             entity_name,
             _type,
             acl_rule.direction.clone(),
-            acl_rule.priority.clone(),
+            acl_rule.priority,
             acl_rule._match.clone(),
             acl_rule.action.clone(),
             acl_name.clone(),
@@ -793,19 +785,16 @@ impl OvnNetwork {
         // reporting the error
         let mut ip_set = HashMap::new();
         for (name, lsp) in &self.switch_ports {
-            match &lsp.port_type {
-                LogicalSwitchPortType::Internal { ip, .. } => {
-                    let option = ip_set.get(ip);
-                    if option.is_some() {
-                        bail!("ports {} and {} both have the same ip {}", option.unwrap(), name, ip.to_string());
-                    } else {
-                        if ip.to_string().eq("dynamic") {
-                            continue;
-                        }
-                        ip_set.insert(ip.clone(), name);
+            if let LogicalSwitchPortType::Internal { ip, .. } = &lsp.port_type {
+                let option = ip_set.get(ip);
+                if option.is_some() {
+                    bail!("ports {} and {} both have the same ip {}", option.unwrap(), name, ip.to_string());
+                } else {
+                    if ip.to_string().eq("dynamic") {
+                        continue;
                     }
+                    ip_set.insert(ip.clone(), name);
                 }
-                _ => {}
             }
         }
         // now also do router ports
@@ -813,7 +802,7 @@ impl OvnNetwork {
             let get = match &lrp.ip {
                 OvnIpAddr::Ip(ip) => {
                     // need to convert IpAddr to OvnIpAddr
-                    let ip = OvnIpAddr::Ip(ip.clone());
+                    let ip = OvnIpAddr::Ip(*ip);
                     (ip_set.get(&ip), ip)
                 },
                 OvnIpAddr::Dynamic => {
@@ -822,7 +811,7 @@ impl OvnNetwork {
                 }
                 OvnIpAddr::Subnet { ip, .. } => {
                     // need to convert IpAddr to OvnIpAddr
-                    let ip = OvnIpAddr::Ip(ip.clone());
+                    let ip = OvnIpAddr::Ip(*ip);
                     (ip_set.get(&ip), ip)
                 }
             };
@@ -857,7 +846,7 @@ mod tests {
     #[test]
     fn test_switch_and_ports() -> anyhow::Result<(), LogicalOperationResult> {
         let mut ovn = OvnNetwork::new();
-        let _op_res = ovn.add_switch(
+        ovn.add_switch(
             "sw0".into(),
             IpAddr::V4(Ipv4Addr::new(10, 0, 0, 0)),
             24)?;
@@ -868,7 +857,7 @@ mod tests {
             24);
         assert_eq!(op_res, Err(LogicalOperationResult::AlreadyExists { name: "sw0".to_string() }));
         // add a port type internal
-        let _op_res = ovn.add_lsp_internal(
+        ovn.add_lsp_internal(
             "sw0-port0".into(),
             "sw0".into(),
             "ovs-sw0-port0".into(),
@@ -900,7 +889,7 @@ mod tests {
         );
         assert_eq!(op_res, Err(LogicalOperationResult::ParentDoesNotExist { name: "sw1-port0".to_string(), parent: "sw1".to_string() }));
         // add a port type router
-        let _op_res = ovn.add_lsp_router(
+        ovn.add_lsp_router(
             "sw0-port1".into(),
             "sw0".into(),
             MacAddress::new("00:00:00:00:00:02".into()).unwrap(),
@@ -923,7 +912,7 @@ mod tests {
         );
         assert_eq!(op_res, Err(LogicalOperationResult::ParentDoesNotExist { name: "sw0-port1".to_string(), parent: "sw1".to_string() }));
         // add a port type localnet
-        let _op_res = ovn.add_lsp_localnet(
+        ovn.add_lsp_localnet(
             "sw0-port2".into(),
             "sw0".into(),
             "public".into()
@@ -948,9 +937,9 @@ mod tests {
         let op_res = ovn.del_switch(&"sw0".into());
         assert_eq!(op_res, Err(LogicalOperationResult::HasChildren { name: "sw0".to_string() }));
         // now delete everything
-        let _op_res = ovn.del_lsp(&"sw0-port2".into())?;
-        let _op_res = ovn.del_lsp(&"sw0-port1".into())?;
-        let _op_res = ovn.del_lsp(&"sw0-port0".into())?;
+        ovn.del_lsp(&"sw0-port2".into())?;
+        ovn.del_lsp(&"sw0-port1".into())?;
+        ovn.del_lsp(&"sw0-port0".into())?;
         // try to delete something that doesnt exist
         let op_res = ovn.del_lsp(&"sw0-port0".into());
         assert_eq!(op_res, Err(LogicalOperationResult::DoesNotExist { name: "sw0-port0".to_string() }));
@@ -1103,10 +1092,10 @@ mod tests {
         ovn.add_dhcp_option(
             &"lr0".into(),
             &"sw0".into(),
-            &"10.0.0.1..10.0.0.10".into()
+            "10.0.0.1..10.0.0.10"
         )?;
         // check all components have the correct information, unwrap as we know they exist
-        let switch = ovn.switches.get("sw0").unwrap();
+        ovn.switches.get("sw0").unwrap();
         // there are two ports on this switch with dynamic, one without
         let switch_port_1 = ovn.switch_ports.get("sw0-port0").unwrap();
         let switch_port_2 = ovn.switch_ports.get("sw0-port1").unwrap(); // this one does not have dynamic
@@ -1143,13 +1132,13 @@ mod tests {
         let res = ovn.add_dhcp_option(
             &"lr1".into(), // this router doesnt exist
             &"sw0".into(),
-            &"10.0.0.1..10.0.0.10".into()
+            "10.0.0.1..10.0.0.10"
         );
         assert!(res.is_err());
         let res = ovn.add_dhcp_option(
             &"lr0".into(),
             &"sw1".into(), // this switch doesnt exist
-            &"10.0.0.1..10.0.0.10".into()
+            "10.0.0.1..10.0.0.10",
         );
         assert!(res.is_err());
 

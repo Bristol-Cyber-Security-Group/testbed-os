@@ -106,7 +106,7 @@ mod tests {
             24,
             None,
         );
-        let create_cmd = lrp0.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let create_cmd = lrp0.create_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings![
             "ovn-nbctl", "--may-exist", "lrp-add", "lr0", "lr0-port0", "00:00:00:00:ff:01", "10.0.0.1/24"
         ].join(" ");

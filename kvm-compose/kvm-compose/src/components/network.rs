@@ -12,8 +12,9 @@ use crate::components::logical_load_balancing::LoadBalanceTopology;
 use crate::ovn::components::{MacAddress, OvnIpAddr};
 use crate::ovn::components::acl::ACLRecordType;
 use crate::ovn::configuration::nat::OvnNatType;
-use crate::ovn::ovn::OvnNetwork;
+use crate::ovn::ovn_state::OvnNetwork;
 
+#[allow(clippy::large_enum_variant)]
 pub enum LogicalNetwork {
     Ovn(OvnNetwork),
     Ovs(LogicalOvsNetwork),
@@ -172,9 +173,9 @@ fn parse_ovn_schema(
                 idx,
                 &mut ovn,
                 &guest_config,
-                &interface,
+                interface,
                 load_balance_topology,
-                &tb_config,
+                tb_config,
                 project_name,
             )?;
         }
@@ -215,7 +216,7 @@ fn parse_ovn_schema(
             if ovn.switches.contains_key(&switch_name) {
                 for rule in acl_rules {
                     let acl_name = format!("{}-{}-{}-{}-{}", &project_name, &switch, &rule.direction, &rule.action, &rule.priority);
-                    ovn.add_switch_acl(&acl_name, switch_name.clone(), ACLRecordType::Switch, &rule)?;
+                    ovn.add_switch_acl(&acl_name, switch_name.clone(), ACLRecordType::Switch, rule)?;
                 }
             } else {
                 bail!("switch '{switch}' in ACL ruleset was not defined in the main network topology");
@@ -233,7 +234,7 @@ fn parse_ovn_schema(
 }
 
 pub fn subnet_to_ip_and_mask(string: &String) -> anyhow::Result<(IpAddr, u16)> {
-    let split: Vec<_> = string.split("/").collect();
+    let split: Vec<_> = string.split('/').collect();
     if split.len() != 2 {
         bail!("format of subnet {string} is not 'ip/mask'");
     }
@@ -249,7 +250,7 @@ pub fn subnet_to_ip_and_mask(string: &String) -> anyhow::Result<(IpAddr, u16)> {
 fn add_switch_port(
     ovn: &mut OvnNetwork,
     port: &SwitchPort,
-    parent_switch: &String,
+    parent_switch: &str,
     // load_balance_topology: &LoadBalanceTopology,
     tb_config: &HashMap<String, SshConfig>,
     project_name: &String,
@@ -278,7 +279,7 @@ fn add_switch_port(
             // port name
             ovn.add_lsp_internal(
                 port_name.clone(),
-                parent_switch.clone(),
+                parent_switch.to_owned(),
                 port_name.clone(),
                 ip.clone(),
                 chassis.clone(),
@@ -305,7 +306,7 @@ fn add_switch_port(
         SwitchPortType::Localnet { network_name } => {
             ovn.add_lsp_localnet(
                 port_name.clone(),
-                parent_switch.clone(),
+                parent_switch.to_owned(),
                 network_name.clone(),
             )?;
         }
@@ -350,7 +351,7 @@ fn add_guest_switch_port(
 fn add_router_port(
     ovn: &mut OvnNetwork,
     port: &RouterPort,
-    parent_router: &String,
+    parent_router: &str,
     project_name: &String,
 ) -> anyhow::Result<()> {
     // TODO - prevent switch and router being linked twice
@@ -360,7 +361,7 @@ fn add_router_port(
     let ip_and_mask = subnet_to_ip_and_mask(&port.gateway_ip)?;
     ovn.add_lrp(
         port_name.clone(),
-        parent_router.clone(),
+        parent_router.to_owned(),
        MacAddress::new(port.mac.clone())?,
        ip_and_mask.0,
         ip_and_mask.1,
@@ -369,7 +370,7 @@ fn add_router_port(
     // if gateway chassis is set
     if let Some(chassis) = &port.set_gateway_chassis {
         ovn.lrp_add_external_gateway(
-            parent_router.clone(),
+            parent_router.to_owned(),
             port_name.clone(),
             chassis.clone(),
         )?;
@@ -483,10 +484,10 @@ fn add_router_port(
 // }
 
 fn ip_string_to_ovn_ip(
-    ip: &String,
+    ip: &str,
     port_name: &String,
 ) -> anyhow::Result<OvnIpAddr> {
-    match ip.as_str() {
+    match ip {
         "dynamic" => Ok(OvnIpAddr::Dynamic),
         string => {
             // could be an ip or subnet

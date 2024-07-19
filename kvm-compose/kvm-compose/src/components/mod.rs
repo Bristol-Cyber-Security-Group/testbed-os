@@ -247,19 +247,18 @@ impl LogicalTestbed {
 
     fn parse_guests(&mut self) -> anyhow::Result<()> {
         if self.common.config.machines.is_some() {
-            let mut guest_id_counter = 0;
-            for guest in self
+            for (guest_id_counter, guest) in self
                 .common
                 .config
                 .machines
                 .clone()
                 .context("Getting machines from yaml config")?
                 .iter()
+                .enumerate()
             {
-                let logical_guest = get_guest_from_config(guest, guest_id_counter)
+                let logical_guest = get_guest_from_config(guest, guest_id_counter as u32)
                     .context("Getting guest definition from config as a testbed component")?;
                 self.logical_guests.push(logical_guest);
-                guest_id_counter += 1;
             }
         }
         Ok(())
@@ -317,13 +316,13 @@ impl LogicalTestbed {
 /// will truncate the project name in case it is a long project name. We will give the project name
 /// 7 characters, the interface id 1 character, and the id 4 characters and start with 'vm-',
 /// meaning we can support 9999 guests which should be enough for the foreseeable future..
-pub fn get_guest_interface_name(project_name: &String, unique_id: u32, idx: usize) -> String {
+pub fn get_guest_interface_name(project_name: &str, unique_id: u32, idx: usize) -> String {
     let truncated_project_name = if project_name.len() > 7 {
-        let mut temp = project_name.clone();
+        let mut temp = project_name.to_owned();
         temp.truncate(7);
         temp
     } else {
-        project_name.clone()
+        project_name.to_owned()
     };
     format!("vm-{truncated_project_name}{unique_id}{idx}")
 }

@@ -20,7 +20,7 @@ pub fn get_guest_from_config(
     in_config_machine: &Machine,
     unique_id: u32
 ) -> anyhow::Result<Box<dyn TestbedGuestComponent + Sync + Send>> {
-    return match &in_config_machine.guest_type {
+    match &in_config_machine.guest_type {
         GuestType::Libvirt(libvirt_guest) => {
             // differentiate from the different libvirt guest types
             // TODO are these redundant now since the guest type is differentiated in "specialise"?
@@ -104,7 +104,7 @@ impl TestbedGuest for LibvirtGuest {
     }
 
     fn get_network(&self) -> anyhow::Result<Vec<MachineNetwork>> {
-        Ok(get_guest_network(self)?)
+        get_guest_network(self)
     }
 
     fn get_machine_definition(&self) -> Machine {
@@ -245,7 +245,7 @@ impl TestbedComponent for LibvirtGuest {
                 // set disk paths
                 match &mut libivrt_config.libvirt_type {
                     LibvirtGuestOptions::CloudImage { path, .. } => {
-                        self.original_disk_path = path.clone();
+                        self.original_disk_path.clone_from(path);
                         if path.is_none() {
                             *path = Some(PathBuf::from(self.disk_path.clone().unwrap()));
                         }
@@ -320,7 +320,7 @@ impl TestbedGuest for DockerGuest {
     }
 
     fn get_network(&self) -> anyhow::Result<Vec<MachineNetwork>> {
-        Ok(get_guest_network(self)?)
+        get_guest_network(self)
     }
 
     fn get_machine_definition(&self) -> Machine {
@@ -419,7 +419,7 @@ impl TestbedGuest for AndroidGuest {
     }
 
     fn get_network(&self) -> anyhow::Result<Vec<MachineNetwork>> {
-        Ok(get_guest_network(self)?)
+        get_guest_network(self)
     }
 
     fn get_machine_definition(&self) -> Machine {

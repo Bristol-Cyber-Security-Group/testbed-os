@@ -36,7 +36,7 @@ pub async fn cgroup_get_cpu_time(
     let mut lines = reader.lines();
 
     while let Some(line) = lines.next_line().await? {
-        let split: Vec<_> = line.split(" ").collect();
+        let split: Vec<_> = line.split(' ').collect();
         if split[0].eq("usage_usec") {
             return Ok(split[1].parse::<u64>()?);
         }
@@ -53,7 +53,7 @@ pub async fn cgroup_get_current_memory(
     let reader = io::BufReader::new(current_memory_file);
     let mut lines = reader.lines();
     if let Some(mem) = lines.next_line().await? {
-        return Ok(mem.parse::<u64>()?)
+        Ok(mem.parse::<u64>()?)
     } else {
         bail!("could not get current memory");
     }
@@ -72,25 +72,23 @@ pub fn get_android_cgroup_folder(
     let pattern = "/sys/fs/cgroup/machine.slice/machine-qemu*.scope/";
     let mut matches = Vec::new();
     if let Ok(entries) = glob(pattern) {
-        for entry in entries {
-            match entry {
-                Ok(ref path) => {
-                    // tracing::info!("{guest_name}, {project_name}, {:?}", &entry);
-                    let path = path.to_str().context("path to str")?.to_string();
-                    if path.contains(guest_name) && path.contains(project_name) {
-                        // has both the project and guest name, candidate
-                        matches.push(path);
-                    }
-                }
-                Err(_) => {}
+        for path in entries.flatten() {
+            // tracing::info!("{guest_name}, {project_name}, {:?}", &entry);
+            let path = path.to_str().context("path to str")?.to_string();
+            if path.contains(guest_name) && path.contains(project_name) {
+                // has both the project and guest name, candidate
+                matches.push(path);
             }
+
         }
     }
-    if matches.len() > 1 {
-        bail!("matched cgroups with more than one guest, cant pick the correct cgroup: {matches:?}");
-    } else if matches.len() == 1 {
-        return Ok(matches[0].to_string());
+
+    match matches.len() {
+        x if x > 1 => bail!("matched cgroups with more than one guest, cant pick the correct cgroup: {matches:?}"),
+        1 => {
+            Ok(matches[0].to_string())
+        }
+        _ => bail!("could not find android qemu cgroups folder")
     }
 
-    bail!("could not find android qemu cgroups folder");
 }

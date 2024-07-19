@@ -86,8 +86,8 @@ where
     }
 }
 
-pub fn ip_string_to_slice(ip: &String) -> anyhow::Result<[u8; 4]> {
-    let split: Vec<_> = ip.split(".").collect();
+pub fn ip_string_to_slice(ip: &str) -> anyhow::Result<[u8; 4]> {
+    let split: Vec<_> = ip.split('.').collect();
     Ok([split[0].parse::<u8>()?,split[1].parse::<u8>()?,split[2].parse::<u8>()?,split[3].parse::<u8>()?])
 }
 

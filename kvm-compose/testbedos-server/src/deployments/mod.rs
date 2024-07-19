@@ -11,7 +11,7 @@ pub mod handlers;
 pub mod models;
 pub mod providers;
 pub mod db;
-pub mod deployments;
+pub mod helpers;
 
 pub fn run_orchestration_command(
     log_file_path: &String,
@@ -62,7 +62,7 @@ pub async fn set_state_json(deployment: Deployment, state: State) -> anyhow::Res
     let project_name = &deployment.name;
     let project_location = PathBuf::from(deployment.project_location.clone());
     state
-        .write(&project_name, &project_location)
+        .write(project_name, &project_location)
         .await?;
     Ok(())
 }

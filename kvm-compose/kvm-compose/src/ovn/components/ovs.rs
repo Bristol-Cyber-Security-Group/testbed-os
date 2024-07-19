@@ -102,14 +102,14 @@ mod tests {
             "sw0-port0".into(),
             "ovn".into()
         );
-        let create_cmd = port.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let create_cmd = port.create_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings![
             "ovs-vsctl", "--may-exist", "add-port", "br-int", "ovs-port",
             "--", "set", "Interface", "ovs-port", "type=internal",
             "--", "set", "Interface", "ovs-port", "external_ids:iface-id=sw0-port0"
         ].join(" ");
         assert_eq!(create_cmd, expected_cmd);
-        let destroy_cmd = port.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let destroy_cmd = port.destroy_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings!["ovs-vsctl", "del-port", "br-int", "ovs-port"].join(" ");
         assert_eq!(destroy_cmd, expected_cmd);
     }

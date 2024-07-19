@@ -52,10 +52,7 @@ pub async fn setup_config(
     // keep looping until an exit state is set
     loop {
         // immediately quit if on break step
-        match current_step {
-            SetupSteps::Exit => break,
-            _ => {}
-        }
+        if let SetupSteps::Exit = current_step { break }
 
         // handle each step, once each step is done, set the next step and exit the inner loop to
         // return to this outer loop ...

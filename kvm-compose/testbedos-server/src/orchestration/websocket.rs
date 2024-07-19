@@ -13,6 +13,8 @@ use kvm_compose_lib::state::State;
 use kvm_compose_schemas::deployment_models::{DeploymentCommand, DeploymentState};
 use crate::AppState;
 
+type LoggingTaskHandle = JoinHandle<anyhow::Result<Arc<Mutex<SplitSink<WebSocket, Message>>>>>;
+
 /// This function completely handles the orchestration command requested by the client. This is the websocket
 /// implementation. Depending on the result of the orchestration or any runtime errors, the result is updated here
 /// before the websocket is closed.
@@ -74,7 +76,7 @@ async fn run(
             match instruction {
                 Ok(ok) => {
                     // acknowledge
-                    let _ = sender.lock().await.send(Message::Text("Receiving instruction OK".to_string()))
+                    sender.lock().await.send(Message::Text("Receiving instruction OK".to_string()))
                         .await
                         .context("sending acknowledgement")?;
                     // confirm
@@ -83,14 +85,14 @@ async fn run(
                         .run_init()
                         .await?;
                     let serialised_response = serde_json::to_string(&run_instruction_res)?;
-                    let _ = sender.lock().await.send(Message::Text(serialised_response))
+                    sender.lock().await.send(Message::Text(serialised_response))
                         .await
                         .context("sending instruction result")?;
                     // return the init protocol for later code to get deployment info
                     ok
                 }
                 Err(_) => {
-                    let _ = sender.lock().await.send(Message::Close(Some(CloseFrame {
+                    sender.lock().await.send(Message::Close(Some(CloseFrame {
                         code: 1011, // this is error
                         reason: Cow::from("Could not deserialise the Init instruction"),
                     }))).await.context("sending close to client websocket")?;
@@ -99,7 +101,7 @@ async fn run(
             }
         }
         _ => {
-            let _ = sender.lock().await.send(Message::Close(Some(CloseFrame {
+            sender.lock().await.send(Message::Close(Some(CloseFrame {
                 code: 1011, // this is error
                 reason: Cow::from("The client did not begin orchestration with an Init instruction"),
             }))).await.context("sending close to client websocket")?;
@@ -131,7 +133,7 @@ async fn run(
             (deployment, previous_state, deployment_command)
         }
         _ => {
-            let _ = sender.lock().await.send(Message::Close(Some(CloseFrame {
+            sender.lock().await.send(Message::Close(Some(CloseFrame {
                 code: 1011, // this is error
                 reason: Cow::from("The client did not begin orchestration with an Init instruction"),
             }))).await.context("sending close to client websocket")?;
@@ -226,7 +228,7 @@ async fn run(
 
             } else {
                 // message from client was not Ok
-                let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
+                loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
                     code: 1011,
                     reason: Cow::from("The server could not process the last message, connection closed"),
                 }))).await.context("sending close to client websocket")?;
@@ -318,7 +320,7 @@ async fn get_instruction_result(
 
     // we need to return the websocket sender `ws_sender`, since we can only have one with no clones
     // so we need to return it back to the caller of this function
-    let logging_task: JoinHandle<anyhow::Result<Arc<Mutex<SplitSink<WebSocket, Message>>>>> = tokio::spawn(async move{
+    let logging_task: LoggingTaskHandle = tokio::spawn(async move{
         loop {
             // message received from instruction run, send to user
             if let Some(protocol) = logging_recv.recv().await {
@@ -326,15 +328,12 @@ async fn get_instruction_result(
 
                 // if the logging gets an `End`, then return, we don't need to send to the user
                 // a log message saying end
-                match protocol {
-                    OrchestrationLogger::End => {
-                        // end the logging send loop, and return the websocket sender
-                        break;
-                    }
-                    _ => {}
+                if let OrchestrationLogger::End = protocol {
+                    // end the logging send loop, and return the websocket sender
+                    break;
                 }
 
-                let _ = ws_sender.lock().await.send(Message::Text(serialised_response))
+                ws_sender.lock().await.send(Message::Text(serialised_response))
                     .await
                     .context("sending instruction logging message")?;
             }
@@ -345,7 +344,7 @@ async fn get_instruction_result(
     // await for the instruction, which will send an end token at the end of the function:
     // OrchestrationInstruction::run(
     // so that the logging task will close itself, rather than needing us to cancel it
-    let instruction_result = instruction.run(&state, &common, &logging_send)
+    let instruction_result = instruction.run(state, common, &logging_send)
         .await
         .context("getting instruction result")?;
     let ws_sender = logging_task
@@ -377,7 +376,7 @@ async fn process_client_instruction(
             let instruction: OrchestrationProtocol = serde_json::from_slice(&b)?;
             tracing::info!("orchestration got instruction: {:?}", &instruction.instruction);
 
-            let _ = loop_sender.lock().await.send(Message::Text("Receiving instruction OK".to_string()))
+            loop_sender.lock().await.send(Message::Text("Receiving instruction OK".to_string()))
                 .await
                 .context("sending acknowledgement")?;
 
@@ -395,7 +394,7 @@ async fn process_client_instruction(
 
             // send to client the result
             let serialised_response = serde_json::to_string(&run_instruction_res)?;
-            let _ = loop_sender.lock().await.send(Message::Text(serialised_response))
+            loop_sender.lock().await.send(Message::Text(serialised_response))
                 .await
                 .context("sending instruction result")?;
 
@@ -408,7 +407,7 @@ async fn process_client_instruction(
 
         }
         Message::Close(_) => {
-            return Ok(true);
+            Ok(true)
         }
         _ => Ok(true), // TODO - unexpected message?
     }
@@ -442,19 +441,19 @@ async fn process_potential_cancel_token(
                 is_success: false,
                 message: "Cancel request".to_string(),
             })?;
-            let _ = loop_sender_cancel.lock().await.send(Message::Text(serialised_response))
+            loop_sender_cancel.lock().await.send(Message::Text(serialised_response))
                 .await
                 .context("sending instruction result")?;
 
             tracing::info!("client has sent a cancellation token, closing connection");
-            let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
+            loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
                 code: 1000,
                 reason: Cow::from("The client sent a cancellation token, connection closed"),
             }))).await.context("sending close to client websocket")?;
             Ok(true)
         }
         Message::Close(_) => {
-            return Ok(true);
+            Ok(true)
         }
         _ => Ok(true), // TODO - unexpected message?
     }

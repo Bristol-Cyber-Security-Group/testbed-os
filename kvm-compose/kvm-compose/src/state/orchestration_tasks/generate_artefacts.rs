@@ -22,11 +22,11 @@ pub async fn generate_artefacts(
     common: &OrchestrationCommon,
 ) -> anyhow::Result<()> {
     // for each guest, generate artefacts
-    for (_, guest_config) in &state.testbed_guests.0 {
+    for guest_config in state.testbed_guests.0.values() {
         match &guest_config.guest_type.guest_type {
-            GuestType::Libvirt(c) => libvirt(&c, &guest_config, common).await?,
-            GuestType::Docker(c) => docker(&c, &guest_config, common).await?,
-            GuestType::Android(c) => android(&c, &guest_config, common).await?,
+            GuestType::Libvirt(c) => libvirt(c, guest_config, common).await?,
+            GuestType::Docker(c) => docker(c, guest_config, common).await?,
+            GuestType::Android(c) => android(c, guest_config, common).await?,
         }
     }
 
@@ -73,7 +73,7 @@ async fn libvirt(
         .context("getting memory for libvirt guest")?.to_string());
 
     // main disk
-    tera_context.insert("disk_driver", &format!("qcow2"));
+    tera_context.insert("disk_driver", &"qcow2".to_string());
     // this is either on master or on remote
     let main_disk_img_path = match &libvirt_config.libvirt_type {
         LibvirtGuestOptions::CloudImage { path,.. } => {
@@ -259,7 +259,7 @@ async fn libvirt(
                         // create a linked clone, unless user has specified to make a raw copy
                         let cmd = vec!["qemu-img", "create", "-f", "qcow2", "-b", reference_image, "-F", "qcow2", &disk_path_on_master];
                         run_testbed_orchestration_command(
-                            &common,
+                            common,
                             &master_host,
                             "sudo",
                             cmd,
@@ -316,17 +316,14 @@ async fn libvirt(
     //  which can be very slow on less powerful hardware
 
     // set up cloud init data only for cloud images
-    match libvirt_config.libvirt_type {
-        LibvirtGuestOptions::CloudImage { .. } => cloud_init_setup(
-            &common,
-            network_def,
-            libvirt_config,
-            client_name.clone(),
-            project_artefacts_folder.clone(),
-            guest_config,
-        ).await?,
-        _ => {}
-    }
+    if let LibvirtGuestOptions::CloudImage { .. } = libvirt_config.libvirt_type { cloud_init_setup(
+        common,
+        network_def,
+        libvirt_config,
+        client_name.clone(),
+        project_artefacts_folder.clone(),
+        guest_config,
+    ).await? }
 
     Ok(())
 }
@@ -498,7 +495,7 @@ async fn cloud_init_setup(
                 None => {}
                 Some(context) => {
                     let context_dest = PathBuf::from(format!("{}/context.tar", &project_artefacts_folder));
-                    serialisation::tar_cf(&context_dest, &context).await?;
+                    serialisation::tar_cf(&context_dest, context).await?;
                     cloud_init_inputs.push(context_dest);
                 }
             },

@@ -8,7 +8,7 @@ use axum_extra::response::ErasedJson;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use kvm_compose_schemas::handlers::PrettyQueryParams;
-use crate::deployments::deployments::{ProjectAndPath, validate_project_name, validate_yaml};
+use crate::deployments::helpers::{ProjectAndPath, validate_project_name, validate_yaml};
 use kvm_compose_lib::state::State as KvmComposeState;
 
 /// List all deployments the database contains.
@@ -31,11 +31,8 @@ pub async fn list_active_deployments(
     let list = db.read().await.list_deployments().await?;
     let mut active_deployments = HashMap::new();
     for (name, deployment) in list.deployments {
-        match deployment.state {
-            DeploymentState::Up => {
-                active_deployments.insert(name, deployment);
-            }
-            _ => {}
+        if deployment.state == DeploymentState::Up {
+            active_deployments.insert(name, deployment);
         }
     }
     Ok(Json(active_deployments))

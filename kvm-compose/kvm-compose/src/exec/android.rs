@@ -11,7 +11,7 @@ use crate::orchestration::ssh::SSHClient;
 use crate::state::StateTestbedGuest;
 
 pub async fn shell_command(
-    command: &Vec<String>,
+    command: &[String],
     guest_data: &StateTestbedGuest,
     common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
@@ -19,7 +19,7 @@ pub async fn shell_command(
     let cmd: Vec<&str> = command.iter()
         .map(|arg| arg.as_str())
         .collect();
-    if cmd.len() == 0 {
+    if cmd.is_empty() {
         bail!("No command was given");
     }
     // assuming we can access the guest through the network
@@ -28,9 +28,9 @@ pub async fn shell_command(
     let res = match guest_data.guest_type.guest_type {
         GuestType::Libvirt(_) => {
             SSHClient::run_guest_command(
-                &common,
+                common,
                 cmd,
-                &guest_data,
+                guest_data,
                 false,
             ).await
         }
@@ -55,7 +55,7 @@ pub async fn shell_command(
 
 pub async fn adb_command(
     namespace: &str,
-    command: &Vec<String>,
+    command: &[String],
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
 
@@ -119,7 +119,7 @@ pub async fn frida_setup(
     }
 
     // Run adb as root, push frida server to emulator and make it executable
-    let res = adb_command(namespace, &vec!["root".to_string()], &logging_send).await;
+    let res = adb_command(namespace, &["root".to_string()], logging_send).await;
     match res {
         Ok(_) => {}
         Err(e) => {
@@ -136,12 +136,12 @@ pub async fn frida_setup(
     tracing::info!("waiting to give a chance for rooting to complete before continuing ...");
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    adb_command(namespace, &vec!["push".to_string(), "/var/lib/testbedos/tools/frida-server-16.1.4-android-x86".to_string(), "/data/local/tmp".to_string()], &logging_send).await?;
-    adb_command(namespace, &vec!["shell".to_string(), "chmod".to_string(), "755".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86".to_string()], &logging_send).await?;
+    adb_command(namespace, &["push".to_string(), "/var/lib/testbedos/tools/frida-server-16.1.4-android-x86".to_string(), "/data/local/tmp".to_string()], logging_send).await?;
+    adb_command(namespace, &["shell".to_string(), "chmod".to_string(), "755".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86".to_string()], logging_send).await?;
 
     // Added -D to daemonize and -C to ignore crashes, which seems to prevent frida from holding
     // up the terminal so it exits - unclear if this is causing side effects yet
-    let res = adb_command(namespace, &vec!["shell".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86 -D -C".to_string()], &logging_send).await;
+    let res = adb_command(namespace, &["shell".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86 -D -C".to_string()], logging_send).await;
     match res {
         Ok(_) => {}
         Err(e) => {
@@ -161,7 +161,7 @@ pub async fn frida_setup(
 
 pub async fn test_permissions(
     namespace: &str,
-    command: &Vec<String>,
+    command: &[String],
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
 
@@ -206,7 +206,7 @@ pub async fn test_permissions(
 
 pub async fn tls_intercept(
     namespace: &str,
-    command: &Vec<String>,
+    command: &[String],
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
 
@@ -251,7 +251,7 @@ pub async fn tls_intercept(
 
 pub async fn test_privacy(
     namespace: &str,
-    command: &Vec<String>,
+    command: &[String],
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
 

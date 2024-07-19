@@ -35,9 +35,9 @@ pub async fn prepare_guest_exec_command(
                 &corrected_guest_name,
                 guest_data,
                 &exec_cmd.command_type,
-                &state,
+                state,
                 orchestration_common,
-                &logging_send,
+                logging_send,
             ).await?;
         }
         Err(_) => {
@@ -61,7 +61,7 @@ pub async fn run_guest_exec_cmd(
     match &exec_cmd {
         ExecCmdType::ShellCommand(command) => {
             tracing::info!("running shell command on guest {guest_name}");
-            android::shell_command(&command.command, guest_data, orchestration_common, &logging_send).await?;
+            android::shell_command(&command.command, guest_data, orchestration_common, logging_send).await?;
         }
         ExecCmdType::Tool(tool) => {
             tracing::info!("running tool on guest {guest_name}");
@@ -69,23 +69,23 @@ pub async fn run_guest_exec_cmd(
             match &tool.tool {
                 TestbedTools::ADB(command) => {
                     tracing::info!("ADB arguments = {:?}", command.command);
-                    android::adb_command(&namespace, &command.command, &logging_send).await?;
+                    android::adb_command(&namespace, &command.command, logging_send).await?;
                 }
                 TestbedTools::FridaSetup => {
                     tracing::info!("Running frida tools setup commands");
-                    android::frida_setup(&namespace, &logging_send).await?;
+                    android::frida_setup(&namespace, logging_send).await?;
                 }
                 TestbedTools::TestPermissions(command) => {
                     tracing::info!("Running permissions tests");
-                    android::test_permissions(&namespace, &command.command, &logging_send).await?;
+                    android::test_permissions(&namespace, &command.command, logging_send).await?;
                 }
                 TestbedTools::TLSIntercept(command) => {
                     tracing::info!("Running TLS interceptor");
-                    android::tls_intercept(&namespace, &command.command, &logging_send).await?;
+                    android::tls_intercept(&namespace, &command.command, logging_send).await?;
                 }
                 TestbedTools::TestPrivacy(command) => {
                     tracing::info!("Running all privacy tests");
-                    android::test_privacy(&namespace, &command.command, &logging_send).await?;
+                    android::test_privacy(&namespace, &command.command, logging_send).await?;
                 }
             }
         }

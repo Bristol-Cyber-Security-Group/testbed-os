@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use anyhow::{bail, Context};
 use async_trait::async_trait;
@@ -235,7 +235,7 @@ pub async fn run_subprocess_command(
 /// Checks if the testbed host input is the master host
 pub fn is_master(
     common: &OrchestrationCommon,
-    testbed_host: &String,
+    testbed_host: &str,
 ) -> bool {
     for (host, config) in &common.testbed_hosts {
         if host.eq(testbed_host) {
@@ -251,7 +251,7 @@ pub fn is_master(
 /// Wrapper to work out if a command needs to be run locally or on a remote testbed host
 pub async fn run_testbed_orchestration_command(
     common: &OrchestrationCommon,
-    testbed_host: &String,
+    testbed_host: &str,
     starting_command: &str,
     arguments: Vec<&str>,
     in_background: bool,
@@ -263,7 +263,7 @@ pub async fn run_testbed_orchestration_command(
 /// Wrapper to work out if a command needs to be run locally or on a remote testbed host, allow fail
 pub async fn run_testbed_orchestration_command_allow_fail(
     common: &OrchestrationCommon,
-    testbed_host: &String,
+    testbed_host: &str,
     starting_command: &str,
     arguments: Vec<&str>,
     in_background: bool,
@@ -274,7 +274,7 @@ pub async fn run_testbed_orchestration_command_allow_fail(
 
 async fn _run_testbed_orchestration_command(
     common: &OrchestrationCommon,
-    testbed_host: &String,
+    testbed_host: &str,
     starting_command: &str,
     arguments: Vec<&str>,
     allow_fail: bool,
@@ -289,14 +289,14 @@ async fn _run_testbed_orchestration_command(
                 arguments,
                 in_background,
                 working_dir).await?;
-            return Ok(output);
+            Ok(output)
         } else {
             let output = run_subprocess_command(
                 starting_command,
                 arguments,
                 in_background,
                 working_dir).await?;
-            return Ok(output);
+            Ok(output)
         }
     } else {
         // running on remote host
@@ -311,7 +311,7 @@ async fn _run_testbed_orchestration_command(
             allow_fail,
             in_background,
         ).await?;
-        return Ok(output);
+        Ok(output)
     }
 
 }
@@ -344,16 +344,16 @@ pub async fn write_state_request(
 }
 
 pub async fn create_logical_testbed(
-    yaml_path: &String,
+    yaml_path: &str,
     deployment: &Deployment,
-    project_location: &PathBuf,
+    project_location: &Path,
     force_provisioning: bool,
 ) -> anyhow::Result<LogicalTestbed> {
     let logical_testbed = parse_config(
-        yaml_path.clone(),
+        yaml_path.to_owned(),
         Some(deployment.name.clone()),
         true,
-        project_location.clone(),
+        project_location.to_path_buf(),
         force_provisioning,
     ).await.context("Failed to parse the yaml config and create a logical testbed")?;
     Ok(logical_testbed)

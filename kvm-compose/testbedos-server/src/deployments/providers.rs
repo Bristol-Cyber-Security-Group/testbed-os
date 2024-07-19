@@ -76,29 +76,25 @@ impl DeploymentProvider for FileBasedProvider {
             deployments: Default::default(),
         };
 
-        loop {
-            if let Some(path) = paths.next_entry().await? {
-                let file = path.path();
-                // ignore the logs json
-                if file.display().to_string().ends_with("-logs.json") {
-                    continue;
-                }
-                let text = tokio::fs::read_to_string(&file).await?;
+        while let Some(path) = paths.next_entry().await? {
+            let file = path.path();
+            // ignore the logs json
+            if file.display().to_string().ends_with("-logs.json") {
+                continue;
+            }
+            let text = tokio::fs::read_to_string(&file).await?;
 
-                let config = serde_json::from_str(&text);
-                if config.is_ok() {
-                    // is a validated project
-                    let deployment: Deployment = config?;
-                    deployment_list
-                        .deployments
-                        .insert(deployment.name.clone(), deployment);
-                } else {
-                    // there is a file but it is not a deployment file
-                    let file_loc = &file.display();
-                    tracing::info!("could not read file {file_loc} as a Deployment config");
-                }
+            let config = serde_json::from_str(&text);
+            if config.is_ok() {
+                // is a validated project
+                let deployment: Deployment = config?;
+                deployment_list
+                    .deployments
+                    .insert(deployment.name.clone(), deployment);
             } else {
-                break;
+                // there is a file but it is not a deployment file
+                let file_loc = &file.display();
+                tracing::info!("could not read file {file_loc} as a Deployment config");
             }
         }
 
@@ -201,10 +197,10 @@ impl DeploymentProvider for FileBasedProvider {
     async fn get_state(&self, name: String) -> anyhow::Result<State> {
         let deployment = self.get_deployment(name)
             .await.context("get deployment")?;
-        let state_json = get_state_json(deployment)
+        
+        get_state_json(deployment)
             .await
-            .context("get state json");
-        state_json
+            .context("get state json")
     }
 
     async fn set_state(&self, name: String, state: State) -> anyhow::Result<()> {

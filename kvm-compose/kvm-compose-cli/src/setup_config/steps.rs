@@ -68,11 +68,12 @@ pub fn loop_step(
     _setup_config_state: &mut SetupConfigState,
 ) -> anyhow::Result<()> {
     loop {
-        let next_frame = SetupSteps::get_step_fn(&current_step);
+        let next_frame = SetupSteps::get_step_fn(current_step);
         terminal.draw(next_frame)?;
         *quit_or_continue = setup_config::handle_step_events()?;
 
         // TODO - break this out into functions
+        #[allow(clippy::single_match)]
         match current_step {
             SetupSteps::HostJson => {
 
@@ -86,7 +87,7 @@ pub fn loop_step(
                 break;
             }
             ControlFlow::Continue => {
-                *current_step = SetupSteps::get_next_step(&current_step);
+                *current_step = SetupSteps::get_next_step(current_step);
                 break;
             }
             ControlFlow::WaitForUser => {}

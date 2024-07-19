@@ -77,10 +77,10 @@ mod tests {
     #[tokio::test]
     async fn test_logical_router() {
         let lr0 = LogicalRouter::new("lr0".into());
-        let create_cmd = lr0.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let create_cmd = lr0.create_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings!["ovn-nbctl", "--may-exist", "lr-add", "lr0"].join(" ");
         assert_eq!(create_cmd, expected_cmd);
-        let destroy_cmd = lr0.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let destroy_cmd = lr0.destroy_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings!["ovn-nbctl", "lr-del", "lr0"].join(" ");
         assert_eq!(destroy_cmd, expected_cmd);
     }

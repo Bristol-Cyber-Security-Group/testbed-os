@@ -16,12 +16,9 @@ pub async fn configure_testbed_host(
     mode: &ServerModeCmd,
     db_config: &Arc<RwLock<Box<dyn TestbedConfigProvider + Sync + Send>>>,
 ) -> anyhow::Result<()> {
-    match mode {
-        ServerModeCmd::CreateConfig => {
-            // do nothing, just continue
-            unreachable!()
-        }
-        _ => {}
+    if let ServerModeCmd::CreateConfig = mode {
+        // do nothing, just continue
+        unreachable!()
     }
     tracing::info!("configuring host to ensure environment is ready for the testbed");
 
@@ -46,10 +43,7 @@ pub async fn configure_testbed_host(
     ).await?;
 
     // make sure OVN settings are correct for this host
-    let is_master = match host_config.is_master_host {
-        None => false,
-        Some(master) => master,
-    };
+    let is_master = host_config.is_master_host.unwrap_or_default();
 
     // configure any OVN related settings and make sure ovn and ovs are up, before other services
     configure_host_ovn(&host_config.ovn, &host_config.main_interface, is_master, &host_config).await?;
@@ -58,17 +52,14 @@ pub async fn configure_testbed_host(
     ensure_services_up().await?;
 
     // if in client mode, make sure ssh server is running for main testbed to be able to control
-    match mode {
-        ServerModeCmd::Client(_) => {
-            tracing::info!("making sure sshd is up");
-            run_subprocess_command_allow_fail(
-                "sudo",
-                vec!["systemctl", "start", "sshd"],
-                false,
-                None,
-            ).await?;
-        }
-        _ => {}
+    if let ServerModeCmd::Client(_) = mode {
+        tracing::info!("making sure sshd is up");
+        run_subprocess_command_allow_fail(
+            "sudo",
+            vec!["systemctl", "start", "sshd"],
+            false,
+            None,
+        ).await?;
     }
 
     match mode {
@@ -150,11 +141,7 @@ pub async fn manage_cluster(
             let host_config = db_config.read().await.get_host_config().await?;
             // filter for the master (this host)
             cluster_config.testbed_host_ssh_config.retain(|name,_| {
-                if name.eq(&host_config.ovn.chassis_name) {
-                    true
-                } else {
-                    false
-                }
+                name.eq(&host_config.ovn.chassis_name)
             });
             tracing::debug!("writing host config");
             db_config.write().await.set_cluster_config(cluster_config).await?;
@@ -165,7 +152,7 @@ pub async fn manage_cluster(
             // this could mean a client could replace another client accidentally..
             // TODO - compare with the results from get_chassis_list using the hostname which should
             //  be unique to the host if the chassis name is the same as another client
-            if cluster_config.testbed_host_ssh_config.get(&client_name).is_some() {
+            if cluster_config.testbed_host_ssh_config.contains_key(&client_name) {
                 tracing::info!("client {} already exists in cluster, updating info", client_name);
             } else {
                 tracing::info!("adding client {} to cluster", &client_name);

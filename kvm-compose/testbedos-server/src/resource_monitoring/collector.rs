@@ -18,10 +18,7 @@ pub async fn get_active_deployments(
 ) -> anyhow::Result<Vec<(&String, &Deployment)>> {
     let active_deployments: Vec<_> = deployment_list.iter()
         .filter(|(_,d)| {
-            match d.state {
-                DeploymentState::Up => true,
-                _ => false,
-            }
+            matches!(d.state, DeploymentState::Up)
         })
         .collect();
     Ok(active_deployments)
@@ -31,10 +28,8 @@ pub async fn get_active_deployments(
 pub async fn get_active_guests_for_deployment(
     deployment: &Deployment,
 ) -> anyhow::Result<Vec<String>> {
-    let state = get_state_file(&deployment).await?;
-    let guest_list: Vec<_> = state.testbed_guests.0
-        .iter()
-        .map(|(_,g)| g.guest_type.name.clone())
+    let state = get_state_file(deployment).await?;
+    let guest_list: Vec<_> = state.testbed_guests.0.values().map(|g| g.guest_type.name.clone())
         .collect();
     Ok(guest_list)
 }
@@ -43,10 +38,8 @@ pub async fn get_active_guests_for_deployment(
 pub async fn get_active_hosts_for_deployment(
     deployment: &Deployment,
 ) -> anyhow::Result<Vec<String>> {
-    let state = get_state_file(&deployment).await?;
-    let host_list: Vec<_> = state.testbed_hosts.0
-        .iter()
-        .map(|(n,_)| n.clone())
+    let state = get_state_file(deployment).await?;
+    let host_list: Vec<_> = state.testbed_hosts.0.keys().cloned()
         .collect();
     Ok(host_list)
 }
@@ -132,12 +125,12 @@ pub async fn collect_metrics_for_hosts(
     let mut metrics = String::new();
 
     // get testbed host resource data (any host in the cluster)
-    for (_, host_config) in &testbed_cluster_config.testbed_host_ssh_config {
+    for host_config in testbed_cluster_config.testbed_host_ssh_config.values() {
         // in case the testbed is running only on master and the private interface is not up or
         // set in the config, we must just resort to localhost
         let host_metrics_url = if let Some(is_master) = host_config.is_master_host {
             if is_master {
-                format!("http://localhost:3355/api/metrics/host")
+                "http://localhost:3355/api/metrics/host".to_string()
             } else {
                 format!("http://{}:3355/api/metrics/host", &host_config.ip)
             }
@@ -172,7 +165,7 @@ pub async fn collect_metrics_for_guests(
     // testbed host
     for (_, deployment) in active_deployments {
         // get and read the state for the deployment
-        let state = get_state_file(&deployment).await?;
+        let state = get_state_file(deployment).await?;
         // get the metrics for each guest in the deployment
         for (guest_name, guest_config) in state.testbed_guests.0 {
             let testbed_host = guest_config.testbed_host
@@ -223,10 +216,8 @@ pub async fn collect_metrics_for_guests(
     // join all futures so we can get the guest metrics in parallel in case there are many guests
     // where a sequential poll could risk taking longer than 5 seconds
     let results = try_join_all(guest_metrics_futures).await?;
-    for maybe_metric in results {
-        if let Some(metric) = maybe_metric {
-            metrics.push_str(&metric);
-        }
+    for metric in results.into_iter().flatten() {
+        metrics.push_str(&metric);
     }
     Ok(metrics)
 }

@@ -19,19 +19,20 @@ pub async fn orchestration_action(
 
     // get deployment or create
     let deployment = {
-        if let Ok(deployment) = http_actions::check_deployment(&client, &project_name, &opts.server_connection).await {
+        if let Ok(deployment) = http_actions::check_deployment(client, &project_name, &opts.server_connection).await {
             // make sure that the recorded deployment location is the same as the current folder
             ensure_current_folder_matches_deployment(&deployment)?;
             deployment
         } else {
             tracing::info!("deployment {project_name} doesnt exist, creating");
-            http_actions::create_deployment(&client, &project_name, &opts.server_connection).await
+            http_actions::create_deployment(client, &project_name, &opts.server_connection).await
                 .context("creating deployment before orchestration")?;
-            http_actions::check_deployment(&client, &project_name, &opts.server_connection).await
+            http_actions::check_deployment(client, &project_name, &opts.server_connection).await
                 .context("checking deployment before orchestration")?
         }
     };
 
+    #[allow(clippy::single_match)]
     match &deployment.state {
         DeploymentState::Running => bail!("deployment in Running state, cannot run orchestration command"),
         _ => {}
@@ -69,7 +70,7 @@ pub async fn orchestration_action(
     }
 
     let check_deployment =
-        http_actions::check_deployment(&client, &project_name, &server_url).await
+        http_actions::check_deployment(client, &project_name, &server_url).await
             .context("checking deployment after orchestration")?;
 
     // TODO - make sure the database update matches result?

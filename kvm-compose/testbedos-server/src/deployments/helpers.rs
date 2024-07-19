@@ -69,17 +69,15 @@ pub fn string_to_yaml(body: String) -> anyhow::Result<Config> {
 fn validate_guest_types(yaml_value: &Value) -> Result<()> {
     if let Value::Mapping(mapping) = yaml_value {
         // Check guests only have one type (e.g. libvirt, docker)
-        if let Some(machines) = mapping.get(&Value::String("machines".to_string())) {
-            if let Value::Sequence(machines_seq) = machines {
-                for machine in machines_seq {
-                    if let Value::Mapping(machine_map) = machine {
-                        let mut guest_type_count = 0;
-                        if machine_map.contains_key(&Value::String("libvirt".to_string())) { guest_type_count += 1;}
-                        if machine_map.contains_key(&Value::String("docker".to_string())) {guest_type_count += 1;}
-                        if machine_map.contains_key(&Value::String("android".to_string())) {guest_type_count += 1;}
-                        if guest_type_count > 1 {
-                            return Err(Error::msg("Machine has more than one guest type defined"));
-                        }
+        if let Some(Value::Sequence(machines_seq)) = mapping.get(&Value::String("machines".to_string())) {
+            for machine in machines_seq {
+                if let Value::Mapping(machine_map) = machine {
+                    let mut guest_type_count = 0;
+                    if machine_map.contains_key(&Value::String("libvirt".to_string())) { guest_type_count += 1;}
+                    if machine_map.contains_key(&Value::String("docker".to_string())) {guest_type_count += 1;}
+                    if machine_map.contains_key(&Value::String("android".to_string())) {guest_type_count += 1;}
+                    if guest_type_count > 1 {
+                        return Err(Error::msg("Machine has more than one guest type defined"));
                     }
                 }
             }

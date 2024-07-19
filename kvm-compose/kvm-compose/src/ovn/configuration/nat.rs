@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::future::Future;
 use anyhow::bail;
 use async_trait::async_trait;
@@ -23,14 +24,15 @@ pub enum OvnNatType {
     DnatSNat,
 }
 
-impl OvnNatType {
-    pub fn to_string(
-        &self,
-    ) -> String {
-        match &self {
-            OvnNatType::SNat => "snat".into(),
-            OvnNatType::DnatSNat => "dnat_and_snat".into(),
-        }
+impl Display for OvnNatType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let text = match &self {
+            OvnNatType::SNat => "snat",
+            OvnNatType::DnatSNat => "dnat_and_snat",
+        };
+        f.write_str(text)
+            .expect("Pretty printing OvnNatType failed");
+        Ok(())
     }
 }
 

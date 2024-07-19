@@ -27,11 +27,7 @@ pub async fn set_up_cluster_client_check_cron_jobs(
                 .expect("scheduled job could not read TestbedClusterConfig");
             let mut remove_list = Vec::new();
             for (name, host) in cluster_config.testbed_host_ssh_config.iter() {
-                let is_master = if let Some(is_master) = host.is_master_host {
-                    is_master
-                } else {
-                    false
-                };
+                let is_master = host.is_master_host.unwrap_or_default();
                 // tracing::info!("checked {name} and is master = {is_master}");
                 // if not master and not online then add to remove list
                 if !is_master {
@@ -63,7 +59,7 @@ pub async fn set_up_cluster_client_check_cron_jobs(
                 cluster_config.testbed_host_ssh_config.remove(to_delete);
             }
             // only save if we did something
-            if remove_list.len() > 0 {
+            if !remove_list.is_empty() {
                 cluster_config.write()
                     .await
                     .expect("could not save cluster config when pruning active testbed client list");
@@ -225,7 +221,7 @@ pub async fn configure_host_ovn(
                 Err(err) => {
                     // assume rule is not there
                     tracing::warn!("could not test if NAT rule exists, adding anyway. err: {err:#}");
-                    format!("")
+                    String::new()
                 }
             };
             if exists.contains("No chain/target/match by that name") || exists.contains("does a matching rule exist in that chain?") {
@@ -282,7 +278,7 @@ pub async fn configure_ovn_cluster(
     // compare chassis in OVN to kvm-compose-config
     let mut unknown_chassis = vec![];
     for (host_name, _) in chassis_list {
-        if cluster_config.testbed_host_ssh_config.get(&host_name).is_none() {
+        if !cluster_config.testbed_host_ssh_config.contains_key(&host_name) {
             // entry in southbound database does not exist in kvm-compose config, remove
             tracing::warn!("found chassis {} in OVN southbound database that is not in cluster config, adding to remove list", &host_name);
             unknown_chassis.push(host_name);
@@ -379,8 +375,8 @@ async fn set_ovs_external_ids(
         for (network, bridge, _) in ovn.bridge_mappings.iter() {
             map.push(format!("{}:{}", network, bridge));
         }
-        let string = map.join(",");
-        string
+        
+        map.join(",")
     };
     let mapping = format!("external-ids:ovn-bridge-mappings={}", &bridge_mappings);
     tracing::info!("setting {}", &mapping);

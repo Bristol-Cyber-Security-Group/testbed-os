@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::orchestration::OrchestrationCommon;
 
 pub mod components;
-pub mod ovn;
+pub mod ovn_state;
 pub mod configuration;
 pub mod ovn_serde;
 

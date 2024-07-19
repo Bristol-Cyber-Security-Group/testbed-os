@@ -79,9 +79,9 @@ mod tests {
             24,
         );
         let expected_add = vec_of_strings!["ovn-nbctl", "--may-exist", "ls-add", "sw0", "--", "set", "Logical_Switch", "sw0", "other_config:subnet=10.0.0.0/24"].join(" ");
-        assert_eq!(expected_add, ls.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
+        assert_eq!(expected_add, ls.create_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
         let expected_del = vec_of_strings!["ovn-nbctl", "ls-del", "sw0"].join(" ");
-        assert_eq!(expected_del, ls.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
+        assert_eq!(expected_del, ls.destroy_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
 
     }
 
@@ -95,9 +95,9 @@ mod tests {
         );
         ls.dhcp = Some(SwitchDhcpOptions { exclude_ips: "10.0.0.1..10.0.0.10".to_string() });
         let expected_add = vec_of_strings!["ovn-nbctl", "--may-exist", "ls-add", "sw0", "--", "set", "Logical_Switch", "sw0", "other_config:subnet=10.0.0.0/24", "other_config:exclude_ips=10.0.0.1..10.0.0.10"].join(" ");
-        assert_eq!(expected_add, ls.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
+        assert_eq!(expected_add, ls.create_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
         let expected_del = vec_of_strings!["ovn-nbctl", "ls-del", "sw0"].join(" ");
-        assert_eq!(expected_del, ls.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
+        assert_eq!(expected_del, ls.destroy_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
 
     }
 }

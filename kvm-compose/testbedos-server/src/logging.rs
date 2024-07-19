@@ -83,7 +83,7 @@ pub async fn setup_orchestration_log_cleanup(
             let file_names = paths.filter_map(|entry| {
                 // check if file name read was successful, then get the filename and convert to String
                 entry.ok().and_then(|e| {
-                    e.path().file_name().and_then(|n| n.to_str().map(|s| String::from(s)))
+                    e.path().file_name().and_then(|n| n.to_str().map(String::from))
                 })
             }).collect::<Vec<String>>();
             // with the file names, extract datetime and check if old enough to delete

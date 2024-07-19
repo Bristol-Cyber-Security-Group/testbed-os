@@ -7,7 +7,7 @@ use crate::components::{SpecialisationContext, TestbedComponent, TestbedNetworkI
 // this file describes the external network interfaces that can be added to the testbed network
 
 pub fn get_network_interface_from_config(in_network_interface: &NetworkInterface, in_id: u16) -> Box<dyn TestbedNetworkInterfaceComponent + Sync + Send> {
-    return Box::new(LogicalNetworkInterface::from_config(in_network_interface, in_id));
+    Box::new(LogicalNetworkInterface::from_config(in_network_interface, in_id))
 }
 
 pub struct LogicalNetworkInterface {
@@ -32,7 +32,7 @@ impl TestbedNetworkInterface for LogicalNetworkInterface {
     }
 
     fn get_id(&self) -> u16 {
-        self.id.clone()
+        self.id
     }
 }
 

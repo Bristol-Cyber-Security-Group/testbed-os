@@ -90,12 +90,9 @@ pub async fn ws_orchestration_client(
                 // get message from orchestration channel
                 if let Some(protocol) = orchestration_recv.recv().await {
                     // end message is always sent if run_orchestration is successful or not
-                    match protocol.instruction {
-                        OrchestrationInstruction::End => {
-                            // if command generation is matched, then we can end this future
-                            break;
-                        }
-                        _ => {}
+                    if let OrchestrationInstruction::End = protocol.instruction {
+                        // if command generation is matched, then we can end this future
+                        break;
                     }
                     // send protocol to server on websocket
                     send_orchestration_instruction(
@@ -135,7 +132,7 @@ pub async fn ws_orchestration_client(
 
         // close websocket
         tracing::debug!("closing websocket");
-        let _ = websocket_container.lock()
+        websocket_container.lock()
                 .await
                 .sender
                 .send(Message::Close(Some(CloseFrame {
@@ -229,7 +226,7 @@ async fn send_orchestration_instruction(
     // need to serialise the instruction to binary format
     let serialised_instruction = serde_json::to_vec(&orchestration_protocol)
         .context("serialising OrchestrationProtocol")?;
-    let _ = websocket_container
+    websocket_container
         .lock()
         .await
         .sender
@@ -302,15 +299,10 @@ async fn send_orchestration_instruction(
 
                 // handle a logging message from server
                 let logging_result: Result<OrchestrationLogger, serde_json::Error> = serde_json::from_str(&b);
-                if let Ok(ref log) = logging_result {
-                    match log {
-                        OrchestrationLogger::Log { message, level } => {
-                            match level {
-                                OrchestrationLoggerLevel::Info => tracing::info!("{message}"),
-                                OrchestrationLoggerLevel::Error => tracing::error!("{message}"),
-                            }
-                        }
-                        _ => {} // dont handle `End` here
+                if let Ok(OrchestrationLogger::Log { ref message, ref level }) = logging_result {
+                    match level {
+                        OrchestrationLoggerLevel::Info => tracing::info!("{message}"),
+                        OrchestrationLoggerLevel::Error => tracing::error!("{message}"),
                     }
                 }
 

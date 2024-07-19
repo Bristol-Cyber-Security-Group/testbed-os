@@ -18,7 +18,7 @@ pub async fn write_file_with_permissions(
 ) -> anyhow::Result<PathBuf> {
     let dest_path = PathBuf::from(dest_string);
     let mut output = File::create(dest_path.to_str().context("Getting destination path")?).await?;
-    output.write_all(format!("{file_contents}").as_bytes()).await?;
+    output.write_all(file_contents.to_string().as_bytes()).await?;
     let mut perms = tokio::fs::metadata(&dest_path).await?.permissions();
     perms.set_mode(permissions);
     tokio::fs::set_permissions(&dest_path, perms).await?;

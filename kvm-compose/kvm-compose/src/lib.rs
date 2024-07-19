@@ -23,8 +23,8 @@ pub mod analysis_tools;
 
 fn format_prj_name(s: &str) -> String {
     // replace awkward characters with "-"
-    let new_proj_name = s.replace(&['(', ')', ',', '\"', '.', ';', ':', '\'', ' '][..], "-");
-    new_proj_name
+    
+    s.replace(&['(', ')', ',', '\"', '.', ';', ':', '\'', ' '][..], "-")
 }
 
 pub fn get_project_name(project_name: Option<String>) -> anyhow::Result<String> {

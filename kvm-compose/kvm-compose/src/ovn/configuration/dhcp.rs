@@ -123,7 +123,7 @@ impl OvnCommand for DhcpDatabaseEntry {
         // get the switch ports that have this rule
         let switch_ports = {
             let mut dynamic_lsp = Vec::new();
-            for (_, lsp) in switch_ports_hashmap {
+            for lsp in switch_ports_hashmap.values() {
                 if let Some(dhcp_uuid) = lsp.dhcp_options_uuid {
                     if dhcp_uuid == dhcp_self_hash {
                         // this switch port matches the internal UUID of the database rule
@@ -152,7 +152,7 @@ impl OvnCommand for DhcpDatabaseEntry {
         };
         // remove newline
         let rule_uuid = if !rule_uuid.eq("") {
-            rule_uuid.strip_suffix("\n")
+            rule_uuid.strip_suffix('\n')
                 .context("stripping newline from DHCP options uuid")?.to_string()
         } else {
             rule_uuid
@@ -201,8 +201,8 @@ impl OvnCommand for DhcpDatabaseEntry {
         // check if each rule has trailing new line
         let rules: Vec<Result<&str,anyhow::Error>> = rules.iter()
             .map(|s| {
-                if s.ends_with("\n") {
-                    let intermediate = s.strip_suffix("\n")
+                if s.ends_with('\n') {
+                    let intermediate = s.strip_suffix('\n')
                         .context("stripping newline from DHCP options uuid")?;
                     Ok(intermediate)
                 } else {
