@@ -200,7 +200,7 @@ fi
 
 ### GENERAL DEPENDENCIES
 echo -e "\nchecking for general dependencies installation ..."
-apt_dependencies=("genisoimage" "git" "gcc" "make" "libssl-dev" "build-essential" "curl")
+apt_dependencies=("genisoimage" "git" "gcc" "make" "libssl-dev" "build-essential" "curl" "openssh-server" "openssh-client")
 MISSING_DEPS=false
 
 for dep in "${apt_dependencies[@]}"; do
