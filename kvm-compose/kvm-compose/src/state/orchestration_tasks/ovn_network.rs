@@ -369,6 +369,7 @@ impl OrchestrationTask for StateNetwork {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn reapply_acl_action(
     current_state: &State,
     logical_testbed: LogicalTestbed,

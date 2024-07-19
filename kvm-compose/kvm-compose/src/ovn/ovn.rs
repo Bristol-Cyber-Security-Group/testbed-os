@@ -120,6 +120,7 @@ impl OvnNetwork {
 
     /// Adds a logical switch port of type internal. Will not update the definition if it already
     /// exists.
+    #[allow(clippy::too_many_arguments)]
     pub fn add_lsp_internal(
         &mut self,
         name: String,
@@ -652,19 +653,16 @@ impl OvnNetwork {
         let mut lsp_dynamic = Vec::new();
         for (lsp_name, lsp_data) in self.switch_ports.iter() {
             if lsp_data.parent_switch.eq(&sw) {
-                match &lsp_data.port_type {
-                    LogicalSwitchPortType::Internal { ip, .. } => {
-                        match ip {
-                            OvnIpAddr::Dynamic => {
-                                // only take LSP type internal AND has dynamic as IP address for
-                                // this switch
-                                // take a copy as we will get the mutable version later
-                                lsp_dynamic.push(lsp_name.clone());
-                            }
-                            _ => {}
+                if let LogicalSwitchPortType::Internal { ip, .. } = &lsp_data.port_type {
+                    match ip {
+                        OvnIpAddr::Dynamic => {
+                            // only take LSP type internal AND has dynamic as IP address for
+                            // this switch
+                            // take a copy as we will get the mutable version later
+                            lsp_dynamic.push(lsp_name.clone());
                         }
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
         }
@@ -726,21 +724,18 @@ impl OvnNetwork {
             // LSP must have the parent port specified
             if !lsp_data.parent_switch.eq(&switch.name) {continue;}
             // must be type router
-            match &lsp_data.port_type {
-                LogicalSwitchPortType::Router { router_port_name, .. } => {
-                    // LSP is type router, now try to match to the LRP
-                    for (lrp_name, lrp_data) in &self.router_ports {
-                        // find the LRP with our router as parent
-                        if lrp_data.parent_router.eq(&router.name) {
-                            // see if the pair router port for this switch port type router match
-                            if lrp_name.eq(router_port_name) {
-                                // we have found the pair
-                                return Ok((lsp_data, lrp_data))
-                            }
+            if let LogicalSwitchPortType::Router { router_port_name, .. } = &lsp_data.port_type {
+                // LSP is type router, now try to match to the LRP
+                for (lrp_name, lrp_data) in &self.router_ports {
+                    // find the LRP with our router as parent
+                    if lrp_data.parent_router.eq(&router.name) {
+                        // see if the pair router port for this switch port type router match
+                        if lrp_name.eq(router_port_name) {
+                            // we have found the pair
+                            return Ok((lsp_data, lrp_data))
                         }
                     }
                 }
-                _ => {}
             }
         }
         Err(LogicalOperationResult::Error {

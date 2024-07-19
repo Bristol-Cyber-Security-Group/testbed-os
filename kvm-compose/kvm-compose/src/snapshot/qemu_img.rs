@@ -66,10 +66,10 @@ impl QemuImg {
         } else if let Some(index) = img_name.rfind("-linked-clone") {
             Some(index)
         } else { img_name.rfind("-iso-guest") };
-        let guest_name = if guest_name_idx.is_none() {
-            bail!("could not find guest name to work out the domain xml filepath");
+        let guest_name = if let Some(idx) = guest_name_idx {
+            img_name.split_at(idx).0
         } else {
-            img_name.split_at(guest_name_idx.unwrap()).0
+            bail!("could not find guest name to work out the domain xml filepath");
         };
         let xml_name = format!("{}/{guest_name}-domain.xml", artefacts_folder.to_str().unwrap());
         Ok(xml_name)
@@ -260,7 +260,7 @@ impl GuestDiskSnapshot for QemuImg {
         Ok(())
     }
 
-    async fn delete_all(&self, guest_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    async fn delete_all(&self, guest_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()> {
         if let Some(snapshots) = &self.snapshots {
             // we need to shut down the guest first if it is on
             let is_running = self.is_running(guest_name, testbed_host, common).await?;
@@ -290,7 +290,7 @@ impl GuestDiskSnapshot for QemuImg {
         Ok(())
     }
 
-    async fn restore(&self, guest_name: &String, snapshot_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    async fn restore(&self, guest_name: &str, snapshot_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()> {
         // we need to shut down the guest first if it is on
         let is_running = self.is_running(guest_name, testbed_host, common).await?;
         if is_running {

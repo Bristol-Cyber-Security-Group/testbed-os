@@ -53,7 +53,7 @@ impl GuestSnapshots {
         self.snapshot.info()
     }
 
-    pub async fn restore(&self, snapshot_name: &String, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    pub async fn restore(&self, snapshot_name: &str, common: &OrchestrationCommon) -> anyhow::Result<()> {
         // TODO - if restoring from a snapshot in the middle of a chain, need to tell the user that this could
         //  impact the child snapshots
         self.snapshot.restore(&self.guest_name, snapshot_name, &self.testbed_host, common).await
@@ -257,8 +257,8 @@ pub trait GuestDiskSnapshot {
     fn list(&self) -> Option<Vec<String>>;
     async fn create(&self, guest_name: &str, snapshot_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()>;
     async fn delete(&self, guest_name: &str, snapshot_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()>;
-    async fn delete_all(&self, guest_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()>;
-    async fn restore(&self, guest_name: &String, snapshot_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()>;
+    async fn delete_all(&self, guest_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()>;
+    async fn restore(&self, guest_name: &str, snapshot_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()>;
     /// Get the name of the most recent snapshot for this guest, if it exists
     fn get_most_recent_snapshot(&self) -> Option<String>;
 }
