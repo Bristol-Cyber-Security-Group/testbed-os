@@ -20,8 +20,8 @@ The test harness will create a base image using ubuntu cloud-init, to install al
 There are a few tests here to make sure everything installed correctly.
 Once this install has completed, this base image is turned off and is used as a backing image for clones, so that each test case starts with a fresh pre-installed testbed.
 
-For every test case, whether a single testbed host or more, we create the required number of clones and push the test case configuration to the designated master.
-On this master, the whole orchestration process is executed then the asset testing is executed.
+For every test case, whether a single testbed host or more, we create the required number of clones and push the test case configuration to the designated main.
+On this main, the whole orchestration process is executed then the asset testing is executed.
 Additionally, the test case is redeployed once with a "down" then "up" to make sure things still work on consecutive deployments.
 After this second deployment test finishes, the test case ends and these testbed host clones are destroyed.
 If any test in the test case fails, then the test harness will stop at that test and leave the testbed hosts running so that the developer can inspect the failed scenario.
@@ -40,14 +40,14 @@ There are a few folders in the test harness folder, their uses:
     These are the folders containing distinct test cases.
     There is a yaml file for the test and a few kvm-compose-config.json files, each describing the one, two, many host setups.
     Also includes any scripts/artefacts that the yaml file references.
-    The test case folder is pushed to the testbed master host and becomes the project folder.
+    The test case folder is pushed to the testbed main host and becomes the project folder.
 
 :assets:
 
     The files in here are used in deploying the infrastructure.
     There is the `iso` folder, which contains the cloud-init config files for the testbed hosts.
     There is the `ssh_key` folder which contains the ssh keys used and referenced by the kvm-compose-config.json.
-    There is the `testbed-network.xml` which describes the libvirt network in which the testbed hosts exist in - this is not related to the testbed network the master testbed host creates.
+    There is the `testbed-network.xml` which describes the libvirt network in which the testbed hosts exist in - this is not related to the testbed network the main testbed host creates.
 
 :scripts:
 
@@ -112,5 +112,5 @@ The test harness offers a debug mode, activated just by having the `DEBUG` envir
 So for example `DEBUG = ./run_test_harness.sh` will enable debug mode.
 
 This debug mode will skip the base image creation step (assuming you have already built it previously).
-Additionally, the debug mode will trigger the whole repo to be synced to the master testbed host.
+Additionally, the debug mode will trigger the whole repo to be synced to the main testbed host.
 As the base image creation step can take a while, this allows you to quickly get into running the test cases if you are developing test cases or running the tests to see if a bug has been fixed.

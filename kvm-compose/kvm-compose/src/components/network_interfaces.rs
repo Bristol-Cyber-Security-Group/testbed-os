@@ -54,12 +54,12 @@ impl TestbedComponent for LogicalNetworkInterface {
     fn specialise(&mut self, context: &SpecialisationContext) -> anyhow::Result<()> {
 
         // for now, we can only support network interfaces that are assigned to bridges that are
-        // on the master testbed host - so if the network interface is not on the master testbed
+        // on the main testbed host - so if the network interface is not on the main testbed
         // host then prevent generate artefacts
         // TODO - with OVN network backend this is not a limitation anymore
-        if !self.testbed_host.as_ref().context("getting testbed host config")?.eq(&context.master_host) {
-            // not on master
-            bail!("the network interface {} is not on the master, currently not supported", self.config.nic_name);
+        if !self.testbed_host.as_ref().context("getting testbed host config")?.eq(&context.main_host) {
+            // not on main testbed
+            bail!("the network interface {} is not on the main testbed, currently not supported", self.config.nic_name);
         }
 
         Ok(())

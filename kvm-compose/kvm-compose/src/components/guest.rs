@@ -64,14 +64,14 @@ pub struct LibvirtGuest {
     pub config_machine: Machine,
     pub testbed_host: Option<String>,
     pub original_disk_path: Option<PathBuf>,
-    // is either master filesystem or remote filesystem path
+    // is either main filesystem or remote filesystem path
     pub disk_path: Option<String>,
     pub iso_path: Option<String>,
-    // master filesystem, path to disk
-    pub master_disk_path: Option<String>,
-    // master filesystem, path to guest folder
+    // main filesystem, path to disk
+    pub main_testbed_disk_path: Option<String>,
+    // main filesystem, path to guest folder
     pub path_for_command: Option<String>,
-    // is either master filesystem or remote filesystem path
+    // is either main filesystem or remote filesystem path
     pub guest_folder: Option<String>,
     pub path_to_domain_xml: Option<String>,
     pub mac_address: Option<MacAddress>,
@@ -88,7 +88,7 @@ impl TestbedGuest for LibvirtGuest {
             original_disk_path: None,
             disk_path: None,
             iso_path: None,
-            master_disk_path: None,
+            main_testbed_disk_path: None,
             path_for_command: None,
             guest_folder: None,
             path_to_domain_xml: None,
@@ -163,11 +163,11 @@ impl TestbedComponent for LibvirtGuest {
     }
 
     fn specialise(&mut self, context: &SpecialisationContext) -> anyhow::Result<()> {
-        // check if guest is on master or not
+        // check if guest is on main or not
         let testbed_host_name = self.get_testbed_host().clone().unwrap();
         let project_path = context.project_folder_path.to_str().unwrap().to_string();
-        let local_path = if context.master_host.eq(&testbed_host_name) {
-            // on master
+        let local_path = if context.main_host.eq(&testbed_host_name) {
+            // on main
             format!("{project_path}/artefacts/")
         } else {
             let remote_host_username =
@@ -222,7 +222,7 @@ impl TestbedComponent for LibvirtGuest {
         };
 
         // get the local disk path even if guest will be on remote
-        self.master_disk_path = match &self.config_machine.guest_type {
+        self.main_testbed_disk_path = match &self.config_machine.guest_type {
             GuestType::Libvirt(libvirt_guest) => {
                 let folder_for_script = self.path_for_command.clone().unwrap();
                 if libvirt_guest.is_clone_of.is_some() {
@@ -299,7 +299,7 @@ pub struct DockerGuest {
     pub config_machine: Machine,
     pub testbed_host: Option<String>,
     pub container_name: Option<String>,
-    // change dir for running docker command, depends on if master or remote testbed host
+    // change dir for running docker command, depends on if main or remote testbed host
     pub change_dir: Option<String>,
     pub unique_id: u32,
 }
@@ -364,8 +364,8 @@ impl TestbedComponent for DockerGuest {
     fn specialise(&mut self, context: &SpecialisationContext) -> anyhow::Result<()> {
         self.container_name = Some(format!("{}-{}", context.project_name, self.get_guest_name()).clone());
 
-        self.change_dir = if context.master_host.eq(self.testbed_host.as_ref().unwrap()) {
-            // is on master
+        self.change_dir = if context.main_host.eq(self.testbed_host.as_ref().unwrap()) {
+            // is on main
             Some(context.project_folder_path.to_str().unwrap().to_string())
         } else {
             let testbed_host_name = self.get_testbed_host().clone().unwrap();

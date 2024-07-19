@@ -35,11 +35,11 @@ In this document, we will describe the execution of a command or script or pushi
 
 There are four different scenarios for command running of tasks:
 
-:local testbed host: This is running a task on the current (master) testbed host.
+:local testbed host: This is running a task on the current (main) testbed host.
     Note: there is no need for SSH as it will be a local command.
     Note: we do not need to push files since the artefacts will already be in this host's file system.
 
-:local testbed guest: This is running a task on a testbed guest that is on the current (master) testbed host.
+:local testbed guest: This is running a task on a testbed guest that is on the current (main) testbed host.
     This uses SSH.
 
 :remote testbed host: This is running a task on a remote testbed host.
@@ -58,7 +58,7 @@ These stages do have a dependency, as follows:
 2) Check if all testbeds to be used in the deployment are running
 3) Create project folders on client testbed hosts (if being used)
 4) Network Stage
-    1) deploy the libvirt network on the master testbed host
+    1) deploy the libvirt network on the main testbed host
     2) deploy the openvswitch bridges across all testbed hosts
     3) deploy the openvswitch tunnels across all testbed hosts
 5) If clones are defined

@@ -121,7 +121,7 @@ $(document).ready(function() {
                 ],
                 'user_script': [
                     {label: 'Script', type: 'text', id: 'script'},
-                    {label: 'Run on master', type: 'checkbox', id:'run_on_master'}
+                    {label: 'Run on main', type: 'checkbox', id:'run_on_master'}
                 ]
             };
             generateInputs(options[selectedCommand] || [], '#execDynamicButtons', false);

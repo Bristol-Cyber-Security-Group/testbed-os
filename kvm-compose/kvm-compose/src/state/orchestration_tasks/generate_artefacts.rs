@@ -48,12 +48,12 @@ async fn libvirt(
     let client_name = format!("{}-{}", common.project_name, &guest_config.guest_type.name);
     let network_def = &guest_config.guest_type.network;
 
-    // determine if the guest is on master or remote testbed, which impacts the path of the iso
-    let master_host = common.get_master()?;
+    // determine if the guest is on main or remote testbed, which impacts the path of the iso
+    let main_host = common.get_main_testbed()?;
     let guests_testbed_host = guest_config.testbed_host.clone()
         .context("getting guest's testbed host")?;
-    let artefacts_folder_at_final_location = if master_host.eq(&guests_testbed_host) {
-        // on master
+    let artefacts_folder_at_final_location = if main_host.eq(&guests_testbed_host) {
+        // on main
         project_artefacts_folder.clone()
     } else {
         // on remote
@@ -74,7 +74,7 @@ async fn libvirt(
 
     // main disk
     tera_context.insert("disk_driver", &format!("qcow2"));
-    // this is either on master or on remote
+    // this is either on main or on remote
     let main_disk_img_path = match &libvirt_config.libvirt_type {
         LibvirtGuestOptions::CloudImage { path,.. } => {
             let img_path = path
@@ -203,7 +203,7 @@ async fn libvirt(
     };
 
     // get the local disk path even if guest will be on remote
-    let disk_path_on_master = format!("{project_artefacts_folder}/{main_disk_img_name}");
+    let disk_path_on_main = format!("{project_artefacts_folder}/{main_disk_img_name}");
 
     // get the location of image specified in the yaml and create a copy of the image in the guest artefact folder, if
     // it is a non clone or is a backing image guest
@@ -218,18 +218,18 @@ async fn libvirt(
                 let cloud_init_image_path = name
                     .resolve_path(format!("{TESTBED_SETTINGS_FOLDER}/images/").into()).await?;
                 // if disk already exists, leave it unless force provisioning is true
-                if !check_file_exists(&disk_path_on_master) || common.force_provisioning {
+                if !check_file_exists(&disk_path_on_main) || common.force_provisioning {
                     // create a copy of the cloud image into the artefacts folder
-                    copy_and_set_permissions_orchestration(&cloud_init_image_path, &disk_path_on_master, 0o755, common).await?;
+                    copy_and_set_permissions_orchestration(&cloud_init_image_path, &disk_path_on_main, 0o755, common).await?;
                     // resize disk - todo fn
                     if disk_expand > 0 {
-                        tracing::info!("expanding {} disk by +{}G at {}", client_name, disk_expand, disk_path_on_master);
-                        resize(disk_path_on_master, disk_expand)
+                        tracing::info!("expanding {} disk by +{}G at {}", client_name, disk_expand, disk_path_on_main);
+                        resize(disk_path_on_main, disk_expand)
                             .await
                             .context("resizing guest disk")?;
                     }
                 } else {
-                    tracing::warn!("cloud image {disk_path_on_master} already exists, skipping create");
+                    tracing::warn!("cloud image {disk_path_on_main} already exists, skipping create");
                 }
             }
         }
@@ -239,7 +239,7 @@ async fn libvirt(
                 // clone image once the backing image is deployed and setup
             } else {
                 // if already exists dont copy over unless force provisioning is true
-                if !check_file_exists(&disk_path_on_master) || common.force_provisioning {
+                if !check_file_exists(&disk_path_on_main) || common.force_provisioning {
 
                     let reference_image = guest_config
                         .extra_info
@@ -251,16 +251,16 @@ async fn libvirt(
                         // create a copy of the image into the artefacts folder
                         copy_and_set_permissions_orchestration(
                             &PathBuf::from(reference_image),
-                            &disk_path_on_master,
+                            &disk_path_on_main,
                             0o755,
                             common
                         ).await?;
                     } else {
                         // create a linked clone, unless user has specified to make a raw copy
-                        let cmd = vec!["qemu-img", "create", "-f", "qcow2", "-b", reference_image, "-F", "qcow2", &disk_path_on_master];
+                        let cmd = vec!["qemu-img", "create", "-f", "qcow2", "-b", reference_image, "-F", "qcow2", &disk_path_on_main];
                         run_testbed_orchestration_command(
                             &common,
-                            &master_host,
+                            &main_host,
                             "sudo",
                             cmd,
                             false,
@@ -270,13 +270,13 @@ async fn libvirt(
 
                     // resize disk
                     if disk_expand > 0 {
-                        tracing::info!("expanding {} disk by +{}G at {}", client_name, disk_expand, disk_path_on_master);
-                        resize(disk_path_on_master, disk_expand)
+                        tracing::info!("expanding {} disk by +{}G at {}", client_name, disk_expand, disk_path_on_main);
+                        resize(disk_path_on_main, disk_expand)
                             .await
                             .context("resizing guest disk")?;
                     }
                 } else {
-                    tracing::warn!("existing disk image {disk_path_on_master} already exists, skipping copy from original");
+                    tracing::warn!("existing disk image {disk_path_on_main} already exists, skipping copy from original");
                 }
             }
         }
@@ -285,7 +285,7 @@ async fn libvirt(
                 bail!("scaling is not supported currently for libvirt iso guests");
             } else {
                 // if already exists dont copy over unless force provisioning is true
-                if !check_file_exists(&disk_path_on_master) || common.force_provisioning {
+                if !check_file_exists(&disk_path_on_main) || common.force_provisioning {
 
                     let reference_image = guest_config
                         .extra_info
@@ -294,19 +294,19 @@ async fn libvirt(
                         .context("getting reference image for iso guest, must exist")?;
 
                     // create a copy of the iso into the artefacts folder
-                    copy_and_set_permissions_orchestration(&PathBuf::from(reference_image), &disk_path_on_master, 0o755, common).await?;
+                    copy_and_set_permissions_orchestration(&PathBuf::from(reference_image), &disk_path_on_main, 0o755, common).await?;
 
                     // resize disk
                     // TODO, need to create a disk image then mount the iso into the guest
                     //  otherwise as it is now iso guest does not work
                     if disk_expand > 0 {
-                        tracing::info!("expanding {} disk by +{}G at {}", client_name, disk_expand, disk_path_on_master);
-                        resize(disk_path_on_master, disk_expand)
+                        tracing::info!("expanding {} disk by +{}G at {}", client_name, disk_expand, disk_path_on_main);
+                        resize(disk_path_on_main, disk_expand)
                             .await
                             .context("resizing guest disk")?;
                     }
                 } else {
-                    tracing::warn!("iso guest image {disk_path_on_master} already exists, skipping create");
+                    tracing::warn!("iso guest image {disk_path_on_main} already exists, skipping create");
                 }
             }
         }

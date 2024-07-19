@@ -18,8 +18,8 @@ Once you have installed the testbed, you will need to configure the server.
 This requires you to make sure the ``host.json`` in the testbed folder ``/var/lib/testbedos/config/`` folder is set up correctly.
 Please see the |kvm-compose-config| documentation on how to set this up.
 
-The master testbed server also needs a ``mode.json`` file set to "Master".
-If you used the ``setup.sh`` script, then this will have been placed for you with master as the default.
+The main testbed server also needs a ``mode.json`` file set to "Main".
+If you used the ``setup.sh`` script, then this will have been placed for you with main as the default.
 
 Launching the Server
 --------------------
@@ -32,7 +32,7 @@ Adding a client Testbed to the Testbed Cluster
 
 If you are adding more testbed hosts to the cluster to provide more resource capability, the setup is very similar to the first testbed.
 You must follow the same installation and configuration steps.
-However, instead of running the testbed in master mode, it will need to be in client mode.
+However, instead of running the testbed in main mode, it will need to be in client mode.
 Please see the |testbed cluster| documentation for more information.
 
 Running Test Cases

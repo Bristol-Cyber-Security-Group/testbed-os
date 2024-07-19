@@ -9,7 +9,7 @@ tcpdump
 _______
 
 Tcpdump and ovs-tcpdump are supported in the testbed, with the constraint of limiting you to only be able to work on bridges that have been created by the testbed.
-Additionally, the command will also work on bridges that have been assigned to other testbed hosts that are part of the testbed (non-master testbed hosts).
+Additionally, the command will also work on bridges that have been assigned to other testbed hosts that are part of the testbed (non-main testbed hosts).
 The outputs, if any, will be pulled from the remote testbed hosts into the current working directory, which will be the testbed project directory you are working from.
 
 Both tcpdump and ovs-tcpdump take similar command line arguments, which can be given to the kvm-compose tool and they will be passed on to the respective tool.

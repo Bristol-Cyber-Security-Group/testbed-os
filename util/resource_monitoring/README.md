@@ -6,7 +6,7 @@ This just makes it easy to control the state of the server, when the testbed is 
 Prometheus works in a pull based system, where prometheus will do the periodic scraping on the specified endpoints to get data.
 This means we offer an endpoint on the testbed server that will respond with the data for prometheus to store.
 
-These services will just continuously run in the background and will restart with the master.
+These services will just continuously run in the background and will restart with the main.
 
 ## Security 
 

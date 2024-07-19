@@ -12,7 +12,7 @@ cargo build --release
 
 # place the mode.json in place if there is not one already there
 if [ ! -f /var/lib/testbedos/config/mode.json ]; then
-    echo "Placing a mode.json with master mode set"
+    echo "Placing a mode.json with main mode set"
     sudo cp mode.json /var/lib/testbedos/config/mode.json
 fi
 

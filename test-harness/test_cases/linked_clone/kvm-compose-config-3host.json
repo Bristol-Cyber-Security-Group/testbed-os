@@ -5,21 +5,21 @@
             "user": "nocloud",
             "identity_file": "/home/nocloud/.ssh/id_ed25519",
             "testbed_nic": "enp1s0",
-            "is_master_host": true
+            "is_main_host": true
         },
         "testbed-host-two": {
             "hostname": "192.168.80.12",
             "user": "nocloud",
             "identity_file": "/home/nocloud/.ssh/id_ed25519",
             "testbed_nic": "enp1s0",
-            "is_master_host": false
+            "is_main_host": false
         },
         "testbed-host-three": {
             "hostname": "192.168.80.13",
             "user": "nocloud",
             "identity_file": "/home/nocloud/.ssh/id_ed25519",
             "testbed_nic": "enp1s0",
-            "is_master_host": false
+            "is_main_host": false
         }
     },
     "ssh_public_key_location": "/home/nocloud/.ssh/id_ed25519_kvm.pub",

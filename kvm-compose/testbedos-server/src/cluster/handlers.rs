@@ -8,7 +8,7 @@ use crate::{AppError, AppState};
 use crate::cluster::cluster::{manage_cluster};
 use crate::cluster::ClusterOperation;
 
-/// Client testbed will send it's own host.json config to the master, the master will then add it
+/// Client testbed will send it's own host.json config to the main, the main will then add it
 /// to it's testbed cluster config
 pub async fn join_cluster(
     State(db_config): State<Arc<AppState>>,

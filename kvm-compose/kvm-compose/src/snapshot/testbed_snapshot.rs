@@ -2,7 +2,7 @@ use anyhow::Context;
 use chrono::{DateTime, Utc};
 use futures_util::future::try_join_all;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
-use crate::orchestration::{is_master, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command};
+use crate::orchestration::{is_main_testbed, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command};
 use crate::state::{State};
 
 /// This function will create the whole testbed snapshot by preparing all the artefacts of the
@@ -33,7 +33,7 @@ pub async fn run_testbed_snapshot_action(
         let testbed_host = guest_data.testbed_host.as_ref().context("getting testbed host name in run snapshot action")?;
         match &guest_data.guest_type.guest_type {
             GuestType::Libvirt(libvirt) => {
-                if !is_master(common, testbed_host) {
+                if !is_main_testbed(common, testbed_host) {
                     // place remote images back into the artefacts folder, this will overwrite
                     // the original images but we want to preserve state of the current guest
                     // images
@@ -85,8 +85,8 @@ async fn zip_project(
     let time_now: DateTime<Utc> = std::time::SystemTime::now().into();
     let project_folder = common.project_working_dir.to_string_lossy().to_string();
     let zip_name = format!("{project_name}-snapshot-{}.zip", time_now.format("%+"));
-    let master_host: Vec<&String> = common.testbed_hosts.iter()
-        .filter(|(_, h)| h.is_master_host)
+    let main_host: Vec<&String> = common.testbed_hosts.iter()
+        .filter(|(_, h)| h.is_main_host)
         .map(|(n, _)| n)
         .collect();
     // TODO - should we try to find and ignore other snapshot zips to prevent accidentally including
@@ -98,7 +98,7 @@ async fn zip_project(
     let cmd = vec!["zip", "-r", &zip_name, ".", "-x", &state_file, "-b", "/tmp"];
     run_testbed_orchestration_command(
         common,
-        master_host[0],
+        main_host[0],
         "sudo",
         cmd,
         false,

@@ -52,8 +52,8 @@ pub struct ExecCmdTool {
 #[derive(Parser, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct ExecCmdUserScript {
-    #[clap(short, long, help = "Run script from master even if guest is on a remote testbed")]
-    pub run_on_master: bool,
+    #[clap(short, long, help = "Run script from main testbed even if guest is on a remote testbed")]
+    pub run_on_main_testbed: bool,
     #[clap(trailing_var_arg=true, index = 1)]
     pub script: Vec<String>,
 }

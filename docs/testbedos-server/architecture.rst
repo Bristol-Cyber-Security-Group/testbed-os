@@ -76,13 +76,13 @@ Cluster Management
 ------------------
 
 The testbed server will automatically manage the testbed cluster for you.
-When a testbed server is run in client mode, and makes a successful connection to the master testbed, the master testbed will keep track of the clients that have "joined" the cluster.
-The master will populate the `kvm-compose-config.json` file in the testbed config folder dynamically, with the respective `host.json` files of each client.
-On connection of the client, the client will push it's own `host.json` to the master so the master knows how to use this client in it's testbed deployments.
+When a testbed server is run in client mode, and makes a successful connection to the main testbed, the main testbed will keep track of the clients that have "joined" the cluster.
+The main will populate the `kvm-compose-config.json` file in the testbed config folder dynamically, with the respective `host.json` files of each client.
+On connection of the client, the client will push it's own `host.json` to the main so the main knows how to use this client in it's testbed deployments.
 
-After the join request from the client, the master will periodically make a request to the client to see if it is still available.
-If it is not available, the master will remove it from it's cluster configuration `kvm-compose-config.json`.
-Additionally, the clients will also periodically make a request to the master to see if it is still available.
+After the join request from the client, the main will periodically make a request to the client to see if it is still available.
+If it is not available, the main will remove it from it's cluster configuration `kvm-compose-config.json`.
+Additionally, the clients will also periodically make a request to the main to see if it is still available.
 
 Developer Notes
 ---------------
@@ -106,6 +106,6 @@ You can do this via (provide the server with root permissions):
 # make sure youre in the root of the server crate i.e.
 # testbed-os/kvm-compose/testbedos-server/
 # then run the following
-sudo -E bash -c  'cargo run -- master' $USER
+sudo -E bash -c  'cargo run -- main' $USER
 ```
 
