@@ -18,7 +18,7 @@ use nix::unistd::{Gid, Uid};
 use tokio::io::AsyncWriteExt;
 
 use crate::components::network::LogicalNetwork;
-use crate::ovn::ovn::OvnNetwork;
+use crate::ovn::ovn_state::OvnNetwork;
 
 // the data structures in this file represent the state, they are generated from the Config and Common
 // data structures used to parse the kvm-compose.yaml

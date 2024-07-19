@@ -16,12 +16,9 @@ pub async fn configure_testbed_host(
     mode: &ServerModeCmd,
     db_config: &Arc<RwLock<Box<dyn TestbedConfigProvider + Sync + Send>>>,
 ) -> anyhow::Result<()> {
-    match mode {
-        ServerModeCmd::CreateConfig => {
-            // do nothing, just continue
-            unreachable!()
-        }
-        _ => {}
+    if let ServerModeCmd::CreateConfig = mode {
+        // do nothing, just continue
+        unreachable!()
     }
     tracing::info!("configuring host to ensure environment is ready for the testbed");
 
@@ -55,17 +52,14 @@ pub async fn configure_testbed_host(
     ensure_services_up().await?;
 
     // if in client mode, make sure ssh server is running for main testbed to be able to control
-    match mode {
-        ServerModeCmd::Client(_) => {
-            tracing::info!("making sure sshd is up");
-            run_subprocess_command_allow_fail(
-                "sudo",
-                vec!["systemctl", "start", "sshd"],
-                false,
-                None,
-            ).await?;
-        }
-        _ => {}
+    if let ServerModeCmd::Client(_) = mode {
+        tracing::info!("making sure sshd is up");
+        run_subprocess_command_allow_fail(
+            "sudo",
+            vec!["systemctl", "start", "sshd"],
+            false,
+            None,
+        ).await?;
     }
 
     match mode {
@@ -158,7 +152,7 @@ pub async fn manage_cluster(
             // this could mean a client could replace another client accidentally..
             // TODO - compare with the results from get_chassis_list using the hostname which should
             //  be unique to the host if the chassis name is the same as another client
-            if cluster_config.testbed_host_ssh_config.get(&client_name).is_some() {
+            if cluster_config.testbed_host_ssh_config.contains_key(&client_name) {
                 tracing::info!("client {} already exists in cluster, updating info", client_name);
             } else {
                 tracing::info!("adding client {} to cluster", &client_name);

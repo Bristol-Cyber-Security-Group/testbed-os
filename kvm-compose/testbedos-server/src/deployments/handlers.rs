@@ -31,11 +31,8 @@ pub async fn list_active_deployments(
     let list = db.read().await.list_deployments().await?;
     let mut active_deployments = HashMap::new();
     for (name, deployment) in list.deployments {
-        match deployment.state {
-            DeploymentState::Up => {
-                active_deployments.insert(name, deployment);
-            }
-            _ => {}
+        if deployment.state == DeploymentState::Up {
+            active_deployments.insert(name, deployment);
         }
     }
     Ok(Json(active_deployments))

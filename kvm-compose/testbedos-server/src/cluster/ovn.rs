@@ -278,7 +278,7 @@ pub async fn configure_ovn_cluster(
     // compare chassis in OVN to kvm-compose-config
     let mut unknown_chassis = vec![];
     for (host_name, _) in chassis_list {
-        if cluster_config.testbed_host_ssh_config.get(&host_name).is_none() {
+        if !cluster_config.testbed_host_ssh_config.contains_key(&host_name) {
             // entry in southbound database does not exist in kvm-compose config, remove
             tracing::warn!("found chassis {} in OVN southbound database that is not in cluster config, adding to remove list", &host_name);
             unknown_chassis.push(host_name);

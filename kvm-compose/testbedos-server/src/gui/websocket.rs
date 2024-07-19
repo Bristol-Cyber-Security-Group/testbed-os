@@ -198,13 +198,10 @@ async fn orchestration_message_handler(
     loop {
         if let Some(protocol) = orchestration_recv.recv().await {
             // end message is always sent if run_orchestration is successful or not
-            match protocol.instruction {
-                OrchestrationInstruction::End => {
-                    // if command generation is matched, then we can end this future
-                    tracing::info!("end of command receiver thread");
-                    return Ok(());
-                }
-                _ => {}
+            if let OrchestrationInstruction::End = protocol.instruction {
+                // if command generation is matched, then we can end this future
+                tracing::info!("end of command receiver thread");
+                return Ok(());
             }
 
             sender.send(Message::Text(protocol.to_string()?)).await?;

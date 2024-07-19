@@ -12,7 +12,7 @@ use crate::components::logical_load_balancing::LoadBalanceTopology;
 use crate::ovn::components::{MacAddress, OvnIpAddr};
 use crate::ovn::components::acl::ACLRecordType;
 use crate::ovn::configuration::nat::OvnNatType;
-use crate::ovn::ovn::OvnNetwork;
+use crate::ovn::ovn_state::OvnNetwork;
 
 #[allow(clippy::large_enum_variant)]
 pub enum LogicalNetwork {

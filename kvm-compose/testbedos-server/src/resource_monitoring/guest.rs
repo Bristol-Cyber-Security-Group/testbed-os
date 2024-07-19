@@ -179,7 +179,7 @@ pub async fn get_docker_guest_metrics(
 #[allow(unused_variables)] // TODO - remove once implemented
 pub async fn get_android_guest_metrics(
     guest_name: &String,
-    project_name: &String,
+    project_name: &str,
     _service_clients: &Arc<ServiceClients>,
 ) -> anyhow::Result<Value> {
 

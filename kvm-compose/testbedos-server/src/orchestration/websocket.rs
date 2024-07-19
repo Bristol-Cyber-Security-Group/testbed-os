@@ -326,12 +326,9 @@ async fn get_instruction_result(
 
                 // if the logging gets an `End`, then return, we don't need to send to the user
                 // a log message saying end
-                match protocol {
-                    OrchestrationLogger::End => {
-                        // end the logging send loop, and return the websocket sender
-                        break;
-                    }
-                    _ => {}
+                if let OrchestrationLogger::End = protocol {
+                    // end the logging send loop, and return the websocket sender
+                    break;
                 }
 
                 ws_sender.lock().await.send(Message::Text(serialised_response))

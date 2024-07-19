@@ -73,24 +73,23 @@ pub fn get_android_cgroup_folder(
     let mut matches = Vec::new();
     if let Ok(entries) = glob(pattern) {
         for entry in entries {
-            match entry {
-                Ok(ref path) => {
-                    // tracing::info!("{guest_name}, {project_name}, {:?}", &entry);
-                    let path = path.to_str().context("path to str")?.to_string();
-                    if path.contains(guest_name) && path.contains(project_name) {
-                        // has both the project and guest name, candidate
-                        matches.push(path);
-                    }
+            if let Ok(ref path) = entry {
+                // tracing::info!("{guest_name}, {project_name}, {:?}", &entry);
+                let path = path.to_str().context("path to str")?.to_string();
+                if path.contains(guest_name) && path.contains(project_name) {
+                    // has both the project and guest name, candidate
+                    matches.push(path);
                 }
-                Err(_) => {}
             }
         }
     }
-    if matches.len() > 1 {
-        bail!("matched cgroups with more than one guest, cant pick the correct cgroup: {matches:?}");
-    } else if matches.len() == 1 {
-        return Ok(matches[0].to_string());
+
+    match matches.len() {
+        x if x > 1 => bail!("matched cgroups with more than one guest, cant pick the correct cgroup: {matches:?}"),
+        1 => {
+            Ok(matches[0].to_string())
+        }
+        _ => bail!("could not find android qemu cgroups folder")
     }
 
-    bail!("could not find android qemu cgroups folder");
 }

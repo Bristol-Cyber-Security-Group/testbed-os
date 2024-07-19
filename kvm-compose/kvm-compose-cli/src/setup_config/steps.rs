@@ -73,6 +73,7 @@ pub fn loop_step(
         *quit_or_continue = setup_config::handle_step_events()?;
 
         // TODO - break this out into functions
+        #[allow(clippy::single_match)]
         match current_step {
             SetupSteps::HostJson => {
 

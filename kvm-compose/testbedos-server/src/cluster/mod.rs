@@ -89,9 +89,8 @@ pub async fn parse_cli_args(
         let mode_config: ServerModeCmd = serde_json::from_str(&text)
             .context(format!("Could not load {path}, does not exist. Please run with create-config argument to configure the testbed server."))?;
         // check if config is in create config mode, should not be
-        match mode_config {
-            ServerModeCmd::CreateConfig => bail!("server start mode cannot be set to CreateConfig, please update the mode.json"),
-            _ => {}
+        if let ServerModeCmd::CreateConfig = mode_config {
+            bail!("server start mode cannot be set to CreateConfig, please update the mode.json")
         }
         mode_config
     };

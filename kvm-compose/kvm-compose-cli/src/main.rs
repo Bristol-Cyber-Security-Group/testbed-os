@@ -50,7 +50,7 @@ pub async fn run_app() -> Result<(), anyhow::Error> {
             }
         },
     };
-    e.map(|e| tracing::warn!("{}", e));
+    if let Some(e) = e { tracing::warn!("{}", e) }
 
     let stdout_log = tracing_subscriber::fmt::layer();
     tracing_subscriber::registry()
