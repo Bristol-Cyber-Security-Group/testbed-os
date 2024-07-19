@@ -41,6 +41,7 @@ impl Config {
         
         if let Some(machines) = &self.machines {
             for machine in machines {
+                #[allow(clippy::single_match)]
                 match &machine.guest_type {
                     GuestType::Libvirt(libvirt) => {
                         if libvirt.cpus.is_none() {

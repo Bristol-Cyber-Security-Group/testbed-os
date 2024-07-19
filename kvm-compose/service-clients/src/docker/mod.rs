@@ -60,25 +60,23 @@ impl DockerUnixClient {
         }
         // make sure there is nothing before and after the json .. hacky.. yes
         // do first {
-        let first_bracket = &total_message.find("{");
+        let first_bracket = &total_message.find('{');
         let trimmed = if let Some(first) = first_bracket {
-            let test = total_message.get(*first..total_message.len())
-                .context("trimming response body from start to first {")?;
-            test
+            total_message.get(*first..total_message.len())
+                .context("trimming response body from start to first {")?
         } else {
             &total_message
         };
         // do last } and add +1 to index to not delete last }
-        let last_bracket = &trimmed.rfind("}");
+        let last_bracket = &trimmed.rfind('}');
         let trimmed= if let Some(last) = last_bracket {
-            let test = trimmed.get(0..*last+1)
-                .context("trimming response body from end to last }")?;
-            test
+            trimmed.get(0..*last+1)
+                .context("trimming response body from end to last }")?
         } else {
             trimmed
         };
 
-        let json: Value = serde_json::from_str(&trimmed)?;
+        let json: Value = serde_json::from_str(trimmed)?;
 
         Ok(json)
     }
@@ -182,7 +180,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_stats_container() -> anyhow::Result<()> {
         let mut client = get_docker_client().await?;
-        let stats = client.get_guest_stats(&"resource_monitoring-proxy-1".to_string()).await?;
+        let _stats = client.get_guest_stats(&"resource_monitoring-proxy-1".to_string()).await?;
         // println!("{:?}", stats);
         Ok(())
     }
@@ -215,11 +213,11 @@ mod tests {
         let mut client = get_docker_client().await?;
 
         {
-            let version = client.get_version().await?;
+            let _version = client.get_version().await?;
         }
         // again
         {
-            let version = client.get_version().await?;
+            let _version = client.get_version().await?;
         }
         Ok(())
     }
