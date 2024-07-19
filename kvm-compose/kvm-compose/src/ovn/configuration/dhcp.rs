@@ -123,7 +123,7 @@ impl OvnCommand for DhcpDatabaseEntry {
         // get the switch ports that have this rule
         let switch_ports = {
             let mut dynamic_lsp = Vec::new();
-            for (_, lsp) in switch_ports_hashmap {
+            for lsp in switch_ports_hashmap.values() {
                 if let Some(dhcp_uuid) = lsp.dhcp_options_uuid {
                     if dhcp_uuid == dhcp_self_hash {
                         // this switch port matches the internal UUID of the database rule

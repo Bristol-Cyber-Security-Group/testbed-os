@@ -21,7 +21,7 @@ impl SSHClient {
     /// Run a command on a remote testbed host
     pub async fn run_remote_testbed_command(
         common: &OrchestrationCommon,
-        testbed_host: &String,
+        testbed_host: &str,
         remote_cmd: Vec<&str>,
         allow_fail: bool,
         in_background: bool,
@@ -74,7 +74,7 @@ impl SSHClient {
     }
 
     /// Run a command on a guest that is on a remote testbed host
-    pub async fn run_remote_guest_command(_common: &Common, _testbed_host: &String, _testbed_guest:&String, _remote_cmd: Vec<&str>) {
+    pub async fn run_remote_guest_command(_common: &Common, _testbed_host: &str, _testbed_guest: &str, _remote_cmd: Vec<&str>) {
         todo!()
     }
 
@@ -148,8 +148,8 @@ impl SSHClient {
     /// Push a file to a guest that is on the master testbed host
     pub async fn push_file_to_guest(
         common: &OrchestrationCommon,
-        local_src: &String,
-        remote_dst: &String,
+        local_src: &str,
+        remote_dst: &str,
         username: &String,
         hostname: &String,
     ) -> anyhow::Result<()> {
@@ -158,8 +158,8 @@ impl SSHClient {
             username,
             hostname,
             &common.testbed_guest_shared_config.ssh_private_key_location,
-            local_src.clone(),
-            remote_dst.clone(),
+            local_src.to_owned(),
+            remote_dst.to_owned(),
             false,
         ).await?;
 
@@ -167,14 +167,14 @@ impl SSHClient {
     }
 
     /// Push a file to a guest that is on a remote testbed host
-    pub async fn push_file_to_remote_guest(_common: &Common, _testbed_host: &String, _testbed_guest:&String, _remote_cmd: Vec<&str>) {
+    pub async fn push_file_to_remote_guest(_common: &Common, _testbed_host: &str, _testbed_guest: &str, _remote_cmd: Vec<&str>) {
         todo!()
     }
 
     /// Pull a file from a remote testbed host
     pub async fn pull_file_from_remote_testbed(
         common: &OrchestrationCommon,
-        testbed_host: &String,
+        testbed_host: &str,
         local_dst: String,
         remote_src: String,
         allow_fail: bool,
@@ -192,12 +192,12 @@ impl SSHClient {
     }
 
     /// Pull a file from a guest on the master testbed host
-    pub async fn pull_file_from_guest(_common: &Common, _testbed_guest: &String, _remote_cmd: Vec<&str>) {
+    pub async fn pull_file_from_guest(_common: &Common, _testbed_guest: &str, _remote_cmd: Vec<&str>) {
         todo!()
     }
 
     /// Pull a file from a guest on a remote testbed host
-    pub async fn pull_file_from_remote_guest(_common: &Common, _testbed_host: &String, _testbed_guest:&String, _remote_cmd: Vec<&str>) {
+    pub async fn pull_file_from_remote_guest(_common: &Common, _testbed_host: &str, _testbed_guest: &str, _remote_cmd: Vec<&str>) {
         todo!()
     }
 
@@ -353,7 +353,7 @@ async fn _pull_file_from_remote(
 /// Private implementation for getting the connection details for a testbed host
 async fn _get_conn_testbed_host<'a>(
     common: &'a OrchestrationCommon,
-    testbed_host: &'a String,
+    testbed_host: &'a str,
 ) -> anyhow::Result<StateTestbedHost> {
     // look in common and find the connection details for this host
     let testbed_host_ssh_config = common.testbed_hosts.get(testbed_host)

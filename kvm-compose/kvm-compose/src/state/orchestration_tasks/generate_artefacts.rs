@@ -22,7 +22,7 @@ pub async fn generate_artefacts(
     common: &OrchestrationCommon,
 ) -> anyhow::Result<()> {
     // for each guest, generate artefacts
-    for (_, guest_config) in &state.testbed_guests.0 {
+    for guest_config in state.testbed_guests.0.values() {
         match &guest_config.guest_type.guest_type {
             GuestType::Libvirt(c) => libvirt(c, guest_config, common).await?,
             GuestType::Docker(c) => docker(c, guest_config, common).await?,
@@ -316,17 +316,14 @@ async fn libvirt(
     //  which can be very slow on less powerful hardware
 
     // set up cloud init data only for cloud images
-    match libvirt_config.libvirt_type {
-        LibvirtGuestOptions::CloudImage { .. } => cloud_init_setup(
-            common,
-            network_def,
-            libvirt_config,
-            client_name.clone(),
-            project_artefacts_folder.clone(),
-            guest_config,
-        ).await?,
-        _ => {}
-    }
+    if let LibvirtGuestOptions::CloudImage { .. } = libvirt_config.libvirt_type { cloud_init_setup(
+        common,
+        network_def,
+        libvirt_config,
+        client_name.clone(),
+        project_artefacts_folder.clone(),
+        guest_config,
+    ).await? }
 
     Ok(())
 }

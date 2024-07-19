@@ -32,6 +32,7 @@ pub async fn orchestration_action(
         }
     };
 
+    #[allow(clippy::single_match)]
     match &deployment.state {
         DeploymentState::Running => bail!("deployment in Running state, cannot run orchestration command"),
         _ => {}

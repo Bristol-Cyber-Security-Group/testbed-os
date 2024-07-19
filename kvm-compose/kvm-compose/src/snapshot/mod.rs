@@ -36,11 +36,11 @@ impl GuestSnapshots {
         print_string
     }
 
-    pub async fn create(&self, snapshot_name: &String, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    pub async fn create(&self, snapshot_name: &str, common: &OrchestrationCommon) -> anyhow::Result<()> {
         self.snapshot.create(&self.guest_name, snapshot_name, &self.testbed_host, common).await
     }
 
-    pub async fn delete(&self, snapshot_name: &String, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    pub async fn delete(&self, snapshot_name: &str, common: &OrchestrationCommon) -> anyhow::Result<()> {
         self.snapshot.delete(&self.guest_name, snapshot_name, &self.testbed_host, common).await
     }
 
@@ -149,7 +149,7 @@ impl TestbedSnapshots {
     pub async fn list_all_snapshots(&self) -> anyhow::Result<String> {
         tracing::info!("Listing all snapshots.");
         let mut all_info = String::new();
-        for (_, guest_snapshot) in &self.guests {
+        for guest_snapshot in self.guests.values() {
             all_info.push_str(&guest_snapshot.list());
             all_info.push('\n');
         }
@@ -215,7 +215,7 @@ impl TestbedSnapshots {
         let group_snapshot_name = format!("group-snapshot-{}", time_now.format("%+"));
         tracing::info!("Creating snapshots for all guests, all will be given a snapshot with name: {}", &group_snapshot_name);
         let mut snapshot_futures = Vec::new();
-        for (_, guest_data) in &self.guests {
+        for guest_data in self.guests.values() {
             snapshot_futures.push(guest_data.create(&group_snapshot_name, common));
         }
         try_join_all(snapshot_futures).await?;
@@ -252,11 +252,11 @@ pub trait GuestDiskSnapshot {
     fn print_list(&self) -> Vec<String>;
     /// Return a string of the whole guest snapshot representation for this guest
     fn info(&self) -> String;
-    fn info_one(&self, snapshot_name: &String) -> Option<String>;
+    fn info_one(&self, snapshot_name: &str) -> Option<String>;
     /// Return a vector of snapshot names for this guest
     fn list(&self) -> Option<Vec<String>>;
-    async fn create(&self, guest_name: &String, snapshot_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()>;
-    async fn delete(&self, guest_name: &String, snapshot_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()>;
+    async fn create(&self, guest_name: &str, snapshot_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()>;
+    async fn delete(&self, guest_name: &str, snapshot_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()>;
     async fn delete_all(&self, guest_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()>;
     async fn restore(&self, guest_name: &String, snapshot_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()>;
     /// Get the name of the most recent snapshot for this guest, if it exists

@@ -192,17 +192,15 @@ impl OrchestrationTask for State {
         for (_guest_name, guest_data) in self.testbed_guests.0.iter() {
             // only rebase on remote testbeds
             if !guest_data.testbed_host.as_ref().unwrap().eq(&get_master_testbed_name(common)) {
-                match &guest_data.guest_type.guest_type {
-                    GuestType::Libvirt(libvirt) => {
-                        if libvirt.is_clone_of.is_some() {
-                            rebase_futures.push(libvirt.rebase_image_action(
-                                common.clone(),
-                                guest_data.clone(),
-                                self.testbed_guests.clone(),
-                            ));
-                        }
+                // no rebasing for docker or android
+                if let GuestType::Libvirt(libvirt) = &guest_data.guest_type.guest_type {
+                    if libvirt.is_clone_of.is_some() {
+                        rebase_futures.push(libvirt.rebase_image_action(
+                            common.clone(),
+                            guest_data.clone(),
+                            self.testbed_guests.clone(),
+                        ));
                     }
-                    _ => {} // no rebasing for docker or android
                 }
             }
         }
@@ -411,29 +409,26 @@ pub async fn clear_artefacts(
     state.destroy_action(common).await?;
     // special case for android
     for (guest_name, guest_data) in state.testbed_guests.0.iter() {
-        match &guest_data.guest_type.guest_type {
-            GuestType::Android(android_config) => {
-                // is android, run avd delete command
-                let avd_name = format!("{project_name}-{guest_name}");
-                if android_config.scaling.is_some() {
-                    // skip the scaling reference definition, no avd was created
-                    continue;
-                }
-                tracing::info!("deleting avd {avd_name}");
-                let cmd = vec![
-                    "/opt/android-sdk/cmdline-tools/latest/bin/avdmanager", "delete", "avd",
-                    "-n", &avd_name
-                ];
-                run_testbed_orchestration_command_allow_fail(
-                    common,
-                    guest_data.testbed_host.as_ref().unwrap(),
-                    "sudo",
-                    cmd,
-                    false,
-                    None,
-                ).await?;
+        if let GuestType::Android(android_config) = &guest_data.guest_type.guest_type {
+            // is android, run avd delete command
+            let avd_name = format!("{project_name}-{guest_name}");
+            if android_config.scaling.is_some() {
+                // skip the scaling reference definition, no avd was created
+                continue;
             }
-            _ => {}
+            tracing::info!("deleting avd {avd_name}");
+            let cmd = vec![
+                "/opt/android-sdk/cmdline-tools/latest/bin/avdmanager", "delete", "avd",
+                "-n", &avd_name
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                common,
+                guest_data.testbed_host.as_ref().unwrap(),
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
         }
     }
     // remove remote folder

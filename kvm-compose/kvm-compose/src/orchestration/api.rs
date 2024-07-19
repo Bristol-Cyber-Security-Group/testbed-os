@@ -348,7 +348,7 @@ impl OrchestrationInstruction {
                 let artefacts_folder = PathBuf::from(format!("{project_path}/artefacts"));
                 // try to create folder, otherwise return false as failed
                 let create_folder_res = if !artefacts_folder.exists() {
-                    if let Ok(_) = tokio::fs::create_dir(&artefacts_folder).await {
+                    if tokio::fs::create_dir(&artefacts_folder).await.is_ok() {
                         let chown_res = nix::unistd::chown(&artefacts_folder, Some(Uid::from_raw(*uid)), Some(Gid::from_raw(*gid)));
                         match chown_res {
                             Ok(_) => Ok(()),
@@ -984,7 +984,7 @@ impl OrchestrationProtocolResponse {
             }
             OrchestrationProtocolResponse::Single(single) => {
                 let mut messages = ResultMessages::default();
-                format_response_message(&mut messages, &vec![single.clone()]);
+                format_response_message(&mut messages, &[single.clone()]);
                 Ok(messages)
             }
             OrchestrationProtocolResponse::List(list) => {
@@ -1005,7 +1005,7 @@ impl OrchestrationProtocolResponse {
         }
     }
 
-    fn status_from_batch(r: &Vec<OrchestrationInstructionResultMessage>) -> bool {
+    fn status_from_batch(r: &[OrchestrationInstructionResultMessage]) -> bool {
         let any_failed = r
             .iter()
             .any(|res| !res.is_success );
@@ -1027,7 +1027,7 @@ pub struct OrchestrationInstructionResultMessage {
 
 fn format_instruction_message(
     instruction: &mut String,
-    items: &Vec<OrchestrationResource>,
+    items: &[OrchestrationResource],
 ) {
     if items.is_empty() {
         instruction.push_str("[]");
@@ -1046,7 +1046,7 @@ fn format_instruction_message(
 
 fn format_response_message(
     messages: &mut ResultMessages,
-    items: &Vec<OrchestrationInstructionResultMessage>,
+    items: &[OrchestrationInstructionResultMessage],
 ) {
     let mut success_message = Vec::new();
     let mut fail_message = Vec::new();

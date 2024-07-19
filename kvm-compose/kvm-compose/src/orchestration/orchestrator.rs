@@ -286,7 +286,7 @@ pub async fn orchestration_parse_command(
         }
         DeploymentCommand::ClearArtefacts => {
             // destroy_remote_project_folders(&common).await?;
-            if let Ok(_) = read_previous_state_request(&http_client, &server_conn, project_name).await {
+            if read_previous_state_request(&http_client, &server_conn, project_name).await.is_ok() {
 
                 send_orchestration_instruction_over_channel(
                     sender,
@@ -309,7 +309,7 @@ pub async fn orchestration_parse_command(
             Ok(deployment)
         }
         DeploymentCommand::Snapshot { ref snapshot_cmd } => {
-            if let Ok(_) = read_previous_state_request(&http_client, &server_conn, project_name).await {
+            if read_previous_state_request(&http_client, &server_conn, project_name).await.is_ok() {
 
                 send_orchestration_instruction_over_channel(
                     sender,
@@ -330,7 +330,7 @@ pub async fn orchestration_parse_command(
             Ok(deployment)
         }
         DeploymentCommand::TestbedSnapshot { snapshot_guests } => {
-            if let Ok(_) = read_previous_state_request(&http_client, &server_conn, project_name).await {
+            if read_previous_state_request(&http_client, &server_conn, project_name).await.is_ok() {
 
                 send_orchestration_instruction_over_channel(
                     sender,
@@ -354,7 +354,7 @@ pub async fn orchestration_parse_command(
             Ok(deployment)
         }
         DeploymentCommand::AnalysisTool(ref tool) => {
-            if let Ok(_) = read_previous_state_request(&http_client, &server_conn, project_name).await {
+            if read_previous_state_request(&http_client, &server_conn, project_name).await.is_ok() {
                 tracing::info!("running analysis tool: {tool:?}");
 
                 send_orchestration_instruction_over_channel(
@@ -377,7 +377,7 @@ pub async fn orchestration_parse_command(
             Ok(deployment)
         }
         DeploymentCommand::Exec(ref exec_cmd) => {
-            if let Ok(_) = read_previous_state_request(&http_client, &server_conn, project_name).await {
+            if read_previous_state_request(&http_client, &server_conn, project_name).await.is_ok() {
 
                 send_orchestration_instruction_over_channel(
                     sender,

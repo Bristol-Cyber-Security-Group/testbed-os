@@ -66,7 +66,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                             {
                                 if setup.clones.contains(&clone_n) {
                                     // setup script present for clone
-                                    clone_setup_script = setup.script.clone();
+                                    clone_setup_script.clone_from(&setup.script)
                                 }
                             }
                             Some(clone_setup_script)
@@ -85,7 +85,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                             {
                                 if run.clones.contains(&clone_n) {
                                     // setup script present for clone
-                                    clone_run_script = run.script.clone();
+                                    clone_run_script.clone_from(&run.script)
                                 }
                             }
                             Some(clone_run_script)
@@ -321,7 +321,7 @@ fn get_clone_interface(clone_n: u32, clone_interfaces: &HashMap<String, ConfigSc
 /// range specified.
 fn get_clone_ip_from_range(
     clone_n: u32,
-    clone_list: &Vec<u32>,
+    clone_list: &[u32],
     ip_type: &ConfigScalingIpType,
 ) -> anyhow::Result<String> {
     match ip_type {
@@ -376,7 +376,7 @@ fn get_clone_ip_from_range(
 /// the range specified.
 fn get_clone_mac_from_range(
     clone_n: u32,
-    clone_list: &Vec<u32>,
+    clone_list: &[u32],
     mac_range: &ConfigScalingMacRange,
 ) -> anyhow::Result<MacAddress> {
     let from = MacAddress::new(mac_range.from.clone())?;
@@ -504,42 +504,39 @@ mod tests {
     #[test]
     fn test_get_clone_ip_from_range_v4() {
         let clone_n = 0;
-        let clone_list_n = 3;
         let ip_addr_range = ConfigScalingIpRange {
             from: "10.0.0.1".to_string(),
             to: "10.0.0.3".to_string()
         };
         let ip = get_clone_ip_from_range(
             clone_n,
-            &vec![0,1,2],
+            &[0,1,2],
             &ConfigScalingIpType::IpRange(ip_addr_range),
         );
         assert!(ip.is_ok());
         assert_eq!(ip.unwrap().to_string(), "10.0.0.1".to_string());
 
         let clone_n = 2;
-        let clone_list_n = 3;
         let ip_addr_range = ConfigScalingIpRange {
             from: "10.0.0.1".to_string(),
             to: "10.0.0.3".to_string()
         };
         let ip = get_clone_ip_from_range(
             clone_n,
-            &vec![0,1,2],
+            &[0,1,2],
             &ConfigScalingIpType::IpRange(ip_addr_range),
         );
         assert!(ip.is_ok());
         assert_eq!(ip.unwrap().to_string(), "10.0.0.3".to_string());
 
         let clone_n = 0;
-        let clone_list_n = 1;
         let ip_addr_range = ConfigScalingIpRange {
             from: "10.0.0.1".to_string(),
             to: "10.0.0.1".to_string()
         };
         let ip = get_clone_ip_from_range(
             clone_n,
-            &vec![0],
+            &[0],
             &ConfigScalingIpType::IpRange(ip_addr_range),
         );
         assert!(ip.is_ok());
@@ -550,14 +547,13 @@ mod tests {
     fn test_get_clone_ip_from_range_v4_bad_clone_n() {
         // clone n is greater than the possible ip range
         let clone_n = 3;
-        let clone_list_n = 3;
         let ip_addr_range = ConfigScalingIpRange {
             from: "10.0.0.1".to_string(),
             to: "10.0.0.3".to_string()
         };
         let ip = get_clone_ip_from_range(
             clone_n,
-            &vec![0,1,2],
+            &[0,1,2],
             &ConfigScalingIpType::IpRange(ip_addr_range),
         );
         assert!(ip.is_err());
@@ -567,14 +563,13 @@ mod tests {
     fn test_get_clone_ip_from_range_v4_bad_clone_list_n() {
         // clone list n is more than the ip addr range
         let clone_n = 0;
-        let clone_list_n = 3;
         let ip_addr_range = ConfigScalingIpRange {
             from: "10.0.0.1".to_string(),
             to: "10.0.0.2".to_string()
         };
         let ip = get_clone_ip_from_range(
             clone_n,
-            &vec![0,1,2],
+            &[0,1,2],
             &ConfigScalingIpType::IpRange(ip_addr_range),
         );
         assert!(ip.is_err());
@@ -584,14 +579,13 @@ mod tests {
     fn test_get_clone_ip_from_range_v4_bad_addr_range() {
         // clone list n is more than the ip addr range
         let clone_n = 0;
-        let clone_list_n = 3;
         let ip_addr_range = ConfigScalingIpRange {
             from: "10.0.0.2".to_string(),
             to: "10.0.0.1".to_string()
         };
         let ip = get_clone_ip_from_range(
             clone_n,
-            &vec![0,1,2],
+            &[0,1,2],
             &ConfigScalingIpType::IpRange(ip_addr_range),
         );
         assert!(ip.is_err());
@@ -602,28 +596,26 @@ mod tests {
         // if we have 4 clones and want 2 to be on one switch and the other 2 on another
         // lets take the second switch
         let clone_n = 2;
-        let clone_list_n = 2;
         let ip_addr_range = ConfigScalingIpRange {
             from: "10.0.0.3".to_string(),
             to: "10.0.0.4".to_string()
         };
         let ip = get_clone_ip_from_range(
             clone_n,
-            &vec![2,3],
+            &[2,3],
             &ConfigScalingIpType::IpRange(ip_addr_range),
         );
         assert!(ip.is_ok());
         assert_eq!(ip.unwrap().to_string(), "10.0.0.3".to_string());
         // second guest
         let clone_n = 3;
-        let clone_list_n = 2;
         let ip_addr_range = ConfigScalingIpRange {
             from: "10.0.0.3".to_string(),
             to: "10.0.0.4".to_string()
         };
         let ip = get_clone_ip_from_range(
             clone_n,
-            &vec![2,3],
+            &[2,3],
             &ConfigScalingIpType::IpRange(ip_addr_range),
         );
         assert!(ip.is_ok());
@@ -640,7 +632,7 @@ mod tests {
         };
         let mac = get_clone_mac_from_range(
             clone_n,
-            &vec![0,1,2],
+            &[0,1,2],
             &mac_addr_range,
         );
         assert!(mac.is_ok());
@@ -655,14 +647,13 @@ mod tests {
         // second switch will only be 1
 
         let clone_n = 2; // third clone
-        let clone_list_n = 1; // only one clone on this switch
         let mac_addr_range = ConfigScalingMacRange {
             from: "00:00:00:00:00:03".to_string(), // only one mac address to pick from
             to: "00:00:00:00:00:03".to_string(),
         };
         let mac = get_clone_mac_from_range(
             clone_n,
-            &vec![2],
+            &[2],
             &mac_addr_range,
         );
         assert!(mac.is_ok());
@@ -672,28 +663,26 @@ mod tests {
         // sw0 = clones 0,3
         // sw1 = clones 2,1
         let clone_n = 2; // third clone
-        let clone_list_n = 2;
         let mac_addr_range = ConfigScalingMacRange {
             from: "00:00:00:00:00:03".to_string(), // only one mac address to pick from
             to: "00:00:00:00:00:04".to_string(),
         };
         let mac = get_clone_mac_from_range(
             clone_n,
-            &vec![2, 1],
+            &[2, 1],
             &mac_addr_range,
         );
         assert!(mac.is_ok());
         assert_eq!(mac.unwrap().address, "00:00:00:00:00:03".to_string());
         // do second clone
         let clone_n = 1; // fourth clone
-        let clone_list_n = 2;
         let mac_addr_range = ConfigScalingMacRange {
             from: "00:00:00:00:00:03".to_string(), // only one mac address to pick from
             to: "00:00:00:00:00:04".to_string(),
         };
         let mac = get_clone_mac_from_range(
             clone_n,
-            &vec![2, 1],
+            &[2, 1],
             &mac_addr_range,
         );
         assert!(mac.is_ok());

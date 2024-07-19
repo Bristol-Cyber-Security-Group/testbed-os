@@ -11,7 +11,7 @@ use crate::snapshot::GuestDiskSnapshot;
 
 pub async fn load_qemu_img(
     img_path: &String,
-    testbed_host: &String,
+    testbed_host: &str,
     common: &OrchestrationCommon,
 ) -> anyhow::Result<QemuImg> {
     let json_data = run_testbed_orchestration_command(
@@ -75,7 +75,7 @@ impl QemuImg {
         Ok(xml_name)
     }
 
-    async fn is_running(&self, guest_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<bool> {
+    async fn is_running(&self, guest_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<bool> {
         tracing::info!("checking if guest {guest_name} is up");
         let cmd = vec!["virsh", "dominfo", &guest_name];
         let res = run_testbed_orchestration_command_allow_fail(
@@ -90,8 +90,6 @@ impl QemuImg {
             Ok(res) => {
                 if res.contains("running") {
                     Ok(true)
-                } else if res.contains("shut off") {
-                    Ok(false)
                 } else {
                     Ok(false)
                 }
@@ -103,7 +101,7 @@ impl QemuImg {
         }
     }
 
-    async fn wait_until_stopped(&self, guest_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    async fn wait_until_stopped(&self, guest_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()> {
         // check if guest is down until a certain timeout
         let timeout_max = 12;
         let timeout_s = 5;
@@ -125,7 +123,7 @@ impl QemuImg {
         Ok(())
     }
 
-    async fn stop_vm(&self, guest_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    async fn stop_vm(&self, guest_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()> {
         tracing::info!("stopping guest {guest_name}");
         run_testbed_orchestration_command(
             common,
@@ -140,7 +138,7 @@ impl QemuImg {
     }
 
 
-    async fn start_vm(&self, guest_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    async fn start_vm(&self, guest_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()> {
         tracing::info!("resuming guest {guest_name}");
         run_testbed_orchestration_command(
             common,
@@ -172,7 +170,7 @@ impl GuestDiskSnapshot for QemuImg {
         format!("{self}")
     }
 
-    fn info_one(&self, snapshot_name: &String) -> Option<String> {
+    fn info_one(&self, snapshot_name: &str) -> Option<String> {
         if let Some(snapshots) = &self.snapshots {
             for snap in snapshots {
                 if snap.name.eq(snapshot_name) {
@@ -192,7 +190,7 @@ impl GuestDiskSnapshot for QemuImg {
         None
     }
 
-    async fn create(&self, guest_name: &String, snapshot_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    async fn create(&self, guest_name: &str, snapshot_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()> {
         // TODO - do we want a snapshot with memory or without?
         // we need to shut down the guest first if it is on
         let is_running = self.is_running(guest_name, testbed_host, common).await?;
@@ -238,7 +236,7 @@ impl GuestDiskSnapshot for QemuImg {
         Ok(())
     }
 
-    async fn delete(&self, guest_name: &String, snapshot_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    async fn delete(&self, guest_name: &str, snapshot_name: &str, testbed_host: &str, common: &OrchestrationCommon) -> anyhow::Result<()> {
         // we need to shut down the guest first if it is on
         let is_running = self.is_running(guest_name, testbed_host, common).await?;
         if is_running {

@@ -51,7 +51,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                         SSHClient::push_file_to_guest(
                             &common,
                             &path_to_shared_setup_script,
-                            &"/tmp".to_string(),
+                            "/tmp",
                             self.username.as_ref().unwrap(),
                             &guest_name,
                         ).await?;
@@ -89,12 +89,9 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
             let backing_image_location = {
                 let mut res = Err(anyhow!("could not find image"));
                 for entry in glob(&format!("{backing_image_guest_folder}/{backing_image_clone}-*.img")).context("Fail to glob for the backing image disk")? {
-                    match entry {
-                        Ok(path) => {
-                            res = Ok(path);
-                            break;
-                        }
-                        Err(_) => {}
+                    if let Ok(path) = entry {
+                        res = Ok(path);
+                        break;
                     }
                 }
                 res
@@ -382,7 +379,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                     SSHClient::push_file_to_guest(
                         &common,
                         &local_script_path,
-                        &"/tmp".to_string(),
+                        "/tmp",
                         self.username.as_ref().unwrap(),
                         &guest_name,
                     ).await?;
@@ -1303,7 +1300,7 @@ fn get_remote_project_folder(
 /// address.
 async fn get_lsp_dynamic_ip(
     lsp_name: &String,
-    testbed_host: &String,
+    testbed_host: &str,
     orchestration_common: &OrchestrationCommon,
 ) -> anyhow::Result<String> {
     tracing::info!("getting dynamic ip address assigned to logical switch port {lsp_name}");

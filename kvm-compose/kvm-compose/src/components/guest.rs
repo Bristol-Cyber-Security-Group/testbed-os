@@ -245,7 +245,7 @@ impl TestbedComponent for LibvirtGuest {
                 // set disk paths
                 match &mut libivrt_config.libvirt_type {
                     LibvirtGuestOptions::CloudImage { path, .. } => {
-                        self.original_disk_path = path.clone();
+                        self.original_disk_path.clone_from(path);
                         if path.is_none() {
                             *path = Some(PathBuf::from(self.disk_path.clone().unwrap()));
                         }

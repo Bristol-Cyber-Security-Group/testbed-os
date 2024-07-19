@@ -12,7 +12,7 @@ use std::{fmt, fs};
 use std::fmt::Formatter;
 use tokio::fs::File;
 use std::os::linux::fs::MetadataExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use anyhow::Context;
 use nix::unistd::{Gid, Uid};
 use tokio::io::AsyncWriteExt;
@@ -162,8 +162,8 @@ impl State {
         }
     }
 
-    pub async fn write(&self, project_name: &String, project_path: &PathBuf) -> anyhow::Result<()> {
-        let path_str = &project_path.clone()
+    pub async fn write(&self, project_name: &String, project_path: &Path) -> anyhow::Result<()> {
+        let path_str = &project_path.to_path_buf()
             .to_string_lossy()
             .to_string();
         let file_name = format!("{}/{}-state.json", &path_str, &project_name);
@@ -247,6 +247,7 @@ pub struct StateTestbedGuestSharedConfig {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)]
 pub enum StateNetwork {
     Ovn(OvnNetwork),
     Ovs(StateOvsNetwork),
