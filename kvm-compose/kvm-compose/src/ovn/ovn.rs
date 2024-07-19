@@ -654,14 +654,11 @@ impl OvnNetwork {
         for (lsp_name, lsp_data) in self.switch_ports.iter() {
             if lsp_data.parent_switch.eq(&sw) {
                 if let LogicalSwitchPortType::Internal { ip, .. } = &lsp_data.port_type {
-                    match ip {
-                        OvnIpAddr::Dynamic => {
-                            // only take LSP type internal AND has dynamic as IP address for
-                            // this switch
-                            // take a copy as we will get the mutable version later
-                            lsp_dynamic.push(lsp_name.clone());
-                        }
-                        _ => {}
+                    if ip == &OvnIpAddr::Dynamic {
+                        // only take LSP type internal AND has dynamic as IP address for
+                        // this switch
+                        // take a copy as we will get the mutable version later
+                        lsp_dynamic.push(lsp_name.clone());
                     }
                 }
             }

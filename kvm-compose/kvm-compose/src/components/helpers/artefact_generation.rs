@@ -19,6 +19,7 @@ pub async fn copy_and_set_permissions(file_src: &PathBuf, file_tgt: &String, mod
     let mut perms = tokio::fs::metadata(&file_tgt)
         .await?
         .permissions();
+    #[allow(clippy::permissions_set_readonly_false)]
     perms.set_readonly(false);
     perms.set_mode(mode);
     tokio::fs::set_permissions(&file_tgt, perms).await?;
@@ -38,6 +39,7 @@ pub async fn copy_and_set_permissions_orchestration(file_src: &PathBuf, file_tgt
     let mut perms = tokio::fs::metadata(&file_tgt)
         .await?
         .permissions();
+    #[allow(clippy::permissions_set_readonly_false)]
     perms.set_readonly(false);
     perms.set_mode(mode);
     tokio::fs::set_permissions(&file_tgt, perms).await?;

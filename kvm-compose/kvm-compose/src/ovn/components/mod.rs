@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::net::IpAddr;
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
@@ -125,11 +126,9 @@ pub enum OvnIpAddr {
     },
 }
 
-impl OvnIpAddr {
-    pub fn to_string(
-        &self,
-    ) -> String {
-        match &self {
+impl Display for OvnIpAddr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let text = match &self {
             OvnIpAddr::Ip(ip) => {
                 match &ip {
                     IpAddr::V4(v4) => v4.to_string(),
@@ -138,7 +137,10 @@ impl OvnIpAddr {
             }
             OvnIpAddr::Dynamic => "dynamic".to_string(),
             OvnIpAddr::Subnet { ip, mask } => format!("{ip}/{mask}"),
-        }
+        };
+        f.write_str(&text)
+            .expect("Pretty printing OvnIpAddr failed");
+        Ok(())
     }
 }
 

@@ -88,11 +88,10 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
             // TODO - when the backing image is not .img, might be .qcow2
             let backing_image_location = {
                 let mut res = Err(anyhow!("could not find image"));
-                for entry in glob(&format!("{backing_image_guest_folder}/{backing_image_clone}-*.img")).context("Fail to glob for the backing image disk")? {
-                    if let Ok(path) = entry {
-                        res = Ok(path);
-                        break;
-                    }
+                let globbed_paths = glob(&format!("{backing_image_guest_folder}/{backing_image_clone}-*.img")).context("Fail to glob for the backing image disk")?;
+                // flatten here removes the indirection of GlobResult which is new type for Result<PathBuf, GlobError>
+                if let Some(entry_res) = globbed_paths.flatten().next() {
+                    res = Ok(entry_res);
                 }
                 res
             }?;
