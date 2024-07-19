@@ -14,6 +14,6 @@ pub async fn packet_capture(
     // TODO intercept the -i argument
 
     // TODO - if br-int, disallow due to ambiguity and un-usefulness
-    // TODO - if br-ex, assume is on master host
+    // TODO - if br-ex, assume is on main host
     Ok(())
 }

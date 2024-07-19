@@ -54,13 +54,13 @@ impl OrchestrationCommon {
         Ok(())
     }
 
-    pub fn get_master(&self) -> anyhow::Result<String> {
+    pub fn get_main_testbed(&self) -> anyhow::Result<String> {
         for (tb_name, tb_config) in &self.testbed_hosts {
-            if tb_config.is_master_host {
+            if tb_config.is_main_host {
                 return Ok(tb_name.clone())
             }
         }
-        bail!("could not find master")
+        bail!("could not find main")
     }
 }
 
@@ -232,15 +232,15 @@ pub async fn run_subprocess_command(
     _run_subprocess_command(starting_command, command_string, false, in_background, working_dir).await
 }
 
-/// Checks if the testbed host input is the master host
-pub fn is_master(
+/// Checks if the testbed host input is the main host
+pub fn is_main_testbed(
     common: &OrchestrationCommon,
     testbed_host: &String,
 ) -> bool {
     for (host, config) in &common.testbed_hosts {
         if host.eq(testbed_host) {
             // match
-            if config.is_master_host {
+            if config.is_main_host {
                 return true;
             }
         }
@@ -281,8 +281,8 @@ async fn _run_testbed_orchestration_command(
     in_background: bool,
     working_dir: Option<String>,
 ) -> anyhow::Result<String> {
-    if is_master(common, testbed_host) {
-        // running on master host
+    if is_main_testbed(common, testbed_host) {
+        // running on main host
         if allow_fail {
             let output = run_subprocess_command_allow_fail(
                 starting_command,
@@ -365,8 +365,8 @@ pub async fn create_remote_project_folders(
     tracing::info!("creating remote project folders");
 
     for (host_name, host_config) in &common.testbed_hosts {
-        if !host_config.is_master_host {
-            // not master, create testbed projects folder
+        if !host_config.is_main_host {
+            // not main, create testbed projects folder
             let folder = format!(
                 "/home/{}/testbed-projects/{}/artefacts/",
                 host_config.username,
@@ -392,8 +392,8 @@ pub async fn destroy_remote_project_folders(
     tracing::info!("destroying remote project folders");
 
     for (host_name, host_config) in &common.testbed_hosts {
-        if !host_config.is_master_host {
-            // not master, create testbed projects folder
+        if !host_config.is_main_host {
+            // not main, create testbed projects folder
             let folder = format!(
                 "/home/{}/testbed-projects/{}/",
                 host_config.username,

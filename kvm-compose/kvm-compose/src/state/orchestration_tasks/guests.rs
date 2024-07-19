@@ -11,7 +11,7 @@ use kvm_compose_schemas::kvm_compose_yaml::machines::docker::ConfigDockerMachine
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::{ConfigLibvirtMachine, LibvirtGuestOptions};
 use crate::components::get_guest_interface_name;
-use crate::orchestration::{is_master, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail};
+use crate::orchestration::{is_main_testbed, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail};
 use crate::orchestration::ssh::SSHClient;
 use crate::ovn::components::logical_switch_port::LogicalSwitchPortType;
 use crate::state::{State, StateNetwork, StateTestbedGuest, StateTestbedGuestList};
@@ -77,7 +77,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
             let backing_image_clone = self.is_clone_of.as_ref().unwrap();
             tracing::info!("creating clone guest {} from {}", &machine_config.guest_type.name, backing_image_clone);
 
-            let master_testbed = get_master_testbed_name(&common);
+            let main_testbed = get_main_testbed_name(&common);
 
             let project_folder = common.project_working_dir.to_str().unwrap();
             let guest_name_no_project = &machine_config.guest_type.name;
@@ -103,7 +103,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
             let cmd = vec!["qemu-img", "create", "-f", "qcow2", "-b", backing_image_location.to_str().unwrap(), "-F", "qcow2", &clone_image_location];
             let clone_create_res = run_testbed_orchestration_command(
                 &common,
-                &master_testbed,
+                &main_testbed,
                 "sudo",
                 cmd,
                 false,
@@ -138,10 +138,10 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 
         let mut futures = Vec::new();
 
-        // check if the guest is on master or not
+        // check if the guest is on main testbed or not
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
-        if !is_master(&common, testbed_host) {
-            // not on master, must push files
+        if !is_main_testbed(&common, testbed_host) {
+            // not on main testbed, must push files
 
             // get image
             let project_path = common.project_working_dir.to_str().unwrap().to_string();
@@ -226,11 +226,11 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
     async fn pull_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
         let target_testbed = machine_config.testbed_host.as_ref().unwrap();
         let guest_name = format!("{}", &machine_config.guest_type.name);
-        if is_master(&common, target_testbed) {
+        if is_main_testbed(&common, target_testbed) {
             // clone is local, dont rebase
             return Ok(());
         } else {
-            tracing::info!("pulling guest {} image from testbed host {} to master", &guest_name, target_testbed);
+            tracing::info!("pulling guest {} image from testbed host {} to main testbed", &guest_name, target_testbed);
             let remote_image_path = match &self.libvirt_type {
                 LibvirtGuestOptions::CloudImage { path, .. } => path.as_ref().unwrap(),
                 LibvirtGuestOptions::ExistingDisk { path, .. } => path,
@@ -252,7 +252,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
     async fn rebase_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest, guest_list: StateTestbedGuestList) -> anyhow::Result<()> {
         tracing::info!("rebasing image for guest {}", &machine_config.guest_type.name);
         let target_testbed = machine_config.testbed_host.as_ref().unwrap();
-        if is_master(&common, target_testbed) {
+        if is_main_testbed(&common, target_testbed) {
             // clone is local, dont rebase
             return Ok(());
         }
@@ -285,7 +285,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
     async fn create_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
         tracing::info!("deploying guest {}", &machine_config.guest_type.name);
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
-        let project_path = if is_master(&common, testbed_host) {
+        let project_path = if is_main_testbed(&common, testbed_host) {
             common.project_working_dir.to_str().unwrap().to_string()
         } else {
             let testbed_user = &common.testbed_hosts.get(testbed_host)
@@ -476,7 +476,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
 
         let mut futures = Vec::new();
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
-        if !is_master(&common, testbed_host) {
+        if !is_main_testbed(&common, testbed_host) {
             // TODO - if the image is a local only image, needs to be pushed
 
             tracing::info!("pushing artefacts for guest {} to {}", &machine_config.guest_type.name, &testbed_host);
@@ -567,7 +567,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
         if let Some(env_file) = &self.env_file {
             cmd_string.push("--env-file".to_string());
             // need to set the absolute path for env file since it might be running on remote
-            if is_master(&common, testbed_host) {
+            if is_main_testbed(&common, testbed_host) {
                 cmd_string.push(format!("{env_file}"));
             } else {
                 // on remote
@@ -925,7 +925,7 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
 
         tracing::info!("deploying guest {}", &machine_config.guest_type.name);
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
-        if !is_master(&common, testbed_host) {
+        if !is_main_testbed(&common, testbed_host) {
             bail!("currently dont support AVD guests on remote testbed hosts");
         }
 
@@ -1204,15 +1204,15 @@ pub async fn calculate_backing_images_to_push(
 ) -> anyhow::Result<HashSet<(String, String)>> {
     // look at only the clones to see which remote testbed hosts they are being assigned so that we
     // can push a copy of the backing image to that testbed host
-    let master_testbed_name = get_master_testbed_name(common);
+    let main_testbed_name = get_main_testbed_name(common);
     // use a set to prevent duplicates
     let mut assignment = HashSet::new();
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
             GuestType::Libvirt(libvirt) => {
-                // check if guest is a clone and if not on the master testbed
+                // check if guest is a clone and if not on the main testbed
                 let guest_testbed = guest_data.testbed_host.as_ref().unwrap();
-                if libvirt.is_clone_of.is_some() && !guest_testbed.eq(&master_testbed_name) {
+                if libvirt.is_clone_of.is_some() && !guest_testbed.eq(&main_testbed_name) {
                     // need to push a copy
                     let backing_image_name = libvirt.is_clone_of.as_ref().unwrap();
                     assignment.insert((backing_image_name.clone(), guest_testbed.clone()));
@@ -1227,14 +1227,14 @@ pub async fn calculate_backing_images_to_push(
     Ok(assignment)
 }
 
-pub fn get_master_testbed_name(
+pub fn get_main_testbed_name(
     common: &OrchestrationCommon,
 ) -> String {
-    let master_testbed = {
+    let main_testbed = {
         let temp: Vec<_> = common.testbed_hosts
             .iter()
             .filter(|(_, data)| {
-                if data.is_master_host {
+                if data.is_main_host {
                     true
                 } else {
                     false
@@ -1242,9 +1242,9 @@ pub fn get_master_testbed_name(
             })
             .map(|(name, _)| {name})
             .collect();
-        temp[0] // get just the master as the vec is len 1
+        temp[0] // get just the main as the vec is len 1
     };
-    master_testbed.clone()
+    main_testbed.clone()
 }
 
 pub fn get_backing_image_local_path(

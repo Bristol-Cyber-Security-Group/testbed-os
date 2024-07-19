@@ -27,14 +27,14 @@ pub async fn set_up_cluster_client_check_cron_jobs(
                 .expect("scheduled job could not read TestbedClusterConfig");
             let mut remove_list = Vec::new();
             for (name, host) in cluster_config.testbed_host_ssh_config.iter() {
-                let is_master = if let Some(is_master) = host.is_master_host {
-                    is_master
+                let is_main = if let Some(is_main) = host.is_main_host {
+                    is_main
                 } else {
                     false
                 };
-                // tracing::info!("checked {name} and is master = {is_master}");
-                // if not master and not online then add to remove list
-                if !is_master {
+                // tracing::info!("checked {name} and is main = {is_main}");
+                // if not main and not online then add to remove list
+                if !is_main {
                     // tracing::info!("checking if cluster client {name} is still connected");
 
                     let res = reqwest::get(&format!("http://{}:3355/api/config/status", host.ip)).await;
@@ -74,21 +74,21 @@ pub async fn set_up_cluster_client_check_cron_jobs(
     Ok(())
 }
 
-/// This sets up a cron job inside the server runtime to check the master testbeds is still
-/// running. The host might be up but the testbed server in master mode might not be, so we check
-/// the status endpoint for a 200 HTTP code. If the master goes down, keep trying to re-connect
-/// until it is up, then we must re-join the cluster as the master will start a fresh cluster config
+/// This sets up a cron job inside the server runtime to check the main testbeds is still
+/// running. The host might be up but the testbed server in main mode might not be, so we check
+/// the status endpoint for a 200 HTTP code. If the main goes down, keep trying to re-connect
+/// until it is up, then we must re-join the cluster as the main will start a fresh cluster config
 /// when it starts, so it won't include this client testbed.
-pub async fn set_up_cluster_master_check_cron_jobs(
-    master_ip: String,
+pub async fn set_up_cluster_main_check_cron_jobs(
+    main_ip: String,
 ) -> anyhow::Result<()> {
     // set up cron job to monitor clients
     let sched = JobScheduler::new().await?;
 
     sched.add(Job::new_async("1/10 * * * * *",  move |_uuid, _l| {
-        // need to make a clone in this scope so that we can push the master ip into the cron
+        // need to make a clone in this scope so that we can push the main ip into the cron
         // closure, otherwise the compiler will whinge about reference being used after
-        let master_ip = master_ip.clone();
+        let main_testbed_ip = main_ip.clone();
         Box::pin(async move {
             let client_config = SshConfig::read()
                 .await
@@ -99,23 +99,23 @@ pub async fn set_up_cluster_master_check_cron_jobs(
                 .arg("-s")
                 .arg("-w")
                 .arg("'%{http_code}'")
-                .arg(&format!("{}:3355/api/cluster/{}", master_ip, &client_config.ovn.chassis_name))
+                .arg(&format!("{}:3355/api/cluster/{}", main_testbed_ip, &client_config.ovn.chassis_name))
                 .output()
                 .await;
             match cmd_res {
                 Ok(ok_resp) => {
                     // server responded, check if part of cluster
                     let response_code = String::from_utf8(ok_resp.stdout)
-                        .expect("getting status code from master");
+                        .expect("getting status code from main");
 
                     if !response_code.eq(&"'200'".to_string()) {
                         // not part of cluster, make join request
-                        let server_url = format!("http://{master_ip}:3355/api/cluster");
-                        tracing::warn!("not part of master testbed's cluster, will try to rejoin at {}", &server_url);
+                        let server_url = format!("http://{main_testbed_ip}:3355/api/cluster");
+                        tracing::warn!("not part of main testbed's cluster, will try to rejoin at {}", &server_url);
 
                         // convert to json
                         let client_config = serde_json::to_string_pretty(&client_config)
-                            .expect("converting client config to json to send to master");
+                            .expect("converting client config to json to send to main");
                         Command::new("sudo")
                             .arg("curl")
                             .arg("-X")
@@ -127,13 +127,13 @@ pub async fn set_up_cluster_master_check_cron_jobs(
                             .arg(client_config)
                             .output()
                             .await
-                            .expect("sending client config to master server to re-join cluster");
+                            .expect("sending client config to main server to re-join cluster");
                         tracing::info!("join request accepted");
 
                     }
                 }
                 Err(_) => {
-                    tracing::error!("master testbed server is not running, will try to reconnect");
+                    tracing::error!("main testbed server is not running, will try to reconnect");
                 }
             }
         })
@@ -150,7 +150,7 @@ pub async fn set_up_cluster_master_check_cron_jobs(
 pub async fn configure_host_ovn(
     ovn: &OvnConfig,
     main_interface: &String,
-    is_master: bool,
+    is_main: bool,
     host_config: &SshConfig,
 ) -> anyhow::Result<()> {
 
@@ -210,8 +210,8 @@ pub async fn configure_host_ovn(
             false,
             None,
         ).await?;
-        // only do this if master
-        if is_master {
+        // only do this if main
+        if is_main {
             // check if NAT rule exists
             tracing::info!("checking if NAT rule for {ext} {ip} to forward to {main_interface} exists");
             let cmd = Command::new("sudo")
@@ -258,9 +258,9 @@ pub async fn configure_host_ovn(
         }
     }
 
-    // TODO make sure OVN settings are correct (chassis) - only on master
+    // TODO make sure OVN settings are correct (chassis) - only on main
 
-    // make sure OVS settings are correct (external ids) for either master or client, based on host config
+    // make sure OVS settings are correct (external ids) for either main or client, based on host config
     set_ovs_external_ids(ovn).await?;
 
     // TODO ask remote testbeds if their local settings are correct? or is this in their join script
@@ -356,7 +356,7 @@ async fn set_ovs_external_ids(
         None,
     ).await?;
 
-    let remote = format!("external-ids:ovn-remote={}", &ovn.master_ovn_remote);
+    let remote = format!("external-ids:ovn-remote={}", &ovn.main_ovn_remote);
     tracing::info!("setting {}", &remote);
     run_subprocess_command_allow_fail(
         "sudo",

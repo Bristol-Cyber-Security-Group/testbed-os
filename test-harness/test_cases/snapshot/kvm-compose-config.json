@@ -5,7 +5,7 @@
             "user": "nocloud",
             "identity_file": "/home/nocloud/.ssh/id_ed25519",
             "testbed_nic": "enp1s0",
-            "is_master_host": true
+            "is_main_host": true
         }
     },
     "ssh_public_key_location": "/home/nocloud/.ssh/id_ed25519_kvm.pub",

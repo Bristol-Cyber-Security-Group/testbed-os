@@ -48,7 +48,7 @@ pub struct SpecialisationContext {
     pub project_name: String,
     pub ssh_config: TestbedClusterConfig,
     pub project_folder_path: PathBuf,
-    pub master_host: String,
+    pub main_host: String,
     // send the deserialised yaml config
     pub config: Config,
     pub guest_ip_mapping: Option<BTreeMap<String, Option<String>>>,
@@ -265,16 +265,16 @@ impl LogicalTestbed {
         Ok(())
     }
 
-    /// Get the master testbed host from the configuration
-    pub fn get_master_testbed_host(&self) -> anyhow::Result<&String> {
+    /// Get the main testbed host from the configuration
+    pub fn get_main_testbed_host(&self) -> anyhow::Result<&String> {
         for (name, config) in self.common.kvm_compose_config.testbed_host_ssh_config.iter() {
-            if let Some(is_master) = config.is_master_host {
-                if is_master {
+            if let Some(is_main) = config.is_main_host {
+                if is_main {
                     return Ok(name);
                 }
             }
         }
-        bail!("there was no master host set in kvm-compose-config.json")
+        bail!("there was no main host set in kvm-compose-config.json")
     }
 
     /// Request to the server to generate artefacts
@@ -301,9 +301,9 @@ impl LogicalTestbed {
             project_name: self.common.project.clone(),
             project_folder_path: self.common.project_working_dir.clone(),
             ssh_config: self.common.kvm_compose_config.clone(),
-            master_host: self
-                .get_master_testbed_host()
-                .context("Getting master testbed host")?
+            main_host: self
+                .get_main_testbed_host()
+                .context("Getting main testbed host")?
                 .clone(),
             config: self.common.config.clone(),
             guest_ip_mapping: self.guest_ip_mapping.clone(),

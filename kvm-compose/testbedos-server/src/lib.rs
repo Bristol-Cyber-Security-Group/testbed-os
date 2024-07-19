@@ -52,7 +52,7 @@ pub struct AppState {
 #[derive(Clone)]
 pub struct ClientAppState {
     pub config_db: Arc<RwLock<Box<dyn TestbedConfigProvider + Sync + Send>>>,
-    pub master_server_url: String,
+    pub main_server_url: String,
     pub system_monitor: Arc<RwLock<System>>,
     pub service_clients: Arc<ServiceClients>,
 }

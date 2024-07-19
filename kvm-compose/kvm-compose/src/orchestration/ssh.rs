@@ -38,7 +38,7 @@ impl SSHClient {
         Ok(output)
     }
 
-    /// Run a command on a guest that is on the master testbed host
+    /// Run a command on a guest that is on the main testbed host
     pub async fn run_guest_command(
         common: &OrchestrationCommon,
         remote_cmd: Vec<&str>,
@@ -145,7 +145,7 @@ impl SSHClient {
 
         Ok(())
     }
-    /// Push a file to a guest that is on the master testbed host
+    /// Push a file to a guest that is on the main testbed host
     pub async fn push_file_to_guest(
         common: &OrchestrationCommon,
         local_src: &String,
@@ -191,7 +191,7 @@ impl SSHClient {
         Ok(())
     }
 
-    /// Pull a file from a guest on the master testbed host
+    /// Pull a file from a guest on the main testbed host
     pub async fn pull_file_from_guest(_common: &Common, _testbed_guest: &String, _remote_cmd: Vec<&str>) {
         todo!()
     }

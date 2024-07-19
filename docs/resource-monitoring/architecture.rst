@@ -16,16 +16,16 @@ Since the localhost URLs are using different ports, we run into CORS problems.
 So to avoid changing the browser settings to reduce security, we put everything under a reverse proxy.
 
 The testbed server provides endpoints for prometheus to scrape metrics, these are grouped under host and guests.
-In these endpoints, the testbed server (master) will collect metrics on the active testbed hosts, then the guests in all active deployments.
-Every testbed, both master and client will have endpoints that provide the metrics for itself and the guests it is running.
-The master will work out where everything is, based on the state.json for each active deployment and call the respective testbed host.
-Prometheus will scrape the master testbed host's metrics endpoint periodically (5s) to collect the metrics for every eligible host/guest.
-Note: the metric scraping endpoint is only enabled on the testbed server when in master mode.
+In these endpoints, the testbed server (main) will collect metrics on the active testbed hosts, then the guests in all active deployments.
+Every testbed, both main and client will have endpoints that provide the metrics for itself and the guests it is running.
+The main will work out where everything is, based on the state.json for each active deployment and call the respective testbed host.
+Prometheus will scrape the main testbed host's metrics endpoint periodically (5s) to collect the metrics for every eligible host/guest.
+Note: the metric scraping endpoint is only enabled on the testbed server when in main mode.
 
 To get metrics such as CPU time, we need to sample the cpu time twice.
 Given we have a limit of 5s between prometheus scraping metrics, we are just sampling between 0.5s on each endpoint request.
 This does mean the metrics can be a little inaccurate.
-While this can be tuned, we need to consider the time it takes for the master testbed host to poll every testbed for each guest.
+While this can be tuned, we need to consider the time it takes for the main testbed host to poll every testbed for each guest.
 Therefore the tuning must consider how this scales as we add more testbed hosts and more guests to the testbed cluster.
 
 

@@ -434,7 +434,7 @@ impl OrchestrationInstruction {
                                 GuestType::Libvirt(l) => {
                                     let backing_image_name = l.is_clone_of.as_ref().unwrap();
                                     let guest_testbed = g.testbed_host.as_ref().unwrap();
-                                    // from the images_to_push set, work out the local path on master and the remote path
+                                    // from the images_to_push set, work out the local path on main and the remote path
                                     // on the target testbed host
                                     let local_src = get_backing_image_local_path(
                                         &state.testbed_guests,

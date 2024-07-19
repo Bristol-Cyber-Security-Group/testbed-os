@@ -90,8 +90,8 @@ pub async fn run_guest_exec_cmd(
             }
         }
         ExecCmdType::UserScript(user_script) => {
-            if user_script.run_on_master {
-                tracing::info!("run on master flag enabled");
+            if user_script.run_on_main_testbed {
+                tracing::info!("run on main flag enabled");
             }
             tracing::info!("running user script {:?} on guest {guest_name}", user_script.script);
             bail!("unimplemented");

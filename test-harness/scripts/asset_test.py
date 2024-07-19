@@ -23,7 +23,7 @@ import os
 # 2) the libvirt network is created (and the bridge)
 # 3) the ovs bridges are created
 # 4) the veths are created
-#    4a) veth between libvirt project bridge and the ovs entry point on master host
+#    4a) veth between libvirt project bridge and the ovs entry point on main host
 #    4b) veth between ovs bridges
 # 5) the tunnels between testbed hosts are created
 # 6) ability to ssh to guest via hostname (which also tests if the guest has an ip)
@@ -56,7 +56,7 @@ TEST_TIME = datetime.datetime.now().replace(microsecond=0).isoformat()
 CURRENT_PROJECT_STATE = PROJECT_STATE_SAVE_LOCATION + "project-state.json"
 TIMESTAMPED_PROJECT_STATE = PROJECT_STATE_SAVE_LOCATION + f"{TEST_TIME}_project-state.json"
 
-# connection to testbed master
+# connection to testbed main
 ssh = Connection(TESTBED_HOSTNAME,
                  connect_kwargs={"key_filename": TESTBED_HOST_KEY},
                  gateway=None)
@@ -292,7 +292,7 @@ def test_libvirt_guest_communication(in_host, in_hostname, in_guest_list):
     # this is testing comms from a libvirt guest to any other guest type
     try:
         print(f"pushing guest ssh key to {in_hostname}")
-        # must be run from master
+        # must be run from main
         testbed_hosts_connections["testbed-host-one"].run(f"""rsync -av -e "ssh -i /home/nocloud/.ssh/id_ed25519_kvm -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' -o ConnectTimeout=10" /home/nocloud/.ssh/id_ed25519_kvm nocloud@{in_hostname}:/home/nocloud/.ssh/""")
     except invoke.exceptions.UnexpectedExit as e:
         # print(e)
@@ -315,7 +315,7 @@ def test_libvirt_guest_communication(in_host, in_hostname, in_guest_list):
                     # ssh from this computer into the testbed host, ssh into the guest on the testbed host,
                     # then ssh from the guest to another guest
                     try:
-                        # must be run from master
+                        # must be run from main
                         testbed_hosts_connections["testbed-host-one"].run(f"""ssh -i /home/nocloud/.ssh/id_ed25519_kvm -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' -o ConnectTimeout=10 nocloud@{in_hostname} "ssh -i /home/nocloud/.ssh/id_ed25519_kvm -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' nocloud@{guest_data['libvirt']['hostname']} hostname" """)
                     except invoke.exceptions.UnexpectedExit as e:
                         # print(e)
@@ -330,7 +330,7 @@ def test_libvirt_guest_communication(in_host, in_hostname, in_guest_list):
                 print(f"connecting to {guest_data['name']} from {in_hostname}")
                 # send a curl request to the container
                 try:
-                    # must be run from master
+                    # must be run from main
                     testbed_hosts_connections["testbed-host-one"].run(f"""ssh -i /home/nocloud/.ssh/id_ed25519_kvm -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null' -o ConnectTimeout=10 nocloud@{in_hostname} "curl {guest_data['docker']['hostname']}" """)
                 except invoke.exceptions.UnexpectedExit as e:
                     # print(e)
@@ -452,7 +452,7 @@ for guest in state_json["testbed_guests"]:
 # test 2)
 print(f"TEST 2: testing libvirt network")
 for host in state_json["testbed_hosts"]:
-    if state_json["testbed_hosts"][host]["is_master_host"]:
+    if state_json["testbed_hosts"][host]["is_main_host"]:
         test_libvirt_network(state_json["testbed_hosts"][host]["hostname"])
 
 # test 3)
@@ -469,7 +469,7 @@ print(f"TEST 4a: testing veth connection to libvirt network")
 # will be a pair project-veth1@project-veth0, where the connections:
 # project-prjbr0 <= project-veth1@project-veth0 => project-br0
 for host in state_json["testbed_hosts"]:
-    if state_json["testbed_hosts"][host]["is_master_host"]:
+    if state_json["testbed_hosts"][host]["is_main_host"]:
         test_veth_connections_4a(state_json["testbed_hosts"][host]["hostname"])
 
 # test 4b)
@@ -506,7 +506,7 @@ else:
 
 
 # test 6)
-# to ssh to a guest, this must happen from the master since the master is the one with the DNS translation
+# to ssh to a guest, this must happen from the main since the main is the one with the DNS translation
 print(f"TEST 6: testing guest is accessible through network from master host")
 for guest in state_json["testbed_guests"]:
     guest_type = get_guest_type(state_json["testbed_guests"][guest])

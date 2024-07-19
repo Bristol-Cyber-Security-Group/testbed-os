@@ -39,7 +39,7 @@ network:
             mac: "00:00:20:20:12:13"
             gateway_ip: "172.16.1.200/24"
             switch: public
-            set_gateway_chassis: master
+            set_gateway_chassis: main
 
         static_routes:
           - prefix: "0.0.0.0/0"

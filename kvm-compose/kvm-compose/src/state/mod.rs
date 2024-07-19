@@ -87,16 +87,16 @@ impl State {
         logical_testbed: &LogicalTestbed,
     ) -> anyhow::Result<BTreeMap<String, StateTestbedHost>> {
         let mut testbed_host_map = BTreeMap::new();
-        // testbed host allocation and master allocation in ~/.kvm-compose/kvm-compose-config.json
+        // testbed host allocation and main testbed allocation in ~/.kvm-compose/kvm-compose-config.json
         for (host, config) in logical_testbed
             .common
             .kvm_compose_config
             .testbed_host_ssh_config
             .iter()
         {
-            let is_master_host = if config.is_master_host.is_some() {
-                // if is_master_host is given then read given otherwise set to false
-                config.is_master_host.context("getting is master host bool")?
+            let is_main_host = if config.is_main_host.is_some() {
+                // if is_main_host is given then read given otherwise set to false
+                config.is_main_host.context("getting is main host bool")?
             } else {
                 false
             };
@@ -108,11 +108,11 @@ impl State {
                     ssh_private_key_location: config.identity_file.clone(),
                     ip: config.ip.clone(),
                     testbed_nic: config.testbed_nic.clone(),
-                    is_master_host,
+                    is_main_host,
                 },
             );
         }
-        // TODO - sanity check if there was no declared testbed master
+        // TODO - sanity check if there was no declared testbed main
         Ok(testbed_host_map)
     }
 
@@ -202,7 +202,7 @@ pub struct StateTestbedHost {
     pub ip: String,
     // resource_metadata: ,
     pub testbed_nic: String,
-    pub is_master_host: bool,
+    pub is_main_host: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

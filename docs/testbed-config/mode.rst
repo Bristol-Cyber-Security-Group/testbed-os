@@ -1,16 +1,16 @@
 Testbed Mode
 ============
 
-This is a simple file read on startup to dictate the mode, either master or client.
+This is a simple file read on startup to dictate the mode, either main or client.
 
-Master
+Main
 ------
 
-The contents of the JSON file in master mode is simply the string "Master":
+The contents of the JSON file in main mode is simply the string "Main":
 
 .. code-block:: json
 
-    "Master"
+    "Main"
 
 Client
 ------
@@ -22,7 +22,7 @@ This file can be manually created or will be made by the `testbedos-server` bina
 
     {
         "Client": {
-            "master_ip": "10.50.0.1",
+            "main_ip": "10.50.0.1",
             "testbed_interface": "eth0"
         }
     }
