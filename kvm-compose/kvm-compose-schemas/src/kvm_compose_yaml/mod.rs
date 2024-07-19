@@ -8,8 +8,9 @@ use crate::kvm_compose_yaml::machines::*;
 use crate::kvm_compose_yaml::network::*;
 use crate::kvm_compose_yaml::testbed_options::*;
 use crate::kvm_compose_yaml::tooling::*;
-use anyhow::Context;
+use anyhow::{Result, Context, Error};
 use serde::{Deserialize, Serialize};
+use tracing::{info};
 use std::fmt;
 use std::fmt::Formatter;
 use std::path::Path;
@@ -31,8 +32,31 @@ impl Config {
         let text = tokio::fs::read_to_string(path).await.with_context(|| "Reading Config file")?;
         let value: Self = serde_yaml::from_str(&text).with_context(|| "Parsing Config YAML")?;
         // // TODO validate i.e. needs cpu and memory etc .. create validation code in other file
-        // value.validate()?;
+        value.validate().with_context(|| "Validating Config semantics")?;
         Ok(value)
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        info!("Running validation for Config");
+        
+        if let Some(machines) = &self.machines {
+            for machine in machines {
+                match &machine.guest_type {
+                    GuestType::Libvirt(libvirt) => {
+                        if libvirt.cpus.is_none() {
+                            return Err(Error::msg("Machine is missing 'cpus' in libvirt configuration"));
+                        }
+                        if libvirt.memory_mb.is_none() {
+                            return Err(Error::msg("Machine is missing 'memory_mb' in libvirt configuration"));
+                        }
+                    },
+                    // Add validation for other guest types if needed, skip for now
+                    _ => {},
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub async fn save_to<P: AsRef<Path>>(&self, path: P) -> anyhow::Result<()> {
