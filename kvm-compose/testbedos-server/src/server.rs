@@ -208,7 +208,7 @@ pub fn master_app(app_state: Arc<AppState>) -> Router {
                 .put(update_deployment),
         )
         // .route("/api/deployments/:name/action", post(action_deployment))
-        .route("/api/deployments/:name/state", get(get_state))
+        .route("/api/deployments/:name/state", get(get_state).post(set_state))
         .route("/api/metrics/prometheus/hosts", get(prometheus_scrape_endpoint_for_hosts))
         .route("/api/metrics/prometheus/libvirt", get(prometheus_scrape_endpoint_for_libvirt))
         .route("/api/metrics/prometheus/android", get(prometheus_scrape_endpoint_for_android))

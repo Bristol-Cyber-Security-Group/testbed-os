@@ -3,7 +3,7 @@ use anyhow::{bail, Context};
 use reqwest::Client;
 use tokio::sync::mpsc::{Sender};
 use kvm_compose_schemas::cli_models::Opts;
-use crate::orchestration::{create_logical_testbed, OrchestrationTask, read_previous_state};
+use crate::orchestration::{create_logical_testbed, OrchestrationTask, read_previous_state_request, write_state_request};
 use crate::parse_config;
 use crate::state::orchestration_tasks::{check_if_guest_images_exist, get_orchestration_common};
 use crate::state::State;
@@ -45,6 +45,8 @@ pub async fn run_orchestration(
         deployment,
         kvm_compose_config,
         sender,
+        client,
+        opts.server_connection,
     ).await.context("running the chosen orchestration command")?;
 
     Ok(command_result)
@@ -55,6 +57,8 @@ pub async fn orchestration_parse_command(
     mut deployment: Deployment,
     kvm_compose_config: TestbedClusterConfig,
     sender: &mut Sender<OrchestrationProtocol>,
+    http_client: Client,
+    server_conn: String,
 ) -> anyhow::Result<Deployment> {
     let yaml = format!("{}/kvm-compose.yaml", deployment.project_location.clone());
     let project_location = PathBuf::from(&deployment.project_location);
@@ -67,7 +71,7 @@ pub async fn orchestration_parse_command(
             // if we are reapplying acl, shortcut here otherwise continue
             let reapply_acl = up_cmd.reapply_acl.clone();
             if reapply_acl {
-                let previous_state = read_previous_state(project_location.clone(), project_name).await?;
+                let previous_state = read_previous_state_request(&http_client, &server_conn, &project_name).await?;
                 let logical_testbed = create_logical_testbed(&yaml, &deployment, &project_location, false)
                     .await
                     .context("Creating logical testbed")?;
@@ -79,6 +83,8 @@ pub async fn orchestration_parse_command(
                     command.clone(),
                     project_name.clone(),
                     project_location.clone(),
+                    &http_client,
+                    &server_conn,
                 ).await?;
                 Ok(deployment)
             } else {
@@ -87,7 +93,8 @@ pub async fn orchestration_parse_command(
                 // so that we can prevent re-running scripts
                 let force_provision = up_cmd.provision.clone();
                 let force_rerun_scripts = up_cmd.rerun_scripts.clone();
-                let previous_state = read_previous_state(project_location.clone(), project_name).await;
+                let previous_state = read_previous_state_request(&http_client, &server_conn, &project_name).await;
+
                 let mut state = match previous_state {
                     Ok(state) => {
                         tracing::info!("There was a previous state file found");
@@ -116,10 +123,10 @@ pub async fn orchestration_parse_command(
                             tracing::info!("parsed {project_name} kvm-compose.yaml");
                             let state = State::new(&logical_testbed)
                                 .context("Creating state from logical testbed")?;
-                            state
-                                .write(&project_name, &project_location)
+                            write_state_request(&http_client, &server_conn, &project_name, &state)
                                 .await
-                                .context("Writing the state json file.")?;
+                                .context("Sending the state json file to server to save to disk.")?;
+
                             tracing::info!("written state for {project_name}");
                             // send the deployment and the command and receive OK
                             send_orchestration_instruction_over_channel(
@@ -164,10 +171,9 @@ pub async fn orchestration_parse_command(
                             // set this to true so that we skip setup script stage
                             state.state_provisioning.guests_provisioned = true;
                         }
-                        state
-                            .write(&project_name, &project_location)
+                        write_state_request(&http_client, &server_conn, &project_name, &state)
                             .await
-                            .context("Writing the state json file.")?;
+                            .context("Sending the state json file to server to save to disk.")?;
                         tracing::info!("written state for {project_name}");
                         // send the deployment and the command and receive OK
                         send_orchestration_instruction_over_channel(
@@ -187,7 +193,7 @@ pub async fn orchestration_parse_command(
 
                 let common = get_orchestration_common(&state, force_provision, force_rerun_scripts, reapply_acl, kvm_compose_config).await?;
                 // now the state has been written, we can ask the server to run orchestration
-                let up_res = state.request_create_action(&common, sender).await;
+                let up_res = state.request_create_action(&common, sender).await.context("requesting create action");
                 match up_res {
                     Ok(_) => deployment.state = DeploymentState::Up,
                     Err(err) => {
@@ -197,10 +203,9 @@ pub async fn orchestration_parse_command(
                 }
                 // update state with provisioning state, even if fail provisioning may have been partial
                 state.state_provisioning.guests_provisioned = true;
-                state
-                    .write(&project_name, &project_location)
+                write_state_request(&http_client, &server_conn, &project_name, &state)
                     .await
-                    .context("Writing the state json file.")?;
+                    .context("Sending the state json file to server to save to disk.")?;
                 Ok(deployment)
             }
         }
@@ -218,11 +223,9 @@ pub async fn orchestration_parse_command(
             ).await.context("sending Init request to server")?;
 
             // get state from file, should destroy only what is up
-            let read_state = tokio::fs::read_to_string(&state_path).await;
-            match read_state {
-                Ok(_) => {
-                    let text = tokio::fs::read_to_string(&state_path).await?;
-                    let old_state: State = serde_json::from_str(&text).unwrap();
+            let previous_state = read_previous_state_request(&http_client, &server_conn, &project_name).await;
+            match previous_state {
+                Ok(old_state) => {
                     let common = get_orchestration_common(&old_state, false, false, false, kvm_compose_config).await?;
                     match old_state.request_destroy_action(&common, sender).await {
                         Ok(_) => deployment.state = DeploymentState::Down,
@@ -257,10 +260,9 @@ pub async fn orchestration_parse_command(
             let state = State::new(&logical_testbed)
                 .context("creating state from logical testbed")?;
             // write state
-            state
-                .write(&project_name, &project_location)
+            write_state_request(&http_client, &server_conn, &project_name, &state)
                 .await
-                .context("Failed to write the state json file.")?;
+                .context("Sending the state json file to server to save to disk.")?;
             tracing::info!("written state for {project_name}");
 
             send_orchestration_instruction_over_channel(
@@ -285,7 +287,7 @@ pub async fn orchestration_parse_command(
         }
         DeploymentCommand::ClearArtefacts => {
             // destroy_remote_project_folders(&common).await?;
-            if let Ok(_) = read_previous_state(project_location.clone(), project_name).await {
+            if let Ok(_) = read_previous_state_request(&http_client, &server_conn, &project_name).await {
 
                 send_orchestration_instruction_over_channel(
                     sender,
@@ -308,7 +310,7 @@ pub async fn orchestration_parse_command(
             Ok(deployment)
         }
         DeploymentCommand::Snapshot { ref snapshot_cmd } => {
-            if let Ok(_) = read_previous_state(project_location.clone(), project_name).await {
+            if let Ok(_) = read_previous_state_request(&http_client, &server_conn, &project_name).await {
 
                 send_orchestration_instruction_over_channel(
                     sender,
@@ -329,7 +331,7 @@ pub async fn orchestration_parse_command(
             Ok(deployment)
         }
         DeploymentCommand::TestbedSnapshot { snapshot_guests } => {
-            if let Ok(_) = read_previous_state(project_location.clone(), project_name).await {
+            if let Ok(_) = read_previous_state_request(&http_client, &server_conn, &project_name).await {
 
                 send_orchestration_instruction_over_channel(
                     sender,
@@ -353,7 +355,7 @@ pub async fn orchestration_parse_command(
             Ok(deployment)
         }
         DeploymentCommand::AnalysisTool(ref tool) => {
-            if let Ok(_) = read_previous_state(project_location.clone(), project_name).await {
+            if let Ok(_) = read_previous_state_request(&http_client, &server_conn, &project_name).await {
                 tracing::info!("running analysis tool: {tool:?}");
 
                 send_orchestration_instruction_over_channel(
@@ -376,7 +378,7 @@ pub async fn orchestration_parse_command(
             Ok(deployment)
         }
         DeploymentCommand::Exec(ref exec_cmd) => {
-            if let Ok(_) = read_previous_state(project_location.clone(), project_name).await {
+            if let Ok(_) = read_previous_state_request(&http_client, &server_conn, &project_name).await {
 
                 send_orchestration_instruction_over_channel(
                     sender,

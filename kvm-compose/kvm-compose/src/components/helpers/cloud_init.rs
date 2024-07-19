@@ -104,7 +104,5 @@ pub fn create_network_config(
     tera_context.insert("interfaces", &interfaces);
     let render = TEMPLATES.render("cloud_init_network", &tera_context)?;
 
-    tracing::info!("@@@@@@@@@@\n\n{render}");
-
     Ok(render.into_bytes())
 }

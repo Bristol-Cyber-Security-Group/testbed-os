@@ -125,7 +125,7 @@ pub async fn ws_orchestration_client(
             orchestration_cmd_generation_thread,
             orchestration_message_cmd_receiver_thread,
             orchestration_interrupt_listener,
-        )).await?;
+        )).await.context("running parallel tasks to manage command running state")?;
         match deployment_result {
             Ok(_) => {}
             Err(err) => {
