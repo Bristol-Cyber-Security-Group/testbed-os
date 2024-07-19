@@ -12,7 +12,6 @@ use tokio::sync::RwLock;
 use tower_http::cors::{CorsLayer};
 use tower_http::normalize_path::NormalizePathLayer;
 use tower_layer::Layer;
-use testbedos_lib;
 use testbedos_lib::{AppState, ClientAppState, ip_string_to_slice, logging, ServiceClients};
 use testbedos_lib::cluster::{create_config_wizard, parse_cli_args, ServerModeCmd};
 use testbedos_lib::cluster::cluster::configure_testbed_host;
@@ -51,9 +50,9 @@ async fn main() {
     // store address to server
     // listen on all addresses as CLI and client testbed hosts will use different IPs
     let ip = "0.0.0.0".to_string();
-    let server_url = String::from(format!("http://{ip}:3355"));
+    let server_url = format!("http://{ip}:3355");
     let addr = SocketAddr::from((
-        ip_string_to_slice(&ip).expect(&format!("getting ip u8 slice from {ip}")),
+        ip_string_to_slice(&ip).unwrap_or_else(|_| panic!("getting ip u8 slice from {ip}")),
         3355,
     ));
 
@@ -238,7 +237,7 @@ async fn try_configure_host(
     mode: &ServerModeCmd,
     db_config: &Arc<RwLock<Box<dyn TestbedConfigProvider + Sync + Send>>>,
 ) {
-    match configure_testbed_host(&mode, &db_config).await {
+    match configure_testbed_host(mode, db_config).await {
         Ok(_) => { }
         Err(err) => {
             tracing::error!("could not start server due host configuration issue, error: {err:#}");

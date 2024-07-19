@@ -55,7 +55,7 @@ fn naive_round_robin(logical_testbed: &mut LogicalTestbed) -> anyhow::Result<Loa
             unimplemented!()
         }
     }
-    return Ok(LoadBalanceTopology {
+    Ok(LoadBalanceTopology {
         guest_to_host,
         // interface_to_host,
     })

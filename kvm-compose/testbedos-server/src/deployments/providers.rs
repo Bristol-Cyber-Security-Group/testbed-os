@@ -201,10 +201,10 @@ impl DeploymentProvider for FileBasedProvider {
     async fn get_state(&self, name: String) -> anyhow::Result<State> {
         let deployment = self.get_deployment(name)
             .await.context("get deployment")?;
-        let state_json = get_state_json(deployment)
+        
+        get_state_json(deployment)
             .await
-            .context("get state json");
-        state_json
+            .context("get state json")
     }
 
     async fn set_state(&self, name: String, state: State) -> anyhow::Result<()> {

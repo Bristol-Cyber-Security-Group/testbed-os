@@ -64,9 +64,9 @@ impl OrchestrationTask for State {
     async fn create_action(&self, common: &OrchestrationCommon) -> anyhow::Result<()> {
         tracing::info!("running create action for testbed State");
 
-        check_if_testbed_hosts_up(&common).await?;
+        check_if_testbed_hosts_up(common).await?;
 
-        create_remote_project_folders(&common).await?;
+        create_remote_project_folders(common).await?;
 
         // we separate creating the network into creating interfaces, then connecting them
 
@@ -163,7 +163,7 @@ impl OrchestrationTask for State {
             }
         }
         // push backing images where necessary
-        let images_to_push = calculate_backing_images_to_push(&self, &common).await?;
+        let images_to_push = calculate_backing_images_to_push(self, common).await?;
         for (backing_guest_name, target_testbed) in images_to_push.into_iter() {
             // from the images_to_push set, work out the local path on master and the remote path
             // on the target testbed host
@@ -171,7 +171,7 @@ impl OrchestrationTask for State {
                 &self.testbed_guests,
                 &backing_guest_name)?;
             let backing_image_remote_path = get_backing_image_remote_path(
-                &common,
+                common,
                 &self.testbed_guests,
                 &backing_guest_name,
                 &target_testbed)?;
@@ -182,7 +182,7 @@ impl OrchestrationTask for State {
                 .to_string();
 
             let target_testbed_host = target_testbed.clone();
-            push_image_futures.push(Box::pin(SSHClient::push_file_to_remote_testbed(&common, target_testbed_host, local_src, remote_dst, false)));
+            push_image_futures.push(Box::pin(SSHClient::push_file_to_remote_testbed(common, target_testbed_host, local_src, remote_dst, false)));
         }
         try_join_all(push_image_futures).await?;
 
@@ -191,7 +191,7 @@ impl OrchestrationTask for State {
         let mut rebase_futures = Vec::new();
         for (_guest_name, guest_data) in self.testbed_guests.0.iter() {
             // only rebase on remote testbeds
-            if !guest_data.testbed_host.as_ref().unwrap().eq(&get_master_testbed_name(&common)) {
+            if !guest_data.testbed_host.as_ref().unwrap().eq(&get_master_testbed_name(common)) {
                 match &guest_data.guest_type.guest_type {
                     GuestType::Libvirt(libvirt) => {
                         if libvirt.is_clone_of.is_some() {
@@ -268,7 +268,7 @@ impl OrchestrationTask for State {
     async fn destroy_action(&self, common: &OrchestrationCommon) -> anyhow::Result<()> {
         tracing::info!("running destroy action for testbed State");
 
-        check_if_testbed_hosts_up(&common).await?;
+        check_if_testbed_hosts_up(common).await?;
 
         // destroy guests
         let mut guest_destroy_futures = Vec::new();
@@ -333,7 +333,7 @@ impl OrchestrationTask for State {
                 ).await.context("requesting create temporary network instruction")?;
             }
 
-            setup_backing_image_stage(&self, sender).await?;
+            setup_backing_image_stage(self, sender).await?;
 
             if net_provision {
                 tracing::info!("turning on temporary network for backing images with shared setup scripts");
@@ -345,7 +345,7 @@ impl OrchestrationTask for State {
             }
 
             tracing::info!("Stage: creating any libvirt clones of backing image guests");
-            setup_linked_clones_stage(&self, sender).await?;
+            setup_linked_clones_stage(self, sender).await?;
         } else {
             tracing::info!("skipping setting up backing image and creating clones as they have already been provisioned");
         }
@@ -353,18 +353,18 @@ impl OrchestrationTask for State {
         // if already been provisioned previously, this will only check if the images exist on the
         // remote
         tracing::info!("Stage: pushing guest images to remote testbed hosts");
-        push_guest_images_stage(&self, sender).await?;
-        push_backing_guest_images_stage(&self, common, sender).await?;
+        push_guest_images_stage(self, sender).await?;
+        push_backing_guest_images_stage(self, common, sender).await?;
 
         tracing::info!("Stage: rebasing clones on remote testbed hosts");
-        rebase_clone_images_stage(&self, common, sender).await?;
+        rebase_clone_images_stage(self, common, sender).await?;
 
         tracing::info!("Stage: deploying guests");
-        deploy_guest_stage(&self, sender).await?;
+        deploy_guest_stage(self, sender).await?;
 
         if !self.state_provisioning.guests_provisioned || common.force_rerun_scripts {
             tracing::info!("Stage: running any guest setup scripts");
-            run_guest_setup_scripts_stage(&self, sender).await?;
+            run_guest_setup_scripts_stage(self, sender).await?;
         } else {
             tracing::info!("Skipping guest setup scripts as guest have already been provisioned");
         }
@@ -382,7 +382,7 @@ impl OrchestrationTask for State {
         ).await.context("requesting if testbed hosts are up")?;
 
         // destroy guests
-        destroy_guest_stage(&self, sender).await?;
+        destroy_guest_stage(self, sender).await?;
 
         // make sure temporary network is down
         send_orchestration_instruction_over_channel(
@@ -408,7 +408,7 @@ pub async fn clear_artefacts(
 ) -> anyhow::Result<()> {
     let project_name = &common.project_name;
     // make sure testbed is down
-    state.destroy_action(&common).await?;
+    state.destroy_action(common).await?;
     // special case for android
     for (guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
@@ -425,8 +425,8 @@ pub async fn clear_artefacts(
                     "-n", &avd_name
                 ];
                 run_testbed_orchestration_command_allow_fail(
-                    &common,
-                    &guest_data.testbed_host.as_ref().unwrap(),
+                    common,
+                    guest_data.testbed_host.as_ref().unwrap(),
                     "sudo",
                     cmd,
                     false,
@@ -438,7 +438,7 @@ pub async fn clear_artefacts(
     }
     // remove remote folder
     tracing::info!("deleting remote artefacts folders");
-    destroy_remote_project_folders(&common).await?;
+    destroy_remote_project_folders(common).await?;
     // remove local folder
     tracing::info!("deleting local artefacts folder");
     let mut artefacts_folder = common.project_working_dir.clone();
@@ -533,11 +533,7 @@ fn check_provision_temporary_network(state_testbed_guest_list: &StateTestbedGues
             }
         })
         .count();
-    if provision_temporary_network > 0 {
-        true
-    } else {
-        false
-    }
+    provision_temporary_network > 0
 }
 
 /// Create a network with Virsh to place the backing image libvirt guests.
@@ -549,7 +545,7 @@ pub async fn turn_on_temporary_network(
     // generate the temporary network xml
     let mut tera_context = tera::Context::new();
     tera_context.insert("network_name", &format!("{project_name}-testbedos"));
-    tera_context.insert("bridge_name", &format!("temp-net-tbos")); // TODO - do we make this unique?
+    tera_context.insert("bridge_name", &"temp-net-tbos".to_string()); // TODO - do we make this unique?
     let xml = render_libvirt_network_xml(tera_context)?;
     // write to artefacts folder
     let xml_dest = format!(

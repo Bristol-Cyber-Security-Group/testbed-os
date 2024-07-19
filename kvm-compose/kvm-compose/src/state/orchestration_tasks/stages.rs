@@ -251,7 +251,7 @@ pub async fn rebase_clone_images_stage(
 
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         // only rebase on remote testbeds
-        if !guest_data.testbed_host.as_ref().unwrap().eq(&get_master_testbed_name(&common)) {
+        if !guest_data.testbed_host.as_ref().unwrap().eq(&get_master_testbed_name(common)) {
             match &guest_data.guest_type.guest_type {
                 GuestType::Libvirt(libvirt) => {
                     if libvirt.is_clone_of.is_some() {

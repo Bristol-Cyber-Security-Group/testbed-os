@@ -52,7 +52,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                             &common,
                             &path_to_shared_setup_script,
                             &"/tmp".to_string(),
-                            &self.username.as_ref().unwrap(),
+                            self.username.as_ref().unwrap(),
                             &guest_name,
                         ).await?;
                         SSHClient::run_guest_command(
@@ -225,7 +225,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 
     async fn pull_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
         let target_testbed = machine_config.testbed_host.as_ref().unwrap();
-        let guest_name = format!("{}", &machine_config.guest_type.name);
+        let guest_name = machine_config.guest_type.name.to_string();
         if is_master(&common, target_testbed) {
             // clone is local, dont rebase
             return Ok(());
@@ -262,8 +262,8 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         let remote_backing_image_path = get_backing_image_remote_path(
             &common,
             &guest_list,
-            &backing_guest_name,
-            &target_testbed)?;
+            backing_guest_name,
+            target_testbed)?;
         // get the remote path to the clone we want to rebase
         let clone_remote_path = match &self.libvirt_type {
             LibvirtGuestOptions::CloudImage { path, .. } => path.as_ref().unwrap().to_str().unwrap(),
@@ -383,7 +383,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                         &common,
                         &local_script_path,
                         &"/tmp".to_string(),
-                        &self.username.as_ref().unwrap(),
+                        self.username.as_ref().unwrap(),
                         &guest_name,
                     ).await?;
                     SSHClient::run_guest_command(
@@ -568,7 +568,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
             cmd_string.push("--env-file".to_string());
             // need to set the absolute path for env file since it might be running on remote
             if is_master(&common, testbed_host) {
-                cmd_string.push(format!("{env_file}"));
+                cmd_string.push(env_file.to_string());
             } else {
                 // on remote
                 let remote_project_folder = get_remote_project_folder(&common, testbed_host)?;
@@ -618,7 +618,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
 
         // add hostname to container
         cmd_string.push("-h".to_string());
-        cmd_string.push(format!("{guest_name}"));
+        cmd_string.push(guest_name.to_string());
 
         // add the docker image name
         cmd_string.push(self.image.clone());
@@ -808,7 +808,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
                 None,
             ).await?;
             // need to remove trailing new line
-            let port_uuid = port_uuid.strip_suffix("\n")
+            let port_uuid = port_uuid.strip_suffix('\n')
                 .context("stripping newline from docker port uuid")?.to_string();
             // now set the external id on this interface with the OVN data so that it is bound to
             // our logical network
@@ -1023,8 +1023,8 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
             // set ip of ovs port
             let ip = if net[0].ip.eq("dynamic") {
                 let lsp_name = format!("{}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
-                let dynamic_ip = get_lsp_dynamic_ip(&lsp_name, testbed_host, &common).await?;
-                dynamic_ip
+                
+                get_lsp_dynamic_ip(&lsp_name, testbed_host, &common).await?
             } else {
                 net[0].ip.clone()
             };
@@ -1234,11 +1234,7 @@ pub fn get_master_testbed_name(
         let temp: Vec<_> = common.testbed_hosts
             .iter()
             .filter(|(_, data)| {
-                if data.is_master_host {
-                    true
-                } else {
-                    false
-                }
+                data.is_master_host
             })
             .map(|(name, _)| {name})
             .collect();
@@ -1322,12 +1318,12 @@ async fn get_lsp_dynamic_ip(
     ).await?;
     // result will be "mac ip" so we need to make sure there are two results, get the second, and
     // then also remove the trailing newline
-    let split: Vec<_> = res.split(" ").collect();
+    let split: Vec<_> = res.split(' ').collect();
     if split.len() != 2 {
         bail!("could not get the dynamic ip for lsp {lsp_name} as result from NB DB was {}", &res);
     }
     let ip = split[1];
-    let ip = ip.strip_suffix("\n")
+    let ip = ip.strip_suffix('\n')
         .context("stripping newline from dynamic ip")?;
 
     Ok(ip.to_string())

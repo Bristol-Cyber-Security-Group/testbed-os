@@ -66,7 +66,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                             {
                                 if setup.clones.contains(&clone_n) {
                                     // setup script present for clone
-                                    clone_setup_script = setup.script.clone().into();
+                                    clone_setup_script = setup.script.clone();
                                 }
                             }
                             Some(clone_setup_script)
@@ -85,7 +85,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                             {
                                 if run.clones.contains(&clone_n) {
                                     // setup script present for clone
-                                    clone_run_script = run.script.clone().into();
+                                    clone_run_script = run.script.clone();
                                 }
                             }
                             Some(clone_run_script)
@@ -122,8 +122,8 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                             name: format!("{}-{}", machine.name.clone(), clone_n),
                             network: Some(vec![clone_interfaces]),
                             guest_type: GuestType::Libvirt(ConfigLibvirtMachine {
-                                memory_mb: libvirt_guest.memory_mb.clone(),
-                                cpus: libvirt_guest.cpus.clone(),
+                                memory_mb: libvirt_guest.memory_mb,
+                                cpus: libvirt_guest.cpus,
                                 libvirt_type: match &libvirt_guest.libvirt_type {
                                     LibvirtGuestOptions::CloudImage {
                                         name,
@@ -135,7 +135,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                                         environment,
                                     } => LibvirtGuestOptions::CloudImage {
                                         name: name.clone(),
-                                        expand_gigabytes: expand_gigabytes.clone(),
+                                        expand_gigabytes: *expand_gigabytes,
                                         path: path.clone(),
                                         run_script: clone_run_script,
                                         setup_script: clone_setup_script,
@@ -152,8 +152,8 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                                         path: path.clone(),
                                         driver_type: driver_type.clone(),
                                         device_type: device_type.clone(),
-                                        readonly: readonly.clone(),
-                                        create_deep_copy: create_deep_copy.clone(),
+                                        readonly: *readonly,
+                                        create_deep_copy: *create_deep_copy,
                                     },
                                     LibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
                                 },
@@ -201,7 +201,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                                 environment: docker_guest.environment.clone(),
                                 env_file: docker_guest.env_file.clone(),
                                 volumes: docker_guest.volumes.clone(),
-                                privileged: docker_guest.privileged.clone(),
+                                privileged: docker_guest.privileged,
                                 scaling: None,
                                 user: docker_guest.user.clone(),
                                 device: docker_guest.device.clone(),
@@ -242,8 +242,8 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                                         android_api_version,
                                         playstore_enabled
                                     } => AVDGuestOptions::Avd {
-                                        android_api_version: android_api_version.clone(),
-                                        playstore_enabled: playstore_enabled.clone(),
+                                        android_api_version: *android_api_version,
+                                        playstore_enabled: *playstore_enabled,
                                     },
                                     AVDGuestOptions::ExistingAvd { .. } => {
                                         // need to create copies
@@ -272,7 +272,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
             .clone()
             .context("Getting machines from yaml config")?
             .into_iter()
-            .chain(new_config_machines.into_iter())
+            .chain(new_config_machines)
             .collect::<Vec<Machine>>();
         config.machines = Some(new_config);
     }
@@ -328,9 +328,9 @@ fn get_clone_ip_from_range(
         ConfigScalingIpType::IpRange(ip_range) => {
             // make sure ip values are formatted properly
             let from = ip_range.from.parse::<IpAddr>()
-                .context(format!("parsing ConfigScalingIpRange (from) into ip address"))?;
+                .context("parsing ConfigScalingIpRange (from) into ip address".to_string())?;
             let to = ip_range.to.parse::<IpAddr>()
-                .context(format!("parsing ConfigScalingIpRange (to) into ip address"))?;
+                .context("parsing ConfigScalingIpRange (to) into ip address".to_string())?;
             // make sure both ips are same type
             if from.is_ipv4() != to.is_ipv4() || from.is_ipv6() != to.is_ipv6() {
                 bail!("ip types need to match either both ipv4 or ipv6, from = {} and to = {}", from.to_string(), to.to_string())
@@ -402,9 +402,9 @@ fn get_clone_mac_from_range(
     // add clone n to the from mac u64 to get the clone mac
     let from_bytes = &from.as_bytes
         .context("getting mac as bytes")?;
-    let mac = MacAddress::from_u64(from_bytes + clone_pos as u64);
+    
 
-    mac
+    MacAddress::from_u64(from_bytes + clone_pos as u64)
 }
 
 /// Since we are working with IP ranges, we want work out how many consecutive ips in this range.
@@ -416,7 +416,8 @@ fn get_ip_range(
 ) -> anyhow::Result<u32> {
     // get range of ip, depends on type, assume we have checked both are same type, we can just work
     // from one
-    let range = match from {
+    
+    match from {
         IpAddr::V4(from_v4) => {
             // let from_octets = v4.octets();
             let to_v4 = match to {
@@ -432,8 +433,7 @@ fn get_ip_range(
             Ok(to_ip_bytes - from_ip_bytes)
         }
         IpAddr::V6(_) => unimplemented!(),
-    };
-    range
+    }
 }
 
 /// Since we are working with mac ranges, we want to work out how many consecutive mac addresses in

@@ -74,7 +74,7 @@ pub async fn parse_cli_args(
                 create_mode_config(ServerModeCmd::Master).await?;
             }
             ServerModeCmd::Client(client) => {
-                validate_client_mode_arguments(&client)?;
+                validate_client_mode_arguments(client)?;
                 create_mode_config(ServerModeCmd::Client(client.clone())).await?;
             }
             ServerModeCmd::CreateConfig => {

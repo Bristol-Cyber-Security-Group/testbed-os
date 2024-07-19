@@ -36,7 +36,7 @@ pub async fn cgroup_get_cpu_time(
     let mut lines = reader.lines();
 
     while let Some(line) = lines.next_line().await? {
-        let split: Vec<_> = line.split(" ").collect();
+        let split: Vec<_> = line.split(' ').collect();
         if split[0].eq("usage_usec") {
             return Ok(split[1].parse::<u64>()?);
         }
@@ -53,7 +53,7 @@ pub async fn cgroup_get_current_memory(
     let reader = io::BufReader::new(current_memory_file);
     let mut lines = reader.lines();
     if let Some(mem) = lines.next_line().await? {
-        return Ok(mem.parse::<u64>()?)
+        Ok(mem.parse::<u64>()?)
     } else {
         bail!("could not get current memory");
     }

@@ -151,7 +151,7 @@ impl TestbedSnapshots {
         let mut all_info = String::new();
         for (_, guest_snapshot) in &self.guests {
             all_info.push_str(&guest_snapshot.list());
-            all_info.push_str("\n");
+            all_info.push('\n');
         }
         if all_info.is_empty() {
             return Ok("No snapshots to list".to_string());
@@ -183,7 +183,7 @@ impl TestbedSnapshots {
         tracing::info!("Deleting all snapshots for guest {}:", corrected_name);
         let guest = self.guests.get(&corrected_name)
             .context("Getting name of guest to delete snapshot")?;
-        if let Some(_) = guest.snapshot.list() {
+        if guest.snapshot.list().is_some() {
             guest.delete_all(common).await?;
         } else {
             tracing::info!("no snapshots to delete");

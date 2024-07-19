@@ -15,14 +15,14 @@ pub async fn load_qemu_img(
     common: &OrchestrationCommon,
 ) -> anyhow::Result<QemuImg> {
     let json_data = run_testbed_orchestration_command(
-        &common,
-        &testbed_host,
+        common,
+        testbed_host,
         "sudo",
         vec!["qemu-img", "info", "--output=json", &img_path, "--force-share"],
         false,
         None,
     ).await?;
-    Ok(QemuImg::new(json_data)?)
+    QemuImg::new(json_data)
 }
 
 /// This is the representation of the json format of running `qemu-img info` on a given .qcow2
@@ -65,11 +65,7 @@ impl QemuImg {
             Some(index)
         } else if let Some(index) = img_name.rfind("-linked-clone") {
             Some(index)
-        } else if let Some(index) = img_name.rfind("-iso-guest") {
-            Some(index)
-        } else {
-            None
-        };
+        } else { img_name.rfind("-iso-guest") };
         let guest_name = if guest_name_idx.is_none() {
             bail!("could not find guest name to work out the domain xml filepath");
         } else {
@@ -83,7 +79,7 @@ impl QemuImg {
         tracing::info!("checking if guest {guest_name} is up");
         let cmd = vec!["virsh", "dominfo", &guest_name];
         let res = run_testbed_orchestration_command_allow_fail(
-            &common,
+            common,
             testbed_host,
             "sudo",
             cmd,
@@ -133,7 +129,7 @@ impl QemuImg {
         tracing::info!("stopping guest {guest_name}");
         run_testbed_orchestration_command(
             common,
-            &testbed_host,
+            testbed_host,
             "sudo",
             vec!["virsh", "shutdown", guest_name],
             false,
@@ -148,7 +144,7 @@ impl QemuImg {
         tracing::info!("resuming guest {guest_name}");
         run_testbed_orchestration_command(
             common,
-            &testbed_host,
+            testbed_host,
             "sudo",
             vec!["virsh", "create", &self.get_domain_xml_path()?],
             false,
@@ -167,7 +163,7 @@ impl GuestDiskSnapshot for QemuImg {
                 snap_list.push(format!("{}", snapshot));
             }
         } else {
-            snap_list.push(format!("\nno snapshots..."));
+            snap_list.push("\nno snapshots...".to_string());
         }
         snap_list
     }
@@ -206,7 +202,7 @@ impl GuestDiskSnapshot for QemuImg {
             let cmd = vec!["virsh", "snapshot-create-as", &guest_name, "--name", snapshot_name, self.get_path()];
             let res = run_testbed_orchestration_command(
                 common,
-                &testbed_host,
+                testbed_host,
                 "sudo",
                 cmd,
                 false,
@@ -224,7 +220,7 @@ impl GuestDiskSnapshot for QemuImg {
             let cmd = vec!["qemu-img", "snapshot", "-c", snapshot_name, &self.get_path()];
             let res = run_testbed_orchestration_command(
                 common,
-                &testbed_host,
+                testbed_host,
                 "sudo",
                 cmd,
                 false,
@@ -252,7 +248,7 @@ impl GuestDiskSnapshot for QemuImg {
         let cmd = vec!["qemu-img", "snapshot", "-d", snapshot_name, &self.get_path()];
         let res = run_testbed_orchestration_command(
             common,
-            &testbed_host,
+            testbed_host,
             "sudo",
             cmd,
             false,
@@ -279,7 +275,7 @@ impl GuestDiskSnapshot for QemuImg {
                 let cmd = vec!["qemu-img", "snapshot", "-d", &snap.name, &self.get_path()];
                 let res = run_testbed_orchestration_command(
                     common,
-                    &testbed_host,
+                    testbed_host,
                     "sudo",
                     cmd,
                     false,
@@ -306,7 +302,7 @@ impl GuestDiskSnapshot for QemuImg {
         let cmd = vec!["qemu-img", "snapshot", "-a", snapshot_name, &self.get_path()];
         let res = run_testbed_orchestration_command(
             common,
-            &testbed_host,
+            testbed_host,
             "sudo",
             cmd,
             false,
@@ -324,11 +320,7 @@ impl GuestDiskSnapshot for QemuImg {
         if let Some(snapshots) = &self.snapshots {
             let max = snapshots.iter()
                 .max_by_key(|snap| snap.date_sec);
-            if let Some(latest_snap) = max {
-                return Some(latest_snap.name.clone());
-            } else {
-                None
-            }
+            max.map(|latest_snap| latest_snap.name.clone())
         } else {
             None
         }

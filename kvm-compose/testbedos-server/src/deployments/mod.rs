@@ -62,7 +62,7 @@ pub async fn set_state_json(deployment: Deployment, state: State) -> anyhow::Res
     let project_name = &deployment.name;
     let project_location = PathBuf::from(deployment.project_location.clone());
     state
-        .write(&project_name, &project_location)
+        .write(project_name, &project_location)
         .await?;
     Ok(())
 }

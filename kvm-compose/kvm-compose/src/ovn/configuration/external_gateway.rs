@@ -62,10 +62,10 @@ mod tests {
             "lr0-public".into(),
             "ovn".into(),
         );
-        let set_gateway = gw.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let set_gateway = gw.create_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings!["ovn-nbctl", "--may-exist", "lrp-set-gateway-chassis", "lr0-public", "ovn", "20"].join(" ");
         assert_eq!(set_gateway, expected_cmd);
-        let del_gateway = gw.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let del_gateway = gw.destroy_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings!["ovn-nbctl", "lrp-del-gateway-chassis", "lr0-public", "ovn"].join(" ");
         assert_eq!(del_gateway, expected_cmd);
     }

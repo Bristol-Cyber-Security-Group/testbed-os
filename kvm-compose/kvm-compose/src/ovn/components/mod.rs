@@ -39,7 +39,7 @@ impl MacAddress {
     }
 
     fn get_mac_as_bytes(address: &String) -> anyhow::Result<u64> {
-        let split: Vec<_> = address.split(":").collect();
+        let split: Vec<_> = address.split(':').collect();
         // make sure the right number of colons
         if split.len() != 6 {
             // bail!("mac address not 48 or 64 bit format {address}");
@@ -103,7 +103,7 @@ impl MacAddress {
 
 fn validate_mac(mac: &String) -> anyhow::Result<()> {
     // make sure the format of the octets is OK
-    let split: Vec<_> = mac.split(":").collect();
+    let split: Vec<_> = mac.split(':').collect();
     for octet in split {
         if octet.len() != 2 {
             bail!("octet {octet} in mac {mac} is not correct");

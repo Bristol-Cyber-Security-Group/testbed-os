@@ -69,11 +69,7 @@ pub fn create_network_config(
     if let Some(network_definition) = network_definition {
         for (idx, interface) in network_definition.iter().enumerate() {
             let interface_name = format!("ens{idx}");
-            let dhcp = if interface.ip.eq(&"dynamic".to_string()) {
-                true
-            } else {
-                false
-            };
+            let dhcp = interface.ip.eq(&"dynamic".to_string());
             let ip = if interface.ip.eq(&"dynamic".to_string()) {
                 None
             } else {

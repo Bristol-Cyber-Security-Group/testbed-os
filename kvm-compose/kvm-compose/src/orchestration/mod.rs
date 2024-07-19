@@ -289,14 +289,14 @@ async fn _run_testbed_orchestration_command(
                 arguments,
                 in_background,
                 working_dir).await?;
-            return Ok(output);
+            Ok(output)
         } else {
             let output = run_subprocess_command(
                 starting_command,
                 arguments,
                 in_background,
                 working_dir).await?;
-            return Ok(output);
+            Ok(output)
         }
     } else {
         // running on remote host
@@ -311,7 +311,7 @@ async fn _run_testbed_orchestration_command(
             allow_fail,
             in_background,
         ).await?;
-        return Ok(output);
+        Ok(output)
     }
 
 }

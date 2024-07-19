@@ -21,9 +21,9 @@ pub async fn run_snapshot_action(
     let result_string = match &snp_cmd {
         SnapshotSubCommand::Create(create) => {
             if create.all {
-                let group_snapshot_name = testbed_snapshots.snapshot_all_guests(&common).await?;
+                let group_snapshot_name = testbed_snapshots.snapshot_all_guests(common).await?;
                 // reload testbed snapshots to show the new snapshots to user
-                let testbed_snapshots = TestbedSnapshots::new(&state, &common).await?;
+                let testbed_snapshots = TestbedSnapshots::new(state, common).await?;
                 for (guest_name, guest_data) in testbed_snapshots.guests {
                     if let Some(snap) = guest_data.snapshot.info_one(&group_snapshot_name) {
                         tracing::info!("{snap}");
@@ -33,38 +33,34 @@ pub async fn run_snapshot_action(
                     }
                 }
                 "snapshots created".to_string()
+            } else if create.name.is_some() && create.snapshot.is_some() {
+                // both must be present, cli should prevent this not happening
+                testbed_snapshots.create_snapshot(
+                    create.name.as_ref().context("getting guest name in run snapshot action")?,
+                    create.snapshot.as_ref().context("getting snapshot name in run snapshot action")?,
+                    common,
+                ).await?;
+                "snapshot created".to_string()
             } else {
-                if create.name.is_some() && create.snapshot.is_some() {
-                    // both must be present, cli should prevent this not happening
-                    testbed_snapshots.create_snapshot(
-                        create.name.as_ref().context("getting guest name in run snapshot action")?,
-                        create.snapshot.as_ref().context("getting snapshot name in run snapshot action")?,
-                        &common,
-                    ).await?;
-                    "snapshot created".to_string()
-                } else {
-                    bail!("must supply both the guest name and snapshot name");
-                }
+                bail!("must supply both the guest name and snapshot name");
             }
         }
         SnapshotSubCommand::Delete {name, snapshot, all } => {
             if *all {
                 let name = name.as_ref()
                     .context("Getting guest name for delete command")?;
-                testbed_snapshots.delete_all_snapshots(name, &common).await?;
+                testbed_snapshots.delete_all_snapshots(name, common).await?;
                 "snapshot for all guests created".to_string()
+            } else if name.is_some() && snapshot.is_some() {
+                // both must be present, cli should prevent this not happening
+                testbed_snapshots.delete_snapshot(
+                    name.as_ref().context("getting guest name in delete snapshot action")?,
+                    snapshot.as_ref().context("getting snapshot name in delete snapshot action")?,
+                    common,
+                ).await?;
+                "snapshot deleted".to_string()
             } else {
-                if name.is_some() && snapshot.is_some() {
-                    // both must be present, cli should prevent this not happening
-                    testbed_snapshots.delete_snapshot(
-                        name.as_ref().context("getting guest name in delete snapshot action")?,
-                        snapshot.as_ref().context("getting snapshot name in delete snapshot action")?,
-                        &common,
-                    ).await?;
-                    "snapshot deleted".to_string()
-                } else {
-                    bail!("must supply both the guest name and snapshot name");
-                }
+                bail!("must supply both the guest name and snapshot name");
             }
         }
         SnapshotSubCommand::Info { name } => {
@@ -74,37 +70,33 @@ pub async fn run_snapshot_action(
         SnapshotSubCommand::List(list) => {
             if list.all {
                 testbed_snapshots.list_all_snapshots().await?
-            } else {
-                if let Some(guest) = &list.name {
-                    // need to make sure the guest is eligible for snapshots, right now it is only
-                    // libvirt guests that support snapshots
-                    match state.testbed_guests.0.get(guest).unwrap().guest_type.guest_type {
-                        GuestType::Libvirt(_) => {}
-                        _ => bail!("only libvirt guests support snapshots"),
-                    }
-
-                    testbed_snapshots.list_snapshots(guest).await?
-                } else {
-                    bail!("no guest name specified");
+            } else if let Some(guest) = &list.name {
+                // need to make sure the guest is eligible for snapshots, right now it is only
+                // libvirt guests that support snapshots
+                match state.testbed_guests.0.get(guest).unwrap().guest_type.guest_type {
+                    GuestType::Libvirt(_) => {}
+                    _ => bail!("only libvirt guests support snapshots"),
                 }
+
+                testbed_snapshots.list_snapshots(guest).await?
+            } else {
+                bail!("no guest name specified");
             }
         }
         SnapshotSubCommand::Restore(restore) => {
             if restore.all {
                 testbed_snapshots.restore_all_from_snapshots().await?;
                 "snapshots restored".to_string()
+            } else if restore.name.is_some() && restore.snapshot.is_some() {
+                // both must be present, cli should prevent this not happening
+                testbed_snapshots.restore_from_snapshot(
+                    restore.name.as_ref().context("getting guest name in restore snapshot action")?,
+                    restore.snapshot.as_ref().context("getting snapshot name in restore snapshot action")?,
+                    common,
+                ).await?;
+                "snapshot restored".to_string()
             } else {
-                if restore.name.is_some() && restore.snapshot.is_some() {
-                    // both must be present, cli should prevent this not happening
-                    testbed_snapshots.restore_from_snapshot(
-                        restore.name.as_ref().context("getting guest name in restore snapshot action")?,
-                        restore.snapshot.as_ref().context("getting snapshot name in restore snapshot action")?,
-                        &common,
-                    ).await?;
-                    "snapshot restored".to_string()
-                } else {
-                    bail!("must supply both the guest name and snapshot name");
-                }
+                bail!("must supply both the guest name and snapshot name");
             }
         }
     };

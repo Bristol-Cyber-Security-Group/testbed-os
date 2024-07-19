@@ -28,13 +28,9 @@ pub async fn get_libvirt_guest_metrics(
             0,
         )?;
         // see tag information in links above
-        let unused = mem_stats.into_iter()
-            .filter(|m| m.tag == 4)
-            .next()
+        let unused = mem_stats.iter().find(|m| m.tag == 4)
             .context("getting unused memory for libvirt guest")?;
-        let available = mem_stats.into_iter()
-            .filter(|m| m.tag == 5)
-            .next()
+        let available = mem_stats.iter().find(|m| m.tag == 5)
             .context("getting available memory for libvirt guest")?;
         // for now just report the % used
         let fraction = unused.val as f64 / available.val as f64;

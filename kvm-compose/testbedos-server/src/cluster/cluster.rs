@@ -46,10 +46,7 @@ pub async fn configure_testbed_host(
     ).await?;
 
     // make sure OVN settings are correct for this host
-    let is_master = match host_config.is_master_host {
-        None => false,
-        Some(master) => master,
-    };
+    let is_master = host_config.is_master_host.unwrap_or_default();
 
     // configure any OVN related settings and make sure ovn and ovs are up, before other services
     configure_host_ovn(&host_config.ovn, &host_config.main_interface, is_master, &host_config).await?;
@@ -150,11 +147,7 @@ pub async fn manage_cluster(
             let host_config = db_config.read().await.get_host_config().await?;
             // filter for the master (this host)
             cluster_config.testbed_host_ssh_config.retain(|name,_| {
-                if name.eq(&host_config.ovn.chassis_name) {
-                    true
-                } else {
-                    false
-                }
+                name.eq(&host_config.ovn.chassis_name)
             });
             tracing::debug!("writing host config");
             db_config.write().await.set_cluster_config(cluster_config).await?;

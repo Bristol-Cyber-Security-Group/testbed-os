@@ -25,23 +25,23 @@ pub async fn ovn_run_cmd(
         .map(|x| x.as_str())
         .collect();
     if let Some(testbed_name) = remote_config.0 {
-        let res = run_testbed_orchestration_command(
+        
+        run_testbed_orchestration_command(
             &remote_config.1,
             &testbed_name,
             "sudo",
             cmd,
             false,
             None,
-        ).await;
-        res
+        ).await
     } else {
-        let res = run_subprocess_command(
+        
+        run_subprocess_command(
             "sudo",
             cmd,
             false,
             None,
-        ).await;
-        res
+        ).await
     }
 }
 
@@ -59,23 +59,23 @@ pub async fn ovn_run_cmd_allow_fail(
         .collect();
     // allow fail as consecutive up/down could mean we try to do something twice
     if let Some(testbed_name) = remote_config.0 {
-        let res = run_testbed_orchestration_command_allow_fail(
+        
+        run_testbed_orchestration_command_allow_fail(
             &remote_config.1,
             &testbed_name,
             "sudo",
             cmd,
             false,
             None,
-        ).await;
-        res
+        ).await
     } else {
-        let res = run_subprocess_command_allow_fail(
+        
+        run_subprocess_command_allow_fail(
             "sudo",
             cmd,
             false,
             None,
-        ).await;
-        res
+        ).await
     }
 }
 
@@ -88,46 +88,46 @@ impl OrchestrationTask for StateNetwork {
         match &self {
             StateNetwork::Ovn(ovn_state) => {
                 for (_, ls_data) in &ovn_state.switches {
-                    ls_data.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                    ls_data.create_command(ovn_run_cmd, (None, common.clone())).await?;
                 }
                 for (_, lsp_data) in &ovn_state.switch_ports {
-                    lsp_data.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                    lsp_data.create_command(ovn_run_cmd, (None, common.clone())).await?;
                 }
                 for (_, lr_data) in &ovn_state.routers {
-                    lr_data.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                    lr_data.create_command(ovn_run_cmd, (None, common.clone())).await?;
                 }
                 for (_, lrp_data) in &ovn_state.router_ports {
-                    lrp_data.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                    lrp_data.create_command(ovn_run_cmd, (None, common.clone())).await?;
                 }
                 for (_, lrp_data) in &ovn_state.ovs_ports {
                     // OVS ports may need to be created on remote testbed hosts
                     lrp_data.create_command(
-                        &ovn_run_cmd,
+                        ovn_run_cmd,
                         (
-                            Some(chassis_to_tb_host(&lrp_data.chassis, &common)?),
+                            Some(chassis_to_tb_host(&lrp_data.chassis, common)?),
                             common.clone(),
                         )
                     ).await?;
                 }
                 for (_, router) in &ovn_state.routers {
                     for (_, route) in &router.routing.0 {
-                        route.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                        route.create_command(ovn_run_cmd, (None, common.clone())).await?;
                     }
                 }
                 for (_, router) in &ovn_state.routers {
                     for (_, ext) in &router.external_gateway.0 {
-                        ext.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                        ext.create_command(ovn_run_cmd, (None, common.clone())).await?;
                     }
                 }
                 for (_, router) in &ovn_state.routers {
                     for (_, nat) in &router.nat.0 {
-                        nat.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                        nat.create_command(ovn_run_cmd, (None, common.clone())).await?;
                     }
                 }
                 for dhcp in &ovn_state.dhcp_options {
                     // we want to send common which has the OVN data structure, will repurpose the
                     // "remote_config" for this - should probably consider renaming it
-                    dhcp.create_command(&ovn_run_cmd, (None, common.clone())).await?;
+                    dhcp.create_command(ovn_run_cmd, (None, common.clone())).await?;
                 }
 
             }
@@ -144,41 +144,41 @@ impl OrchestrationTask for StateNetwork {
         match &self {
             StateNetwork::Ovn(ovn_state) => {
                 for dhcp in &ovn_state.dhcp_options {
-                    dhcp.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                    dhcp.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                 }
                 for (_, router) in &ovn_state.routers {
                     for (_, route) in &router.routing.0 {
-                        route.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                        route.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                     }
                 }
                 for (_, router) in &ovn_state.routers {
                     for (_, ext) in &router.external_gateway.0 {
-                        ext.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                        ext.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                     }
                 }
                 for (_, router) in &ovn_state.routers {
                     for (_, nat) in &router.nat.0 {
-                        nat.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                        nat.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                     }
                 }
                 for (_, lsp_data) in &ovn_state.switch_ports {
-                    lsp_data.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                    lsp_data.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                 }
                 for (_, lrp_data) in &ovn_state.router_ports {
-                    lrp_data.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                    lrp_data.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                 }
                 for (_, sw_data) in &ovn_state.switches {
-                    sw_data.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                    sw_data.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                 }
                 for (_, lr_data) in &ovn_state.routers {
-                    lr_data.destroy_command(&ovn_run_cmd_allow_fail, (None, common.clone())).await?;
+                    lr_data.destroy_command(ovn_run_cmd_allow_fail, (None, common.clone())).await?;
                 }
                 for (_, lrp_data) in &ovn_state.ovs_ports {
                     // OVS ports may need to be destroyed on remote testbed hosts
                     lrp_data.destroy_command(
-                        &ovn_run_cmd_allow_fail,
+                        ovn_run_cmd_allow_fail,
                         (
-                            Some(chassis_to_tb_host(&lrp_data.chassis, &common)?),
+                            Some(chassis_to_tb_host(&lrp_data.chassis, common)?),
                             common.clone(),
                         )).await?;
                 }
@@ -394,15 +394,9 @@ pub async fn reapply_acl_action(
     // we compare the existing switch list, and the new yaml acl switch list so that the new acl
     // list doesn't try to place rules on switches that don't already exist
     // TODO - what do we compare here to make sure the network is still the same, just the switch names under ACL section?
-    let current_switch_list: HashSet<_> = current_network.switches
-        .iter()
-        .map(|(sw, _)| {
-            sw
-        })
+    let current_switch_list: HashSet<_> = current_network.switches.keys()
         .collect();
-    let yaml_acl_switch_list: HashSet<_> = new_network.acl
-        .iter()
-        .map(|(_, acl)| {
+    let yaml_acl_switch_list: HashSet<_> = new_network.acl.values().map(|acl| {
             &acl.entity_name
         })
         .collect();
@@ -446,10 +440,10 @@ pub async fn reapply_acl_action(
     }
 
     // if successful update the current state, only the ACL part, then save to disk
-    let mut previous_state = read_previous_state_request(&http_client, &server_conn, &project_name).await?;
+    let mut previous_state = read_previous_state_request(http_client, server_conn, &project_name).await?;
     previous_state.network = new_state.network;
 
-    write_state_request(&http_client, &server_conn, &project_name, &previous_state)
+    write_state_request(http_client, server_conn, &project_name, &previous_state)
         .await
         .context("Sending the state json file to server to save to disk.")?;
 
@@ -464,7 +458,7 @@ fn ensure_yaml_acl_switches_already_exist(
     let difference: HashSet<_> = yaml_acl_switch_list
         .difference(&current_switch_list)
         .collect();
-    if difference.len() > 0 {
+    if !difference.is_empty() {
         bail!("there are switches in the ACL list that don't exist in the current state")
     }
 

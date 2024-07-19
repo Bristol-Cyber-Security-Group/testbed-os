@@ -50,7 +50,7 @@ pub struct OrchestrationProtocol {
 impl OrchestrationProtocol {
     /// Run all instructions in this protocol
     pub async fn run(&self, state: &State, common: &OrchestrationCommon, logging_send: &Sender<OrchestrationLogger>) -> anyhow::Result<OrchestrationProtocolResponse> {
-        self.instruction.run(state, common, &logging_send).await
+        self.instruction.run(state, common, logging_send).await
     }
 
     /// Run only for init without state
@@ -203,12 +203,12 @@ impl OrchestrationInstruction {
             OrchestrationInstruction::Exec(e) => {
                 instruction.push_str(&format!("Exec {}", e.name()))
             }
-            OrchestrationInstruction::ListCloudImages => instruction.push_str(&"List Cloud Images".to_string()),
+            OrchestrationInstruction::ListCloudImages => instruction.push_str("List Cloud Images"),
             OrchestrationInstruction::Cancel => {
-                instruction.push_str(&"Cancel".to_string())
+                instruction.push_str("Cancel")
             }
             OrchestrationInstruction::End => {
-                instruction.push_str(&"End".to_string())
+                instruction.push_str("End")
             }
         }
         instruction
@@ -239,7 +239,7 @@ impl OrchestrationInstruction {
             OrchestrationInstruction::TestbedHostCheck => {
                 let mut message = String::new();
                 let mut is_success = false;
-                let up_check = check_if_testbed_hosts_up(&orchestration_common).await;
+                let up_check = check_if_testbed_hosts_up(orchestration_common).await;
                 if up_check.is_ok() {
                     message.push_str("Testbeds are up");
                 } else {
@@ -256,7 +256,7 @@ impl OrchestrationInstruction {
                 )
             }
             OrchestrationInstruction::Setup => {
-                let folder_create_res = create_remote_project_folders(&orchestration_common).await;
+                let folder_create_res = create_remote_project_folders(orchestration_common).await;
 
                 let mut message = String::new();
                 let mut is_success = false;
@@ -327,10 +327,7 @@ impl OrchestrationInstruction {
                     &common.project_working_dir.to_str().context("getting project path")?.to_string(),
                     common,
                 ).await;
-                let is_success = match res {
-                    Ok(_) => true,
-                    Err(_) => false,
-                };
+                let is_success = res.is_ok();
                 OrchestrationProtocolResponse::Generic {
                     is_success,
                     message: "Creating Temp Network".to_string(),
@@ -341,10 +338,7 @@ impl OrchestrationInstruction {
                     &common.project_name,
                     &common.project_working_dir.to_str().context("getting project path")?.to_string()
                 ).await;
-                let is_success = match res {
-                    Ok(_) => true,
-                    Err(_) => false,
-                };
+                let is_success = res.is_ok();
                 OrchestrationProtocolResponse::Generic {
                     is_success,
                     message: "Destroying Temp Network".to_string(),
@@ -398,8 +392,8 @@ impl OrchestrationInstruction {
             }
             OrchestrationInstruction::SetupImage(list) => {
                 // this handles setting up backing images and clones of backing image
-                let response = Self::setup_image_helper(list, &orchestration_common).await;
-                response
+                
+                Self::setup_image_helper(list, orchestration_common).await
             }
             OrchestrationInstruction::PushArtefacts(list) => {
                 // create futures and get the name list, since the vec is ordered by insertion then the name list will
@@ -438,12 +432,12 @@ impl OrchestrationInstruction {
                                     // on the target testbed host
                                     let local_src = get_backing_image_local_path(
                                         &state.testbed_guests,
-                                        &backing_image_name)?;
+                                        backing_image_name)?;
                                     let backing_image_remote_path = get_backing_image_remote_path(
-                                        &orchestration_common,
+                                        orchestration_common,
                                         &state.testbed_guests,
-                                        &backing_image_name,
-                                        &guest_testbed)?;
+                                        backing_image_name,
+                                        guest_testbed)?;
                                     // remove the filename so we have just the parent folder
                                     let remote_dst = PathBuf::from(backing_image_remote_path)
                                         .parent().context("getting parent for backing image folder path")?
@@ -451,7 +445,7 @@ impl OrchestrationInstruction {
                                         .to_string();
 
                                     let target_testbed_host = guest_testbed.clone();
-                                    futures.push(Box::pin(SSHClient::push_file_to_remote_testbed(&orchestration_common, target_testbed_host, local_src, remote_dst, false)));
+                                    futures.push(Box::pin(SSHClient::push_file_to_remote_testbed(orchestration_common, target_testbed_host, local_src, remote_dst, false)));
                                     res_name_list.push(resource.name());
                                 }
                                 GuestType::Docker(_) => {}
@@ -513,8 +507,8 @@ impl OrchestrationInstruction {
             OrchestrationInstruction::Snapshot(cmd) => {
 
                 // get info on all guest images that are libvirt
-                let testbed_snapshots = TestbedSnapshots::new(&state, &orchestration_common).await?;
-                match run_snapshot_action(&state, &testbed_snapshots, &cmd, &orchestration_common, logging_send).await {
+                let testbed_snapshots = TestbedSnapshots::new(state, orchestration_common).await?;
+                match run_snapshot_action(state, &testbed_snapshots, cmd, orchestration_common, logging_send).await {
                     Ok(ok) => OrchestrationProtocolResponse::Generic {
                         is_success: true,
                         message: ok,
@@ -529,10 +523,10 @@ impl OrchestrationInstruction {
                 if *snapshot_guests {
 
                     // create a snapshot of all the guests before continuing
-                    let testbed_snapshots = TestbedSnapshots::new(&state, &orchestration_common).await?;
-                    testbed_snapshots.snapshot_all_guests(&orchestration_common).await?;
+                    let testbed_snapshots = TestbedSnapshots::new(state, orchestration_common).await?;
+                    testbed_snapshots.snapshot_all_guests(orchestration_common).await?;
                 }
-                match run_testbed_snapshot_action(&state, &orchestration_common).await {
+                match run_testbed_snapshot_action(state, orchestration_common).await {
                     Ok(_) => OrchestrationProtocolResponse::Generic {
                         is_success: true,
                         message: "Created Testbed Snapshot".to_string(),
@@ -563,7 +557,7 @@ impl OrchestrationInstruction {
             }
             OrchestrationInstruction::Exec(exec_cmd) => {
 
-                match prepare_guest_exec_command(&orchestration_common.project_name, exec_cmd, &state, &orchestration_common, &logging_send).await {
+                match prepare_guest_exec_command(&orchestration_common.project_name, exec_cmd, state, orchestration_common, logging_send).await {
                     Ok(_) => OrchestrationProtocolResponse::Generic {
                         is_success: true,
                         message: format!("Exec command {:?} succeeded", exec_cmd.command_type),
@@ -716,24 +710,24 @@ impl OrchestrationResource {
 
                         match ovn {
                             OrchestrationResourceNetwork::Switch(r) => {
-                                r.create_command(&ovn_run_cmd, (None, orchestration_common.clone())).await?;
+                                r.create_command(ovn_run_cmd, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::SwitchPort(r) => {
-                                r.create_command(&ovn_run_cmd, (None, orchestration_common.clone())).await?;
+                                r.create_command(ovn_run_cmd, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::Router(r) => {
-                                r.create_command(&ovn_run_cmd, (None, orchestration_common.clone())).await?;
+                                r.create_command(ovn_run_cmd, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::RouterPort(r) => {
-                                r.create_command(&ovn_run_cmd, (None, orchestration_common.clone())).await?;
+                                r.create_command(ovn_run_cmd, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::OvsPort(r) => {
                                 r.create_command(
-                                    &ovn_run_cmd,
+                                    ovn_run_cmd,
                                     (
                                         Some(chassis_to_tb_host(&r.chassis, &orchestration_common)?),
                                         orchestration_common.clone()
@@ -742,23 +736,23 @@ impl OrchestrationResource {
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::DhcpOption(r) => {
-                                r.create_command(&ovn_run_cmd, (None, orchestration_common.clone())).await?;
+                                r.create_command(ovn_run_cmd, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::ExternalGateway(r) => {
-                                r.create_command(&ovn_run_cmd, (None, orchestration_common.clone())).await?;
+                                r.create_command(ovn_run_cmd, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::Nat(r) => {
-                                r.create_command(&ovn_run_cmd, (None, orchestration_common.clone())).await?;
+                                r.create_command(ovn_run_cmd, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::Route(r) => {
-                                r.create_command(&ovn_run_cmd, (None, orchestration_common.clone())).await?;
+                                r.create_command(ovn_run_cmd, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::ACL(r) => {
-                                r.create_command(&ovn_run_cmd, (None, orchestration_common.clone())).await?;
+                                r.create_command(ovn_run_cmd, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                         }
@@ -791,24 +785,24 @@ impl OrchestrationResource {
 
                         match ovn {
                             OrchestrationResourceNetwork::Switch(r) => {
-                                r.destroy_command(&ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
+                                r.destroy_command(ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::SwitchPort(r) => {
-                                r.destroy_command(&ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
+                                r.destroy_command(ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::Router(r) => {
-                                r.destroy_command(&ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
+                                r.destroy_command(ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::RouterPort(r) => {
-                                r.destroy_command(&ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
+                                r.destroy_command(ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::OvsPort(r) => {
                                 r.destroy_command(
-                                    &ovn_run_cmd_allow_fail,
+                                    ovn_run_cmd_allow_fail,
                                     (
                                         Some(chassis_to_tb_host(&r.chassis, &orchestration_common)?),
                                         orchestration_common.clone()
@@ -817,23 +811,23 @@ impl OrchestrationResource {
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::DhcpOption(r) => {
-                                r.destroy_command(&ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
+                                r.destroy_command(ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::ExternalGateway(r) => {
-                                r.destroy_command(&ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
+                                r.destroy_command(ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::Nat(r) => {
-                                r.destroy_command(&ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
+                                r.destroy_command(ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::Route(r) => {
-                                r.destroy_command(&ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
+                                r.destroy_command(ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::ACL(r) => {
-                                r.destroy_command(&ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
+                                r.destroy_command(ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
                         }
@@ -1007,19 +1001,15 @@ impl OrchestrationProtocolResponse {
             OrchestrationProtocolResponse::List(r) => {
                 Ok(Self::status_from_batch(r))
             }
-            OrchestrationProtocolResponse::Generic { is_success, .. } => Ok(is_success.clone()),
+            OrchestrationProtocolResponse::Generic { is_success, .. } => Ok(*is_success),
         }
     }
 
     fn status_from_batch(r: &Vec<OrchestrationInstructionResultMessage>) -> bool {
         let any_failed = r
             .iter()
-            .any(|res| res.is_success == false );
-        if any_failed {
-            false
-        } else {
-            true
-        }
+            .any(|res| !res.is_success );
+        !any_failed
     }
 }
 
@@ -1039,7 +1029,7 @@ fn format_instruction_message(
     instruction: &mut String,
     items: &Vec<OrchestrationResource>,
 ) {
-    if items.len() == 0 {
+    if items.is_empty() {
         instruction.push_str("[]");
     } else if items.len() > 1 {
         instruction.push_str("[ ");
@@ -1062,23 +1052,23 @@ fn format_response_message(
     let mut fail_message = Vec::new();
     if !items.is_empty() {
         if items[0].is_success {
-            success_message.push(format!("{}", items[0].message));
+            success_message.push(items[0].message.to_string());
         } else {
-            fail_message.push(format!("{}", items[0].message));
+            fail_message.push(items[0].message.to_string());
         }
         for res in items.iter().skip(1) {
             if res.is_success {
-                success_message.push(format!("{}", res.message));
+                success_message.push(res.message.to_string());
             } else {
-                fail_message.push(format!("{}", res.message));
+                fail_message.push(res.message.to_string());
             }
         }
     }
-    if success_message.len() > 0 {
+    if !success_message.is_empty() {
         // success_message = format!("[ {success_message} ]");
         messages.success_message = Some(success_message);
     }
-    if fail_message.len() > 0 {
+    if !fail_message.is_empty() {
         // fail_message = format!("[ {fail_message} ]");
         messages.fail_message = Some(fail_message);
     }

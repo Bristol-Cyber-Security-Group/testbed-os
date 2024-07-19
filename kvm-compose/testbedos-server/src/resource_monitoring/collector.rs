@@ -31,10 +31,8 @@ pub async fn get_active_deployments(
 pub async fn get_active_guests_for_deployment(
     deployment: &Deployment,
 ) -> anyhow::Result<Vec<String>> {
-    let state = get_state_file(&deployment).await?;
-    let guest_list: Vec<_> = state.testbed_guests.0
-        .iter()
-        .map(|(_,g)| g.guest_type.name.clone())
+    let state = get_state_file(deployment).await?;
+    let guest_list: Vec<_> = state.testbed_guests.0.values().map(|g| g.guest_type.name.clone())
         .collect();
     Ok(guest_list)
 }
@@ -43,10 +41,8 @@ pub async fn get_active_guests_for_deployment(
 pub async fn get_active_hosts_for_deployment(
     deployment: &Deployment,
 ) -> anyhow::Result<Vec<String>> {
-    let state = get_state_file(&deployment).await?;
-    let host_list: Vec<_> = state.testbed_hosts.0
-        .iter()
-        .map(|(n,_)| n.clone())
+    let state = get_state_file(deployment).await?;
+    let host_list: Vec<_> = state.testbed_hosts.0.keys().cloned()
         .collect();
     Ok(host_list)
 }
@@ -137,7 +133,7 @@ pub async fn collect_metrics_for_hosts(
         // set in the config, we must just resort to localhost
         let host_metrics_url = if let Some(is_master) = host_config.is_master_host {
             if is_master {
-                format!("http://localhost:3355/api/metrics/host")
+                "http://localhost:3355/api/metrics/host".to_string()
             } else {
                 format!("http://{}:3355/api/metrics/host", &host_config.ip)
             }
@@ -172,7 +168,7 @@ pub async fn collect_metrics_for_guests(
     // testbed host
     for (_, deployment) in active_deployments {
         // get and read the state for the deployment
-        let state = get_state_file(&deployment).await?;
+        let state = get_state_file(deployment).await?;
         // get the metrics for each guest in the deployment
         for (guest_name, guest_config) in state.testbed_guests.0 {
             let testbed_host = guest_config.testbed_host

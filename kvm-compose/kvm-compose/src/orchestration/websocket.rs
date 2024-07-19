@@ -135,7 +135,7 @@ pub async fn ws_orchestration_client(
 
         // close websocket
         tracing::debug!("closing websocket");
-        let _ = websocket_container.lock()
+        websocket_container.lock()
                 .await
                 .sender
                 .send(Message::Close(Some(CloseFrame {
@@ -229,7 +229,7 @@ async fn send_orchestration_instruction(
     // need to serialise the instruction to binary format
     let serialised_instruction = serde_json::to_vec(&orchestration_protocol)
         .context("serialising OrchestrationProtocol")?;
-    let _ = websocket_container
+    websocket_container
         .lock()
         .await
         .sender

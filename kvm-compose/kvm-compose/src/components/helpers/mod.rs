@@ -11,9 +11,5 @@ pub fn check_file_exists(
     file_path: &String,
 ) -> bool {
     let file_path = PathBuf::from(file_path);
-    if file_path.exists() {
-        true
-    } else {
-        false
-    }
+    file_path.exists()
 }

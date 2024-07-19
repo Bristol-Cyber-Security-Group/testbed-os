@@ -172,9 +172,9 @@ fn parse_ovn_schema(
                 idx,
                 &mut ovn,
                 &guest_config,
-                &interface,
+                interface,
                 load_balance_topology,
-                &tb_config,
+                tb_config,
                 project_name,
             )?;
         }
@@ -215,7 +215,7 @@ fn parse_ovn_schema(
             if ovn.switches.contains_key(&switch_name) {
                 for rule in acl_rules {
                     let acl_name = format!("{}-{}-{}-{}-{}", &project_name, &switch, &rule.direction, &rule.action, &rule.priority);
-                    ovn.add_switch_acl(&acl_name, switch_name.clone(), ACLRecordType::Switch, &rule)?;
+                    ovn.add_switch_acl(&acl_name, switch_name.clone(), ACLRecordType::Switch, rule)?;
                 }
             } else {
                 bail!("switch '{switch}' in ACL ruleset was not defined in the main network topology");
@@ -233,7 +233,7 @@ fn parse_ovn_schema(
 }
 
 pub fn subnet_to_ip_and_mask(string: &String) -> anyhow::Result<(IpAddr, u16)> {
-    let split: Vec<_> = string.split("/").collect();
+    let split: Vec<_> = string.split('/').collect();
     if split.len() != 2 {
         bail!("format of subnet {string} is not 'ip/mask'");
     }

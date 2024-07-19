@@ -49,9 +49,9 @@ pub fn get_sdk_string(
             package_string.push_str(&format!("android-{android_api_version};"));
 
             if *playstore_enabled {
-                package_string.push_str(&format!("google_apis_playstore;"));
+                package_string.push_str("google_apis_playstore;");
             } else {
-                package_string.push_str(&format!("google_apis;"));
+                package_string.push_str("google_apis;");
             }
 
             // always use x86 for now

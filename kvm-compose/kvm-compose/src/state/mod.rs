@@ -51,7 +51,7 @@ impl State {
             creation_date: format!("{:?}", chrono::offset::Local::now()),
             project_working_dir: logical_testbed.common.project_working_dir.clone(),
             testbed_hosts: StateTestbedHostList(testbed_hosts),
-            testbed_guests: StateTestbedGuestList(Self::fill_guest_list(&logical_testbed)?),
+            testbed_guests: StateTestbedGuestList(Self::fill_guest_list(logical_testbed)?),
             testbed_host_shared_config: StateTestbedHostSharedConfig {
                 // // this is the designated SDN bridge that is connected to the libvirt bridge
                 // external_bridge: logical_testbed
@@ -125,11 +125,7 @@ impl State {
             // if a libvirt guest, check if it is a golden image (backing image for linked clones)
             let is_golden_image = match &guest_type.guest_type {
                 GuestType::Libvirt(libvirt_guest) => {
-                    if libvirt_guest.scaling.is_some() {
-                        true
-                    } else {
-                        false
-                    }
+                    libvirt_guest.scaling.is_some()
                 }
                 GuestType::Docker(_) => false,
                 GuestType::Android(_) => false,

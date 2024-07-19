@@ -62,7 +62,7 @@ impl SSHClient {
                             false,
                             in_background,
                         ).await?;
-                        return Ok(output);
+                        Ok(output)
                     }
                     LibvirtGuestOptions::ExistingDisk { .. } => unimplemented!(),
                     LibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
@@ -155,8 +155,8 @@ impl SSHClient {
     ) -> anyhow::Result<()> {
         // TODO - when guest has been given a private key that isn't the default testbed key
         _push_file_to_remote(
-            &username,
-            &hostname,
+            username,
+            hostname,
             &common.testbed_guest_shared_config.ssh_private_key_location,
             local_src.clone(),
             remote_dst.clone(),
@@ -179,7 +179,7 @@ impl SSHClient {
         remote_src: String,
         allow_fail: bool,
     ) -> anyhow::Result<()> {
-        let testbed_host_ssh_config = _get_conn_testbed_host(common, &testbed_host).await?;
+        let testbed_host_ssh_config = _get_conn_testbed_host(common, testbed_host).await?;
         _pull_file_from_remote(
             &testbed_host_ssh_config.username,
             &testbed_host_ssh_config.ip,

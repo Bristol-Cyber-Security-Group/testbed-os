@@ -43,7 +43,7 @@ async fn run(
         _ => {
             tracing::info!("incorrect message from web client");
             // not correct init msg
-            let _ = sender.send(Message::Close(Some(CloseFrame {
+            sender.send(Message::Close(Some(CloseFrame {
                 code: 1011, // this is error
                 reason: Cow::from("The web client did not begin command with an Init instruction"),
             }))).await.context("sending close to client websocket")?;
@@ -54,7 +54,7 @@ async fn run(
     // acknowledge to the web client if the init request was successful or not
     let init_response = create_init_request_response(&init);
     sender.send(Message::Text(init_response.to_string_json())).await?;
-    if init_response.was_error == true {
+    if init_response.was_error {
         // request was invalid, don't continue and close websocket
         return Ok(())
     }
@@ -79,7 +79,7 @@ async fn run(
     {
         Ok(ok) => ok,
         Err(_) => {
-            let _ = sender.send(Message::Close(Some(CloseFrame {
+            sender.send(Message::Close(Some(CloseFrame {
                 code: 1011, // this is error
                 reason: Cow::from(format!("Error: The project named '{}' does not exist", project_name.clone())),
             }))).await.context("sending close to client websocket")?;
@@ -172,7 +172,8 @@ fn get_init_protocol(
 fn create_init_request_response(
     init_state: &Result<GUICommand, Error>,
 ) -> GUIResponse {
-    let init_success_response = match init_state {
+    
+    match init_state {
         Ok(cmd) => {
             let json = cmd.to_string_json();
             GUIResponse {
@@ -186,8 +187,7 @@ fn create_init_request_response(
             message: err.to_string(),
             was_error: true,
         },
-    };
-    init_success_response
+    }
 }
 
 async fn orchestration_message_handler(

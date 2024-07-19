@@ -192,11 +192,11 @@ mod tests {
             "--", "set", "Logical_Switch_Port", "sw0-port0",
             "addresses=\"00:00:00:00:00:01 10.0.0.2\"", "options:chassis=ovn"
         ].join(" ");
-        let create_cmd = lsp.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let create_cmd = lsp.create_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         assert_eq!(create_cmd, expected_cmd);
 
         // test delete
-        let delete_cmd = lsp.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let delete_cmd = lsp.destroy_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings!["ovn-nbctl", "lsp-del", "sw0-port0"].join(" ");
         assert_eq!(delete_cmd, expected_cmd);
     }
@@ -221,11 +221,11 @@ mod tests {
             "--", "set", "Logical_Switch_Port", "sw0-port0",
             "addresses=\"00:00:00:00:00:01 10.0.0.2\"", "options:network_name=public,chassis=ovn"
         ].join(" ");
-        let create_cmd = lsp.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let create_cmd = lsp.create_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         assert_eq!(create_cmd, expected_cmd);
 
         // test delete
-        let delete_cmd = lsp.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let delete_cmd = lsp.destroy_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings!["ovn-nbctl", "lsp-del", "sw0-port0"].join(" ");
         assert_eq!(delete_cmd, expected_cmd);
     }
@@ -247,11 +247,11 @@ mod tests {
             "--", "set", "Logical_Switch_Port", "sw0-port0", "type=router",
             "options:router-port=lr0-port0", "addresses=\"00:00:00:00:ff:01\""
         ].join(" ");
-        let create_cmd = lsp.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let create_cmd = lsp.create_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         assert_eq!(create_cmd, expected_cmd);
 
         // test delete
-        let delete_cmd = lsp.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let delete_cmd = lsp.destroy_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings!["ovn-nbctl", "lsp-del", "sw0-port0"].join(" ");
         assert_eq!(delete_cmd, expected_cmd);
     }
@@ -272,11 +272,11 @@ mod tests {
             "--", "set", "Logical_Switch_Port", "sw0-port0", "type=localnet",
             "options:network_name=public", "addresses=\"unknown\""
         ].join(" ");
-        let create_cmd = lsp.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let create_cmd = lsp.create_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         assert_eq!(create_cmd, expected_cmd);
 
         // test delete
-        let delete_cmd = lsp.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
+        let delete_cmd = lsp.destroy_command(test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings!["ovn-nbctl", "lsp-del", "sw0-port0"].join(" ");
         assert_eq!(delete_cmd, expected_cmd);
     }
