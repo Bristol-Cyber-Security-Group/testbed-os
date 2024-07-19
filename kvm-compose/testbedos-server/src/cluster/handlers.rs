@@ -5,7 +5,7 @@ use axum::Json;
 use axum::response::IntoResponse;
 use kvm_compose_schemas::settings::SshConfig;
 use crate::{AppError, AppState};
-use crate::cluster::cluster::{manage_cluster};
+use crate::cluster::manage::{manage_cluster};
 use crate::cluster::ClusterOperation;
 
 /// Client testbed will send it's own host.json config to the master, the master will then add it

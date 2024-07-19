@@ -8,7 +8,7 @@ use axum_extra::response::ErasedJson;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use kvm_compose_schemas::handlers::PrettyQueryParams;
-use crate::deployments::deployments::{ProjectAndPath, validate_project_name, validate_yaml};
+use crate::deployments::helpers::{ProjectAndPath, validate_project_name, validate_yaml};
 use kvm_compose_lib::state::State as KvmComposeState;
 
 /// List all deployments the database contains.

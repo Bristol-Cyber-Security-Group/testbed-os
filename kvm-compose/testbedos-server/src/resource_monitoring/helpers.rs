@@ -72,15 +72,14 @@ pub fn get_android_cgroup_folder(
     let pattern = "/sys/fs/cgroup/machine.slice/machine-qemu*.scope/";
     let mut matches = Vec::new();
     if let Ok(entries) = glob(pattern) {
-        for entry in entries {
-            if let Ok(ref path) = entry {
-                // tracing::info!("{guest_name}, {project_name}, {:?}", &entry);
-                let path = path.to_str().context("path to str")?.to_string();
-                if path.contains(guest_name) && path.contains(project_name) {
-                    // has both the project and guest name, candidate
-                    matches.push(path);
-                }
+        for path in entries.flatten() {
+            // tracing::info!("{guest_name}, {project_name}, {:?}", &entry);
+            let path = path.to_str().context("path to str")?.to_string();
+            if path.contains(guest_name) && path.contains(project_name) {
+                // has both the project and guest name, candidate
+                matches.push(path);
             }
+
         }
     }
 

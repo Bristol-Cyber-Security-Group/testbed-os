@@ -10,8 +10,8 @@ use kvm_compose_schemas::deployment_models::NewDeployment;
 use kvm_compose_schemas::gui_models::GUICreateDeploymentJson;
 use kvm_compose_schemas::kvm_compose_yaml::Config;
 use crate::{AppError, AppState, debug_reload_templates, PROJECT_VERSION};
-use crate::deployments::deployments::{validate_project_name};
-use crate::gui::gui::create_deployment_files;
+use crate::deployments::helpers::{validate_project_name};
+use crate::gui::create_deployment_files;
 use crate::gui::testbed_user_folder;
 use crate::resource_monitoring::collector::{get_active_guests_for_deployment, get_active_hosts_for_deployment};
 

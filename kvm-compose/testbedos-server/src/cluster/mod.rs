@@ -8,7 +8,7 @@ use std::fmt::Formatter;
 use tokio::io::AsyncWriteExt;
 use kvm_compose_schemas::settings::SshConfig;
 
-pub mod cluster;
+pub mod manage;
 pub mod ovn;
 pub mod handlers;
 

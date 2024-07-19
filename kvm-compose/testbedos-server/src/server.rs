@@ -14,7 +14,7 @@ use tower_http::normalize_path::NormalizePathLayer;
 use tower_layer::Layer;
 use testbedos_lib::{AppState, ClientAppState, ip_string_to_slice, logging, ServiceClients};
 use testbedos_lib::cluster::{create_config_wizard, parse_cli_args, ServerModeCmd};
-use testbedos_lib::cluster::cluster::configure_testbed_host;
+use testbedos_lib::cluster::manage::configure_testbed_host;
 use testbedos_lib::deployments::db::get_deployment_db;
 use testbedos_lib::config::handlers::*;
 use testbedos_lib::deployments::handlers::*;
