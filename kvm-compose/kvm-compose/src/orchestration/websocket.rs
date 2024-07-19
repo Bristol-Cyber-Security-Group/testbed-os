@@ -77,7 +77,7 @@ pub async fn ws_orchestration_client(
                 opts,
                 &mut orchestration_send_clone,
                 // &mut orchestration_recv_resub,
-            ).await;
+            ).await.context("getting run orchestration result");
             // tell channel that orchestration message sending is done
             // regardless if `run_orchestration` was successful or not to prevent waiting indefinitely
             orchestration_send_clone.send(OrchestrationProtocol { instruction: OrchestrationInstruction::End }).await?;
@@ -125,11 +125,10 @@ pub async fn ws_orchestration_client(
             orchestration_cmd_generation_thread,
             orchestration_message_cmd_receiver_thread,
             orchestration_interrupt_listener,
-        )).await?;
+        )).await.context("running parallel tasks to manage command running state")?;
         match deployment_result {
             Ok(_) => {}
             Err(err) => {
-                // ipc_gui_channel_clone.send(err.to_string(), false, true).await?;
                 bail!(err);
             },
         }
@@ -153,8 +152,10 @@ pub async fn ws_orchestration_client(
     // the channel receiver to close
     match run_orchestration_res {
         Ok(orchestration_result) => {
-            match orchestration_result.context("getting result from send receive task for client") {
-                Ok(_) => {}
+            match orchestration_result {
+                Ok(_) => {
+                    tracing::info!("orchestration Ok");
+                }
                 Err(err) => {
                     bail!("Orchestration Failed, error: {err:#}");
                 }

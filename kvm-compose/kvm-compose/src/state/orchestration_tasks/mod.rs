@@ -30,6 +30,7 @@ pub async fn get_orchestration_common(
     state: &State,
     force_provisioning: bool,
     force_rerun_scripts: bool,
+    reapply_acl: bool,
     kvm_compose_config: TestbedClusterConfig,
 ) -> anyhow::Result<OrchestrationCommon> {
     // permissions
@@ -41,6 +42,7 @@ pub async fn get_orchestration_common(
         project_working_dir: state.project_working_dir.clone(),
         force_provisioning,
         force_rerun_scripts,
+        reapply_acl,
         kvm_compose_config,
         network: state.network.clone(),
         fs_user: user_group.0.as_raw(),
@@ -307,6 +309,7 @@ impl OrchestrationTask for State {
             // receiver,
             OrchestrationInstruction::TestbedHostCheck,
         ).await.context("requesting if testbed hosts are up")?;
+
         send_orchestration_instruction_over_channel(
             sender,
             // receiver,

@@ -4,7 +4,7 @@ use anyhow::{anyhow, bail, Context};
 use clap::Parser;
 use tracing_subscriber::prelude::*;
 use tracing::level_filters::LevelFilter;
-use kvm_compose_lib::server_client::client;
+use kvm_compose_lib::server_web_client::client;
 use kvm_compose_schemas::cli_models::{Opts, SubCommand};
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt_image_download::OnlineCloudImage;
 use reqwest::Client;
@@ -97,7 +97,7 @@ pub async fn parse_command(opts: Opts) -> anyhow::Result<()> {
     let sub_command = match &opts.sub_command {
         SubCommand::GenerateArtefacts => client::orchestration_action(&client, opts).await,
         SubCommand::ClearArtefacts => client::orchestration_action(&client, opts).await,
-        SubCommand::Deployment(dep_cmd) => client::deployment_action(&client, &opts, dep_cmd),
+        SubCommand::Deployment(dep_cmd) => client::deployment_action(&client, &opts, dep_cmd).await,
         SubCommand::Up(_) => client::orchestration_action(&client, opts).await,
         SubCommand::Down => client::orchestration_action(&client, opts).await,
         SubCommand::Snapshot(_) => client::orchestration_action(&client, opts).await,

@@ -13,6 +13,7 @@ use crate::analysis_tools::packet_capture::packet_capture;
 use crate::exec::prepare_guest_exec_command;
 use crate::orchestration::{create_remote_project_folders, OrchestrationCommon, OrchestrationGuestTask};
 use crate::orchestration::ssh::SSHClient;
+use crate::ovn::components::acl::LogicalACLRecord;
 use crate::ovn::components::logical_router::LogicalRouter;
 use crate::ovn::components::logical_router_port::LogicalRouterPort;
 use crate::ovn::components::logical_switch::LogicalSwitch;
@@ -681,6 +682,9 @@ impl OrchestrationResource {
                             OrchestrationResourceNetwork::Route(route) => {
                                 name.push_str(&format!("Static Route ({:?}, {:?}) on LR {}", &route.prefix, &route.next_hop, &route.router_name))
                             }
+                            OrchestrationResourceNetwork::ACL(acl) => {
+                                name.push_str(&format!("ACL (type: {}, action: {}, match: {}, priority: {}) on {}", &acl.direction, &acl.action, &acl._match, &acl.priority, &acl.entity_name))
+                            }
                         }
                     }
                 }
@@ -753,6 +757,10 @@ impl OrchestrationResource {
                                 r.create_command(&ovn_run_cmd, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
+                            OrchestrationResourceNetwork::ACL(r) => {
+                                r.create_command(&ovn_run_cmd, (None, orchestration_common.clone())).await?;
+                                Ok(())
+                            }
                         }
                     }
                 }
@@ -821,6 +829,10 @@ impl OrchestrationResource {
                                 Ok(())
                             }
                             OrchestrationResourceNetwork::Route(r) => {
+                                r.destroy_command(&ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
+                                Ok(())
+                            }
+                            OrchestrationResourceNetwork::ACL(r) => {
                                 r.destroy_command(&ovn_run_cmd_allow_fail, (None, orchestration_common.clone())).await?;
                                 Ok(())
                             }
@@ -912,6 +924,7 @@ pub enum OrchestrationResourceNetwork {
     ExternalGateway(OvnExternalGateway),
     Nat(OvnNat),
     Route(OvnRoute),
+    ACL(LogicalACLRecord),
 }
 
 /// This enum is to be sent from the server back to the client as a response to the result of `OrchestrationProtocol`,

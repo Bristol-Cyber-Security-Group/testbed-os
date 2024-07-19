@@ -78,8 +78,8 @@ impl fmt::Display for Config {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Machine {
     pub name: String,
-    pub network: Option<MachineNetwork>,
-    // flatten means we dont need to specify "guest_type" and directly specify the GuestType variant
+    pub network: Option<Vec<MachineNetwork>>,
+    // flatten means we don't need to specify "guest_type" and directly specify the GuestType variant
     #[serde(flatten)]
     pub guest_type: GuestType,
 }

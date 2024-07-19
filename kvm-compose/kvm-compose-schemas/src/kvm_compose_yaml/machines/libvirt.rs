@@ -53,6 +53,11 @@ pub enum LibvirtGuestOptions {
         device_type: DiskDeviceType,
         #[serde(default)]
         readonly: bool,
+        /// Specify whether a full copy of the disk is made rather than a linked clone of the
+        /// original image. A linked clone will still preserve the original but will be more
+        /// conservative with disk space on the host.
+        #[serde(default)]
+        create_deep_copy: bool,
     },
     IsoGuest {
         path: PathBuf,

@@ -22,17 +22,27 @@
         </disk>
         {% endif %}
 
-        <graphics type="vnc" port="-1" autoport="yes"></graphics>
+        <graphics type="spice" autoport="yes">
+            <listen type="address"/>
+            <image compression="off"/>
+        </graphics>
+        {% if extended_graphics_support %}
+        <video>
+            <model type="qxl" ram="65536" vram="65536" vgamem="16384" heads="1" primary="yes"/>
+            <address type="pci" domain="0x0000" bus="0x00" slot="0x01" function="0x0"/>
+        </video>
+        {% endif %}
 
-        {% if interface %}
+        {% if interfaces %}
+        {% for network_data in interfaces %}
         <interface type='ethernet'>
-            <mac address='{{ mac_address }}'/>
-            <target dev='{{ interface }}'/>
+            <mac address='{{ network_data[1] }}'/>
+            <target dev='{{ network_data[0] }}'/>
             <model type='virtio'/>
             <mtu size='1442'/>
-            <alias name='net0'/>
-            <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+            <address type='pci' domain='0x0000' bus='0x{{ network_data[2] }}' slot='0x00' function='0x0'/>
         </interface>
+        {% endfor %}
         {% endif %}
 
         {% if backing_image_network %}
