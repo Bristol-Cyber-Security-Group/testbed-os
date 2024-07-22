@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GUI Architecture &mdash; testbed-os 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=fc837d61"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Guest Types" href="../../guest-types/index.html" />
+    <link rel="prev" title="Graphical User Interface" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            testbed-os
+          </a>
+              <div class="version">
+                1.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/index.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation/index.html">Testbed OS Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testbed-config/index.html">Testbed Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../kvm-compose/index.html">kvm-compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../orchestration/index.html">Orchestration</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Interfaces</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../exec/index.html">Exec Commands</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Graphical User Interface</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">GUI Architecture</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#command-running">Command Running</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#authentication">Authentication</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../guest-types/index.html">Guest Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testbedos-server/index.html">TestbedOS Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../networking/index.html">Networking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resource-monitoring/index.html">Resource Monitoring</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../test-harness/index.html">Test Harness</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">testbed-os</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Interfaces</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Graphical User Interface</a></li>
+      <li class="breadcrumb-item active">GUI Architecture</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/interfaces/gui/architecture.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="gui-architecture">
+<h1>GUI Architecture<a class="headerlink" href="#gui-architecture" title="Link to this heading"></a></h1>
+<p>The GUI is a web application that is hosted by the testbed server.
+It uses serverside HTML rendering using <a class="reference external" href="https://keats.github.io/tera/docs/">teradocs</a>, and a combination of bootstrap and jQuery.
+This has been kept to a minimum to keep the site simple, functional, and easy to maintain.</p>
+<p>The dynamic portions of the GUI utilise the testbed’s api to get information about deployments.
+It also supports running commands such as orchestration and analysis tools, directly from the GUI.</p>
+<section id="command-running">
+<h2>Command Running<a class="headerlink" href="#command-running" title="Link to this heading"></a></h2>
+<p>Command running is supported via a websocket connection from the browser to the testbed server api.
+The GUI also provides a pseudo terminal to emulate the CLI behaviour to display the logs of commands as they appear.
+As commands are executed on the server, the server pushes logs to the GUI back over the websocket.
+Note that the logging is not one to one with what you would see if using the command line, it is mostly a general indication of what is happening so that there is some activity to be seen by the user.
+For more detailed logging, especially if there was a problem, you should defer to the server logs for a full picture.</p>
+<p>To keep things simple, the command running from the GUI is essentially a wrapper around the CLI code.
+This means that the same code the CLI would use to trigger a command to the server is used in a special endpoint just for the GUI.
+In essence, this special endpoint on the server will open up another websocket to the server for the original command running code path.
+This was the path chosen in favour of partially re-implementing the command running in javascript, using endpoints to control the filesystem rather than the browser.
+Another possibility would have been to run the CLI as a subprocess, but we are moving away from subprocess use.</p>
+</section>
+<section id="authentication">
+<h2>Authentication<a class="headerlink" href="#authentication" title="Link to this heading"></a></h2>
+<p>There are currently no users and login for the GUI.
+While the testbed is un-authenticated, we have not added this but in a future release when the endpoints are secured we will also add users to the GUI.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Graphical User Interface" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../guest-types/index.html" class="btn btn-neutral float-right" title="Guest Types" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Bristol Cyber Security Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

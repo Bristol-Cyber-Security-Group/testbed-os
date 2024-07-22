@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TestbedOS Networking Architecture &mdash; testbed-os 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=fc837d61"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Access Control" href="access-control.html" />
+    <link rel="prev" title="Networking" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            testbed-os
+          </a>
+              <div class="version">
+                1.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/index.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Testbed OS Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbed-config/index.html">Testbed Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kvm-compose/index.html">kvm-compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orchestration/index.html">Orchestration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interfaces/index.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guest-types/index.html">Guest Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbedos-server/index.html">TestbedOS Server</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Networking</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">TestbedOS Networking Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#background">Background</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ovn-background">OVN Background</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#testbed-ovn-implementation-and-limitations">Testbed OVN Implementation and Limitations</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ovn-components">OVN Components</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ipv4-and-ipv6">IPv4 and IPv6</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#static-and-dynamic-guest-ip">Static and Dynamic Guest IP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#multiple-interfaces-on-guests">Multiple Interfaces on Guests</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#external-networking">External Networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nat">NAT</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#internal-and-external-dns">Internal and External DNS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#guest-to-ovn-connection">Guest to OVN connection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#guests-as-routers-and-firewalls">Guests as Routers and Firewalls</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#observing-network-traffic-in-ovn">Observing Network Traffic in OVN</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="access-control.html">Access Control</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../resource-monitoring/index.html">Resource Monitoring</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../test-harness/index.html">Test Harness</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">testbed-os</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Networking</a></li>
+      <li class="breadcrumb-item active">TestbedOS Networking Architecture</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/networking/architecture.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="testbedos-networking-architecture">
+<h1>TestbedOS Networking Architecture<a class="headerlink" href="#testbedos-networking-architecture" title="Link to this heading"></a></h1>
+<p>This document describe the components of the TestbedOS networking system and its components.</p>
+<section id="background">
+<h2>Background<a class="headerlink" href="#background" title="Link to this heading"></a></h2>
+<p>The testbed provides a way to describe a network topology in the <a class="reference internal" href="../kvm-compose/kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a> file to emulate real world networks.
+This network is a <a class="reference external" href="https://en.wikipedia.org/wiki/Software-defined_networking">Software Defined Network</a> (SDN) powered by <a class="reference external" href="https://www.ovn.org/en/">Open Virtual Networks</a> (OVN).
+Via OVN, the network is constructed with components such as switches and routers, following familiar concepts in networking.
+OVN is used in <a class="reference external" href="https://www.openstack.org/">OpenStack</a> and is a capable networking tool for cloud scenarios, but it is also capable in the context of the testbed.
+<a class="reference external" href="https://www.openvswitch.org/">OpenvSwitch</a> (OVS) underpins OVN, operating at level 2 in the OSI model.
+The testbed will be creating and configuring both OVN and OVS to deploy the network, but once configured, OVN will be controlling the network behaviours.</p>
+<p>OVN is a powerful for networking as it allows creating a cluster of many hosts running OVN, while providing a single API to control the network behaviours over all the hosts.
+This means you can scale out the testbed to provide more resources to host more virtual machines, without needing to worry about how you configure a distributed network.
+Furthermore, the physical location of these virtual machines is now not important since their vision of the network is defined in the logical network.
+For example, you have two hosts A and B, and on host A you have a virtual machine X and on host B you have a virtual machine Z.
+In your logical network, you place both virtual machines X and Z on the same logical switch.
+In the background, OVN will tunnel the network traffic between hosts A and B such that the virtual machines X and Z have no perception of the underlying physical network being over two hosts.
+This not only simplifies the network definition on the user’s side, it also simplifies the technical backend that the testbed needs to configure as this is all handled by OVN.
+Additionally, scaling out the testbed is as simple as configuring the OVN daemon on the new host to point to the main OVN host, which is also managed by the testbed software for you.</p>
+<p>Theoretically, you could create a large cluster of hosts running the testbed with virtual machines load balanced across all hosts.
+These virtual machines could be configured in any way on the logical network level, in addition to many isolated logical networks in the same or different user deployments.
+This is essentially how cloud infrastructures work with the various tenancies sharing the underlying hypervisors for their workloads.</p>
+</section>
+<section id="ovn-background">
+<h2>OVN Background<a class="headerlink" href="#ovn-background" title="Link to this heading"></a></h2>
+<p>The following text will give a high level description of how we use OVN and OVS, but see the OVN <a class="reference external" href="https://www.ovn.org/support/dist-docs/ovn-architecture.7.html">architecture man page</a> for more details.
+To break down how the network is configured, we will first discuss how a network is defined in OVN, then how we configure OVS and then how the configuration in OVN will control OVS to provide the SDN.
+It is important to note that OVN is also the controller for the SDN, where the OVS bridges will be configured to use the OVN controller for the flow rules.</p>
+<p>OVN lets the user work at the “logical network” level, which is then converted into flow rules for the OVS bridges.
+The logical network has a more complex and flexible abstraction over a network, when compared to flow rules.
+OVN will convert the logical network definition into complex flow rules to create the behaviours and constraints of the logical network.
+For example, you can define a logical switch that is connected to a logical router via logical ports.
+These logical constructs are converted into various flow rules to achieve this logical network.
+The OVS bridges in the network will then apply these flow rules on the network traffic.</p>
+<p>OVS bridges are configured to use the OVN controller to obtain the flow rules.
+These bridges are where you attach the network interfaces of guests, such as a libvirt virtual machine.
+On each host that is part of the OVN cluster, OVN creates a single OVS bridge called “br-int” short for integration bridge.
+There is another bridge called “br-ex” which is short for external bridge, this is covered below in the external networking section.
+Each host running OVN only needs one integration bridge, and all virtual machines will be attached to this bridge.
+Even if the virtual machines are part of separate logical networks, or on different logical switches, it does not matter as the network isolation is handled with flow rules.
+You do not need to create an OVS bridge per logical network or per logical switch, and this is why OVN is so powerful.</p>
+<p>To finally make the association between the OVS bridges and the OVN logical network, the port IDs on the OVS bridge for the virtual machine interfaces are specified in the OVN logical ports.
+Logical ports in logical switches and logical routers.
+Specifically for virtual machines, we can define logical ports on the logical switches.
+These logical ports can be given an ID of the port on any of the integration bridges that are part of the OVN cluster.
+This association allows OVN to route the network traffic to and from the port of the virtual machine’s interface on the OVN network.</p>
+</section>
+<section id="testbed-ovn-implementation-and-limitations">
+<h2>Testbed OVN Implementation and Limitations<a class="headerlink" href="#testbed-ovn-implementation-and-limitations" title="Link to this heading"></a></h2>
+<p>While the testbed uses OVN, there is a small constraint on what APIs available from OVN are exposed to the user via the <a class="reference internal" href="../kvm-compose/kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a>.
+The basic networking components are available:</p>
+<ul class="simple">
+<li><p>switches</p></li>
+<li><p>switch ports</p></li>
+<li><p>routers</p></li>
+<li><p>router ports</p></li>
+<li><p>DHCP</p></li>
+<li><p>NAT</p></li>
+</ul>
+<p>In addition to applying routing rules on the routers, providing external IP addresses and basic DNS.
+However, the testbed abstraction over the OVN api is somewhat opinionated in this version of the testbed.
+For example, we do not expect the user to need high availability configuration in OVN.
+Additionally, to avoid overly pushing the testbed opinion on a network configuration, we have not provided configurable DNS.
+This is explained more further down.
+For very complex networks with very specific requirements, we need to assess how this impacts the testbed’s API so that it remains general.
+In future versions we look to open up the API to include more configurability of the network.
+All these constraints that we have applied are validated in code, so if there is something we don’t support but OVN does, then that will be rejected in the yaml parsing phase.</p>
+<section id="ovn-components">
+<h3>OVN Components<a class="headerlink" href="#ovn-components" title="Link to this heading"></a></h3>
+<p>In the previous list, there are the OVN components that are used in the testbed.
+There is significant detail in how these work and the different configuration options.
+For more information on each, please see the <a class="reference external" href="https://www.ovn.org/support/dist-docs/ovn-nbctl.8.html">ovn-nbctl</a> CLI documentation for a starting point.</p>
+</section>
+<section id="ipv4-and-ipv6">
+<h3>IPv4 and IPv6<a class="headerlink" href="#ipv4-and-ipv6" title="Link to this heading"></a></h3>
+<p>At this time, we only support IPv4.
+OVN supports both, but our current implementation has IPv4 in mind.
+We have added some support for IPv6 in parts of the code, but this is current untested in an end to end deployment.</p>
+</section>
+<section id="static-and-dynamic-guest-ip">
+<h3>Static and Dynamic Guest IP<a class="headerlink" href="#static-and-dynamic-guest-ip" title="Link to this heading"></a></h3>
+<p>We provide the capability of either specifying an IP address to a guest, or relying on DHCP.
+OVN natively offers DHCP based on the subnet of the logical switch.
+Logical ports on this logical switch with ip=”dynamic” will be allocated an IP starting from the next lowest value in the subnet.</p>
+<p>Currently, there is some incompatibility in using OVN’s native DHCP and giving guests a static external IP address.
+We look to resolve this in the future.</p>
+</section>
+<section id="multiple-interfaces-on-guests">
+<h3>Multiple Interfaces on Guests<a class="headerlink" href="#multiple-interfaces-on-guests" title="Link to this heading"></a></h3>
+<p>In the kvm-compose.yaml file you can specify one or more interfaces for guests.
+Currently, only libvirt guests support multiple interfaces.</p>
+<p>The libvirt guests will have their domain.xml generated with the list of interfaces defined in the yaml file.
+For libvirt cloud-init guests, this interface information is placed in the cloud-init network config and will boot with the interfaces configured automatically.</p>
+</section>
+<section id="external-networking">
+<h3>External Networking<a class="headerlink" href="#external-networking" title="Link to this heading"></a></h3>
+<p>To allow external networking from inside the logical network and out to the internet, there are a couple of OVN components that need to be configured.
+First is the external bridge “br-ex”.
+This is the second OVS bridge that OVN manages, and this bridge will be given a static IP address - we use 172.16.1.200 as a default.
+In the logical network we require a special logical switch which we name “public”, which has a logical port of type “localnet”.
+This localnet type exposes the host’s networking, so that we can push network traffic through the OVS bridge br-ex.
+This works in a combination with a logical router configuration identifying an external gateway, which assigns a specific host as the “way out” of the OVN logical network.</p>
+</section>
+<section id="nat">
+<h3>NAT<a class="headerlink" href="#nat" title="Link to this heading"></a></h3>
+<p>It is possible to assign both “Source NAT” (snat) and “Destination NAT and Source Nat” (dnat_and_snat), where the former just allows the guest to access the internet and the latter also allows the guest to be addressed from outside the logical network.
+For snat, this is compatible with guests with dynamic IP addresses.
+For dnat_and_snat, this is only compatible with guests with static IP addresses.</p>
+</section>
+<section id="internal-and-external-dns">
+<h3>Internal and External DNS<a class="headerlink" href="#internal-and-external-dns" title="Link to this heading"></a></h3>
+<p>While OVN is comprehensive in many areas, DNS in it’s current version as of writing this documentation (v23.03.0) is lacking.
+For internal DNS, the OVN controller can route all DNS requests directly from the guest’s port to itself to serve lookups.
+However, this requires a combination of configuring the DNS entries in each logical switch and also having the guest with a dynamic IP address.
+We found this to be cumbersome, in addition to being rather opinionated to potential use cases.
+For example, if you want to investigate DNS traffic in your network for research purposes, say you are trying to model an old insecure network, then OVN would be obstructive in this scenario.
+It is possible for the user to host a DNS agent in the network, but there would be some configuration of the guests on the user’s part.</p>
+<p>For external DNS, this will also require configuration on the user’s side for the guests.
+We have added 8.8.8.8 as a DNS server for guests with dynamic IP addresses as a default.
+However, we are looking to generally improve the DNS story in the testbed in future updates.</p>
+</section>
+<section id="guest-to-ovn-connection">
+<h3>Guest to OVN connection<a class="headerlink" href="#guest-to-ovn-connection" title="Link to this heading"></a></h3>
+<p>Virtual machines or any software with networking capabilities can be connected to the testbed as a guest.
+As long as this guest has a port on the OVS integration bridge.
+For the current supported guest types, there are a few different implementation details in how we achieve this.</p>
+<section id="libvirt">
+<h4>Libvirt<a class="headerlink" href="#libvirt" title="Link to this heading"></a></h4>
+<p>In the network definition in the libvirt <cite>domain.xml</cite> such as below, there is the unique name of the interface for this virtual machine.
+This interface is subsequently bridged to the host’s integration bridge to create a port on the bridge.
+The name of this port is the name used in the logical switch port.</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;interface</span><span class="w"> </span><span class="na">type=</span><span class="s">&#39;ethernet&#39;</span><span class="nt">&gt;</span>
+<span class="w">    </span><span class="nt">&lt;mac</span><span class="w"> </span><span class="na">address=</span><span class="s">&#39;00:00:00:00:00:03&#39;</span><span class="nt">/&gt;</span>
+<span class="w">    </span><span class="nt">&lt;target</span><span class="w"> </span><span class="na">dev=</span><span class="s">&#39;guest-interface&#39;</span><span class="nt">/&gt;</span>
+<span class="w">    </span><span class="nt">&lt;model</span><span class="w"> </span><span class="na">type=</span><span class="s">&#39;virtio&#39;</span><span class="nt">/&gt;</span>
+<span class="w">    </span><span class="nt">&lt;mtu</span><span class="w"> </span><span class="na">size=</span><span class="s">&#39;1442&#39;</span><span class="nt">/&gt;</span>
+<span class="w">    </span><span class="nt">&lt;address</span><span class="w"> </span><span class="na">type=</span><span class="s">&#39;pci&#39;</span><span class="w"> </span><span class="na">domain=</span><span class="s">&#39;0x0000&#39;</span><span class="w"> </span><span class="na">bus=</span><span class="s">&#39;0x00&#39;</span><span class="w"> </span><span class="na">slot=</span><span class="s">&#39;0x03&#39;</span><span class="w"> </span><span class="na">function=</span><span class="s">&#39;0x0&#39;</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;/interface&gt;</span>
+</pre></div>
+</div>
+</section>
+<section id="docker">
+<h4>Docker<a class="headerlink" href="#docker" title="Link to this heading"></a></h4>
+<p>OVS has a specialised command specifically for docker containers <cite>ovs-docker</cite>.
+This tool will in the background, create a network interface inside the container and then also create a port on the integration bridge.
+It is important to note that this way of providing network connectivity to a docker container does not follow the same rules as the standard docker or docker-compose.
+We must also specify the ip address for this interface that is created and give it a DNS server - we default to 8.8.8.8.</p>
+</section>
+<section id="android-emulator">
+<h4>Android Emulator<a class="headerlink" href="#android-emulator" title="Link to this heading"></a></h4>
+<p>The Android Emulator (Android Virtual Device) requires special provisioning for it’s network.
+By itself, the emulator provisions it’s own networking even if you utilise some of it’s <cite>qemu</cite> directives to attach it to bridges etc. causing some issues.
+Similar to how a docker container works, we place the emulator in it’s own network namespace.
+We then create a port on the integration bridge and insert it inside this emulators network namespace.
+This way, we have completely isolated the emulator and force it’s networking to go via the logical network.</p>
+<p>Note that this does have implications in using the Android Debug Protocol (ADB) tooling.
+The ADB server needs to be started inside the namespace, as it is listening on localhost.
+Therefore ADB will be listening on the namespace’s localhost, and will not be aware of other emulators in other network namespaces.</p>
+</section>
+<section id="future-guest-types">
+<h4>Future Guest Types<a class="headerlink" href="#future-guest-types" title="Link to this heading"></a></h4>
+<p>In the future we aim to add other guest types, but they will generally follow how we integrate libvirt, docker and android emulators.
+For example, it is possible to place a browser inside a network namespace like the Android Emulator and have it running as a guest completely inside the logical network.
+This means you do not have to put the browser inside a VM unnecessarily.
+Additionally, other networks can be connected to the logical network this way such as wireless access points connected to the host via ethernet.</p>
+</section>
+</section>
+<section id="guests-as-routers-and-firewalls">
+<h3>Guests as Routers and Firewalls<a class="headerlink" href="#guests-as-routers-and-firewalls" title="Link to this heading"></a></h3>
+<p>A valid use case is to use a virtual machine running router software for the network.
+This is something that we don’t yet officially support or have tested.</p>
+</section>
+</section>
+<section id="observing-network-traffic-in-ovn">
+<h2>Observing Network Traffic in OVN<a class="headerlink" href="#observing-network-traffic-in-ovn" title="Link to this heading"></a></h2>
+<p>As the traffic in SDNs are not like classic networks, it can be a bit more awkward to observe the traffic due to all the flow rules.
+While it is possible to run <cite>ovs-tcpdump</cite> on the OVS bridges, you may not find what you expect i.e. you see all the traffic.
+Note that <cite>ovs-tcpdump</cite> is a specific version of <cite>tcp-dump</cite> for OVS bridges, we include the python dependencies in the testbed - either through the analysis tooling or the poetry environment.</p>
+<p>OVN also provides ways to virtually test traffic from two endpoints, to test if your network works as intended.
+Please see the documentation on <a class="reference external" href="https://www.ovn.org/support/dist-docs/ovn-trace.8.html">ovn-trace</a>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Networking" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="access-control.html" class="btn btn-neutral float-right" title="Access Control" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Bristol Cyber Security Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

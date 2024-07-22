@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Access Control &mdash; testbed-os 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=fc837d61"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Resource Monitoring" href="../resource-monitoring/index.html" />
+    <link rel="prev" title="TestbedOS Networking Architecture" href="architecture.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            testbed-os
+          </a>
+              <div class="version">
+                1.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/index.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Testbed OS Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbed-config/index.html">Testbed Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kvm-compose/index.html">kvm-compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orchestration/index.html">Orchestration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interfaces/index.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guest-types/index.html">Guest Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbedos-server/index.html">TestbedOS Server</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Networking</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="architecture.html">TestbedOS Networking Architecture</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Access Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#creating-and-designing-rules">Creating and Designing Rules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#direction">Direction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#match">Match</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#action">Action</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../resource-monitoring/index.html">Resource Monitoring</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../test-harness/index.html">Test Harness</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">testbed-os</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Networking</a></li>
+      <li class="breadcrumb-item active">Access Control</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/networking/access-control.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="access-control">
+<h1>Access Control<a class="headerlink" href="#access-control" title="Link to this heading"></a></h1>
+<p>OVN provides an extensive ACL implementation to apply security policies to the network.
+By default, the network has no security policy so you are only limited by routing and NAT.</p>
+<p>Please see the ovn-nbctl man pages for more information on how the ACL works.
+Additionally, please see the ovn-sbctl man pages for the <cite>Logical_Flow</cite> table documentation for the match expressions to set up filters in your ACL.</p>
+<p>In the <cite>kvm-compose.yaml</cite> file, there is an optional section called <cite>acl</cite> under the <cite>ovn</cite> element, which exposes the OVN ACL api.
+We supply a shortcut to apply a deny all security policy with a low priority to reduce boilerplate code.</p>
+<p>The yaml schema is as follows:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">acl</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">apply_deny_all</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">switches</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">sw0</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">to-lport</span>
+<span class="w">        </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">        </span><span class="nt">match</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ip4.src</span><span class="nv"> </span><span class="s">==</span><span class="nv"> </span><span class="s">&#39;10.0.0.10&#39;&quot;</span>
+<span class="w">        </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allow</span>
+</pre></div>
+</div>
+<p>The <cite>apply_deny_all</cite> element defaults to false if not specified.</p>
+<p>The <cite>switches</cite> element is optional, if specified you must specify valid logical switch names that are found in the switches section of the ovn network definition.
+You can specify a list of ACL per switch.
+Each ACL requires:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><cite>direction</cite><span class="classifier">either</span></dt><dd><ul>
+<li><p><cite>to-lport</cite></p></li>
+<li><p><cite>from-lport</cite></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><cite>priority</cite> : 0 to 32767 inclusive</p></li>
+<li><p><cite>match</cite> : the filter to match to this rule</p></li>
+<li><dl class="simple">
+<dt><cite>action</cite><span class="classifier">one of</span></dt><dd><ul>
+<li><p><cite>allow-related</cite></p></li>
+<li><p><cite>allow-stateless</cite></p></li>
+<li><p><cite>allow</cite></p></li>
+<li><p><cite>drop</cite></p></li>
+<li><p><cite>pass</cite></p></li>
+<li><p><cite>reject</cite></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<section id="creating-and-designing-rules">
+<h2>Creating and Designing Rules<a class="headerlink" href="#creating-and-designing-rules" title="Link to this heading"></a></h2>
+<p>The OVN ACL rules are very expressive, and some care is necessary to craft the right rule without any unintended side edge cases.
+We have to consider the contents of the filter in the <cite>match</cite> section, the <cite>direction</cite> and the <cite>action</cite>.</p>
+<p>Before setting up any security rules, you must consider how you open up your network traffic.
+You will likely want to place a drop rule with a low priority as a base, so that you can then open up specifically the traffic flows you want.
+To do this, you want to specify a generic drop rule with a match such as <cite>“ip”</cite>.
+Alternatively, you can specifically block certain traffic flows when you generally want to allow all traffic.</p>
+<section id="direction">
+<h3>Direction<a class="headerlink" href="#direction" title="Link to this heading"></a></h3>
+<p>There are two directions, <cite>to-lport</cite> and <cite>from-lport</cite>.</p>
+<p>to-lport specifies that the filtering will happen on traffic forwarded to a logical port.</p>
+<p>from-lport specifies that the filtering will happen on traffic arriving from a logical port.</p>
+<p>There is an important distinction when using these, when you are using the ACL just on a logical switch or when using a port group.
+If you are just applying the ACL to a logical switch, for to-lport this rule will be applied as it arrives to the logical switch.
+For from-lport this rule will be applied as it leaves the logical switch.
+Similarly, for the port group, when the traffic is leaving or arriving at one of the logical ports in the port group.</p>
+<p>So in the case of a drop rule, you can think of this as placing the ACL at the start of the packet’s journey (from-lport) or at the end of it’s journey (to-lport).
+This means if you use to-lport, the packet will still travel all the way up to the logical switch (say there was many hops to reach the destination).
+Whereas if you use from-lport, the packet will be immediately filtered as it leaves the logical port.</p>
+<p>So if you want to create a drop all traffic rule for a logical switch to stop traffic coming in, you will want to use a <cite>to-lport</cite> with a drop.</p>
+</section>
+<section id="match">
+<h3>Match<a class="headerlink" href="#match" title="Link to this heading"></a></h3>
+<p>The match section is the filter that OVN will apply on every packet.
+There is an extensive syntax for this, so it is recommended to see the ovn-nbctl documentation for the full list and descriptions.
+For this documentation, we will discuss how to create a basic filter.
+Note that these filters may not be the most efficient, but the should be clear in their purpose.</p>
+<p>If you want to drop all traffic travelling to logical ports in a specific logical switch (sw0):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">sw0</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">to-lport</span>
+<span class="w">    </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">    </span><span class="nt">match</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ip4&quot;</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">drop</span>
+</pre></div>
+</div>
+<p>The use of <cite>to-lport</cite> means that the filtering will be triggered when the traffic is destined to the port.
+We match on just <cite>ip4</cite> to catch any ipv4 traffic (you may want to also block ip6 if that is being used).
+If the filter is matched, then we apply the action which is drop in this case.</p>
+<p>If you want to allow traffic with a specific source and destination address:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">sw0</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">to-lport</span>
+<span class="w">    </span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">    </span><span class="nt">match</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;ip4</span><span class="nv"> </span><span class="s">&amp;&amp;</span><span class="nv"> </span><span class="s">ip4.src</span><span class="nv"> </span><span class="s">==</span><span class="nv"> </span><span class="s">10.0.0.11</span><span class="nv"> </span><span class="s">&amp;&amp;</span><span class="nv"> </span><span class="s">ip4.dst</span><span class="nv"> </span><span class="s">==</span><span class="nv"> </span><span class="s">10.0.0.12&quot;</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">allow</span>
+</pre></div>
+</div>
+<p>Similar to the drop rule, we also specify the source and destination explicitly.
+You can also specify a subnet rather than a specific ip such as <cite>10.0.0.0/24</cite> which is valid syntax.</p>
+<p>By combining rules like these, you can shape your traffic in complex ways.
+These examples would ultimately be time consuming for a large network with complex security requirements.
+It is recommended to both look at the OVN ACL documentation for more sophisticated syntax, but also to experiment with rules.
+You can quickly iterate with rules on an existing testbed deployment with the following command:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>kvm-compose<span class="w"> </span>up<span class="w"> </span>-a
+</pre></div>
+</div>
+<p>Which will remove the existing rules and re-apply the rules in the yaml file.
+This command will not attempt to rebuild guests or the network.</p>
+<p>Additionally, you can also test your rules from guests by either using the ping command to the specific ip address of a guest.
+Or, you can use netcat for tcp connections since ping would use icmp traffic.
+You can do this with:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># server with ip 10.0.0.10</span>
+nc<span class="w"> </span>-l<span class="w"> </span>-p<span class="w"> </span><span class="m">8000</span>
+
+<span class="c1"># client</span>
+nc<span class="w"> </span><span class="m">10</span>.0.0.10<span class="w"> </span><span class="m">8000</span>
+</pre></div>
+</div>
+<p>Then you can type in any message, press enter and you will see this message appear on the server, if the ACL allowed the traffic.</p>
+</section>
+<section id="action">
+<h3>Action<a class="headerlink" href="#action" title="Link to this heading"></a></h3>
+<p>TODO</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="architecture.html" class="btn btn-neutral float-left" title="TestbedOS Networking Architecture" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../resource-monitoring/index.html" class="btn btn-neutral float-right" title="Resource Monitoring" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Bristol Cyber Security Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

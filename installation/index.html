@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Testbed OS Installation &mdash; testbed-os 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=fc837d61"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Testbed Config" href="../testbed-config/index.html" />
+    <link rel="prev" title="Getting Started" href="../getting-started/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            testbed-os
+          </a>
+              <div class="version">
+                1.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/index.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Testbed OS Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#host-dependencies">Host Dependencies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#runtime">Runtime</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ovn-and-ovs">OVN and OVS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#docker">Docker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#android-emulator">Android Emulator</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#setup-testbed">Setup Testbed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configure-libvirt-user-permissions">Configure Libvirt User Permissions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#setup-kvm-compose-config">Setup kvm-compose Config</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#run-testbed">Run Testbed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testbed-cluster">Testbed Cluster</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#limitations">Limitations</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#tear-down-testbed">Tear Down Testbed</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../testbed-config/index.html">Testbed Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kvm-compose/index.html">kvm-compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orchestration/index.html">Orchestration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interfaces/index.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guest-types/index.html">Guest Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbedos-server/index.html">TestbedOS Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../networking/index.html">Networking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resource-monitoring/index.html">Resource Monitoring</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../test-harness/index.html">Test Harness</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">testbed-os</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Testbed OS Installation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/installation/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="testbed-os-installation">
+<h1>Testbed OS Installation<a class="headerlink" href="#testbed-os-installation" title="Link to this heading"></a></h1>
+<p>There are various dependencies needed to be installed with some based configuration needed to get the testbed ready to deploy test cases.
+This installation guide will outline each component needed.</p>
+<p>The following dependency install has been packaged together into the <code class="docutils literal notranslate"><span class="pre">pre-req-setup.sh</span></code> script in the root of the repo designed for ubuntu/debian based distros.
+The script will check if the software is already installed and if the version is correct.
+Note that this script will try to edit your bash profile such as <code class="docutils literal notranslate"><span class="pre">~/.bashrc</span></code>, please check the script and comment out anything you do not want to be executed.
+This script is used in the projects test suite (see test-harness folder in the root of the repo), so will be working on a fresh ubuntu install.</p>
+<p>You can either follow the instructions in this document, or run <code class="docutils literal notranslate"><span class="pre">./pre-req-setup.sh</span></code> script in the root of the repo automate the pre-requisite dependencies installation.
+Note that the script will ask you to confirm what it will install after it has run checks.</p>
+<section id="host-dependencies">
+<h2>Host Dependencies<a class="headerlink" href="#host-dependencies" title="Link to this heading"></a></h2>
+<dl class="field-list simple">
+<dt class="field-odd">Rust<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://rustup.rs/">https://rustup.rs/</a>
+Default configuration, when asked, is fine.</p>
+</dd>
+<dt class="field-even">Poetry<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://python-poetry.org/docs/#installation">https://python-poetry.org/docs/#installation</a>
+Make sure you have python <cite>^3.10</cite>, consider using pyenv to manage python installs (see <a class="reference external" href="https://python-poetry.org/docs/managing-environments/"><code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">documentation</span></code></a> ).
+Also make sure you have pip3 installed for this python version, for ubuntu install <cite>python3-pip</cite></p>
+</dd>
+<dt class="field-odd">PyEnv<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://github.com/pyenv/pyenv">https://github.com/pyenv/pyenv</a>
+Python version manager, asks you to manually add it to your shell profile once installed.</p>
+</dd>
+</dl>
+<p>Poetry has been used to manage the python virtual environments for this project.
+While it is possible to use others, you will need to manually replace the use of <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">run</span></code> for example with your own virtual environment management.
+The use of <code class="docutils literal notranslate"><span class="pre">poetry</span> <span class="pre">run</span></code> for ad-hoc use of the python environment to remove the need to load the virtual environment in the current session.</p>
+<section id="runtime">
+<h3>Runtime<a class="headerlink" href="#runtime" title="Link to this heading"></a></h3>
+<p>The dependency <code class="docutils literal notranslate"><span class="pre">genisoimage</span></code> is used to create .iso files for cloud-image guest startup configuration.</p>
+<p>The dependency <code class="docutils literal notranslate"><span class="pre">virt-manager</span></code> is used as a graphical viewer for libvirt guests.
+Virtual Machine manager is a useful GUI for libvirt, which allows you to inspect the network and guest configuration.
+It also allows you to open a graphical window to the guest which will either be a terminal or the graphical desktop if installed.</p>
+<p>Consider using <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">virsh</span> <span class="pre">console</span> <span class="pre">&lt;guest</span> <span class="pre">name&gt;</span></code> to open a TTY to the guest as the graphical window may not support copy paste etc without guest tools installed.</p>
+</section>
+<section id="ovn-and-ovs">
+<h3>OVN and OVS<a class="headerlink" href="#ovn-and-ovs" title="Link to this heading"></a></h3>
+<p>We need to build OVN and OVS from source, we use the OVS submodule so that we match the OVN to OVS version.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ovn-org/ovn.git
+<span class="nb">cd</span><span class="w"> </span>ovn
+git<span class="w"> </span>checkout<span class="w"> </span>v23.03.0
+./boot.sh
+git<span class="w"> </span>submodule<span class="w"> </span>update<span class="w"> </span>--init
+<span class="nb">cd</span><span class="w"> </span>ovs
+./boot.sh
+./configure
+make
+sudo<span class="w"> </span>make<span class="w"> </span>install
+<span class="nb">cd</span><span class="w"> </span>..
+./configure
+make
+sudo<span class="w"> </span>make<span class="w"> </span>install
+</pre></div>
+</div>
+</section>
+<section id="docker">
+<h3>Docker<a class="headerlink" href="#docker" title="Link to this heading"></a></h3>
+<p>Docker is used to allow the user to deploy containers on the testbed, the installation steps for docker are the same as in <cite>https://docs.docker.com/desktop/install/linux-install/</cite>.
+If you are already using Docker Desktop, do not install docker via this documentation or scripts.
+We can re-use the Docker installation.</p>
+</section>
+<section id="android-emulator">
+<h3>Android Emulator<a class="headerlink" href="#android-emulator" title="Link to this heading"></a></h3>
+<p>Android Virtual Device is used to deploy Android emulators in the testbed, we need to install the following CLI tools.
+The command line tools must also be downloaded from Google at <a class="reference external" href="https://developer.android.com/studio#command-tools">https://developer.android.com/studio#command-tools</a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt-get<span class="w"> </span>-y<span class="w"> </span>install<span class="w"> </span>openjdk-17-jdk
+sudo<span class="w"> </span>apt-get<span class="w"> </span>-y<span class="w"> </span>install<span class="w"> </span>android-tools-adb
+sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/opt/android-sdk/cmdline-tools/
+sudo<span class="w"> </span>chown<span class="w"> </span><span class="nv">$USER</span>:<span class="w"> </span>-R<span class="w"> </span>/opt/android-sdk/
+<span class="nv">CMDLINETOOLS_URL</span><span class="o">=</span>https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip
+wget<span class="w"> </span><span class="nv">$CMDLINETOOLS_URL</span><span class="w"> </span>-O<span class="w"> </span>/opt/android-sdk/cmdline-tools/tools.zip
+unzip<span class="w"> </span>/opt/android-sdk/cmdline-tools/tools.zip<span class="w"> </span>-d<span class="w"> </span>/opt/android-sdk/cmdline-tools/
+mv<span class="w"> </span>/opt/android-sdk/cmdline-tools/cmdline-tools<span class="w"> </span>/opt/android-sdk/cmdline-tools/latest
+rm<span class="w"> </span>/opt/android-sdk/cmdline-tools/tools.zip
+</pre></div>
+</div>
+<p>You will need to add the following to your environment assuming you are using bash, do this once:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># add to ~/.bashrc</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$PATH</span>:/opt/android-sdk/cmdline-tools/latest/bin
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANDROID_HOME</span><span class="o">=</span>/opt/android-sdk/
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANDROID_SDK_ROOT</span><span class="o">=</span>/opt/android-sdk/
+</pre></div>
+</div>
+<p>You will need to run <cite>source ~/.bashrc</cite> to load these new variables.</p>
+<p>You must accept the licenses with <cite>sdkmanager –licenses</cite> or <cite>yes | sdkmanager –licenses</cite> to auto accept.</p>
+<p>Then you will need to install the emulator with <cite>sdkmanager –install “emulator” “platform-tools”</cite>.</p>
+</section>
+</section>
+<section id="setup-testbed">
+<h2>Setup Testbed<a class="headerlink" href="#setup-testbed" title="Link to this heading"></a></h2>
+<p>Clone the testbed git repo into your desired location then navigate to the root directory.
+Execute:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">setup</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>to compile the rust code, build the poetry virtual environments and documentation for the project.</p>
+</section>
+<section id="configure-libvirt-user-permissions">
+<h2>Configure Libvirt User Permissions<a class="headerlink" href="#configure-libvirt-user-permissions" title="Link to this heading"></a></h2>
+<p>You will need to add the user that will interface with the libvirt daemon and give it permission to use it.</p>
+<p>Edit <code class="docutils literal notranslate"><span class="pre">/etc/libvirt/qemu.conf</span></code> file and find the following section:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#       user = &quot;+0&quot;     # Super user (uid=0)</span>
+<span class="c1">#       user = &quot;100&quot;    # A user named &quot;100&quot; or a user with uid=100</span>
+<span class="c1">#</span>
+<span class="c1">#user = &quot;root&quot;</span>
+
+<span class="c1"># The group for QEMU processes run by the system instance. It can be</span>
+<span class="c1"># specified in a similar way to user.</span>
+<span class="c1">#group = &quot;root&quot;</span>
+</pre></div>
+</div>
+<p>change this section into (for example, if my username is ubuntu):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#       user = &quot;+0&quot;     # Super user (uid=0)</span>
+<span class="c1">#       user = &quot;100&quot;    # A user named &quot;100&quot; or a user with uid=100</span>
+<span class="c1">#</span>
+<span class="n">user</span> <span class="o">=</span> <span class="s2">&quot;ubuntu&quot;</span>
+
+<span class="c1"># The group for QEMU processes run by the system instance. It can be</span>
+<span class="c1"># specified in a similar way to user.</span>
+<span class="n">group</span> <span class="o">=</span> <span class="s2">&quot;libvirt&quot;</span>
+</pre></div>
+</div>
+<p>Once this is changed, make sure to restart the libvirt daemon: <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">systemctl</span> <span class="pre">restart</span> <span class="pre">libvirtd</span></code>.</p>
+<p>If you have multiple users for libvirt or a locked down linux system, please see the libvirt documentation on how to manage this.
+The target supported platform for the testbed currently assumes you have administrator privileges and are the single user.</p>
+</section>
+<section id="setup-kvm-compose-config">
+<h2>Setup kvm-compose Config<a class="headerlink" href="#setup-kvm-compose-config" title="Link to this heading"></a></h2>
+<p>You will need to create the <code class="docutils literal notranslate"><span class="pre">host.json</span></code> file and enumerate it with the testbed host information that will participate in the testbed.
+You must do this before running the testbed or it will not know what are the testbed hosts.
+See <a class="reference internal" href="../testbed-config/index.html#testbed-config"><span class="std std-ref">kvm-compose-config.json</span></a> documentation for more information.</p>
+</section>
+<section id="run-testbed">
+<h2>Run Testbed<a class="headerlink" href="#run-testbed" title="Link to this heading"></a></h2>
+<p>There are three ways to start the server.
+You can either use the server in daemon mode by running <cite>sudo systemctl start testbedos-server.service</cite>.
+You can also directly run the server from the CLI with <cite>sudo testbedos-server main</cite>.
+Or you can run via cargo, if you are in the testbedos-server project folder in the source code with <cite>sudo -E bash -c  ‘cargo run – main’ $USER</cite>.
+Once you have successfully run the server once in main mode, you do not need to specify <cite>main</cite> unless you edit the <cite>mode.json</cite>.</p>
+<p>You are now ready to use the testbed, you can either use an example in the <code class="docutils literal notranslate"><span class="pre">examples/</span></code> folder or roll your own.
+Refer to the examples on how to build a <code class="docutils literal notranslate"><span class="pre">kvm-compose.yaml</span></code> file.</p>
+<p>The basic syntax is to be in a folder with a <code class="docutils literal notranslate"><span class="pre">kvm-compose.yaml</span></code> defined and run <code class="docutils literal notranslate"><span class="pre">kvm-compose</span> <span class="pre">generate-artefacts</span></code> to generate config.
+See <a class="reference internal" href="../orchestration/index.html#orchestration"><span class="std std-ref">orchestration</span></a> for more information on how to deploy a test case.</p>
+<p>You should not need to use sudo with the command, unless you are using a resource (such as an existing disk, file to push into vm with cloud-init) that your user does not have permission for.</p>
+</section>
+<section id="testbed-cluster">
+<h2>Testbed Cluster<a class="headerlink" href="#testbed-cluster" title="Link to this heading"></a></h2>
+<p>It is possible to create a cluster of testbed hosts to increase the resource capability of your testbed.
+The testbed hosts must be accessible i.e. on the same local network.
+You will still need to individually configure each host’s <cite>host.json</cite>.
+You will then need to start the non main testbed hosts in client mode.
+This is similar to the main mode commands, but instead you can use the following methods:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">testbedos-server</span> <span class="pre">client</span> <span class="pre">-m</span> <span class="pre">&lt;ip</span> <span class="pre">of</span> <span class="pre">main</span> <span class="pre">testbed</span> <span class="pre">host&gt;</span> <span class="pre">-t</span> <span class="pre">&lt;interface</span> <span class="pre">visible</span> <span class="pre">to</span> <span class="pre">main</span> <span class="pre">host</span> <span class="pre">on</span> <span class="pre">local</span> <span class="pre">network&gt;`</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">-E</span> <span class="pre">bash</span> <span class="pre">-c</span>&#160; <span class="pre">'cargo</span> <span class="pre">run</span> <span class="pre">--</span> <span class="pre">client</span> <span class="pre">-m</span> <span class="pre">&lt;ip</span> <span class="pre">of</span> <span class="pre">main</span> <span class="pre">testbed</span> <span class="pre">host&gt;</span> <span class="pre">-t</span> <span class="pre">&lt;interface</span> <span class="pre">visible</span> <span class="pre">to</span> <span class="pre">main</span> <span class="pre">host</span> <span class="pre">on</span> <span class="pre">local</span> <span class="pre">network&gt;'</span> <span class="pre">$USER`</span></code></p></li>
+<li><p>If you are using the <code class="docutils literal notranslate"><span class="pre">systemctl`</span></code> method, you must make sure the <cite>mode.json</cite> in <code class="docutils literal notranslate"><span class="pre">/var/lib/testbedos/config/</span></code> has been configured with the client configuration</p></li>
+</ul>
+<p>Similar to the main mode, once you have successfully run the server in the client mode, you do not have to specify the client with arguments as this will be read from the <cite>mode.json</cite>.
+Please see the testbed server <a class="reference internal" href="../testbedos-server/architecture.html#cluster-management"><span class="std std-ref">Cluster Management</span></a> for more information.</p>
+<section id="limitations">
+<h3>Limitations<a class="headerlink" href="#limitations" title="Link to this heading"></a></h3>
+<p>Be aware that if you do use sudo, the files created may required elevated permissions to use so you will there-on need to continue to use sudo unless you manually edit the owner (<cite>chown</cite>) or permissions (<cite>chmod</cite>).</p>
+<p>If you use kvm-compose up with or without sudo, if you are using cloud-init images, then be aware that the images downloaded will either go to <code class="docutils literal notranslate"><span class="pre">/root/.kvm-compose/</span></code> if you use sudo or <code class="docutils literal notranslate"><span class="pre">/home/&lt;your</span> <span class="pre">home</span> <span class="pre">folder/.kvm-compose/</span></code> if you do not.
+This means that you may end up downloading the images twice, once in each folder if you interchange the use of sudo.</p>
+</section>
+</section>
+<section id="tear-down-testbed">
+<h2>Tear Down Testbed<a class="headerlink" href="#tear-down-testbed" title="Link to this heading"></a></h2>
+<p>You should tear down any test cases before uninstalling the testbed, see <a class="reference internal" href="../orchestration/index.html#orchestration"><span class="std std-ref">orchestration</span></a> for more information on how to tear down a test case.</p>
+<p>If you want to the testbed (assuming all vms and networking components have been destroyed), you can use the <code class="docutils literal notranslate"><span class="pre">tear-down.sh</span></code> script in the root of the testbed-or repo to remove the kvm-compose binary and python code+environments originally installed via setup.sh.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../getting-started/index.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../testbed-config/index.html" class="btn btn-neutral float-right" title="Testbed Config" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Bristol Cyber Security Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

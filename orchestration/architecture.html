@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture &mdash; testbed-os 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=fc837d61"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Interfaces" href="../interfaces/index.html" />
+    <link rel="prev" title="Orchestration" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            testbed-os
+          </a>
+              <div class="version">
+                1.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/index.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Testbed OS Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbed-config/index.html">Testbed Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kvm-compose/index.html">kvm-compose</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Orchestration</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#background">Background</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gui-technical-detail">GUI Technical Detail</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#command-running">Command Running</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#stages">Stages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cancellation">Cancellation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scaling">Scaling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#snapshots">Snapshots</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#existing-disk">Existing Disk</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#general-notes">General Notes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#delta-change">Delta Change</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../interfaces/index.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guest-types/index.html">Guest Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbedos-server/index.html">TestbedOS Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../networking/index.html">Networking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resource-monitoring/index.html">Resource Monitoring</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../test-harness/index.html">Test Harness</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">testbed-os</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Orchestration</a></li>
+      <li class="breadcrumb-item active">Architecture</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/orchestration/architecture.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="architecture">
+<h1>Architecture<a class="headerlink" href="#architecture" title="Link to this heading"></a></h1>
+<p>The orchestration in testbed works off the <a class="reference internal" href="../kvm-compose/architecture.html#state-json"><span class="std std-ref">state JSON</span></a>, where the elements in this state will have a corresponding way to be provisioned in the testbed.
+The state is created through the process of creating a logical testbed from the <a class="reference internal" href="../kvm-compose/kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a>.</p>
+<section id="background">
+<h2>Background<a class="headerlink" href="#background" title="Link to this heading"></a></h2>
+<p>Orchestration is run on the server, the clients (the CLI, TUI and GUI) will send commands that will be processed by the server.
+The orchestration code uses the rust <cite>async</cite> syntax but rather than running the orchestration tasks in parallel, they are executed concurrently.
+The slowest parts of the orchestration are io based, so networking and the filesystem - everything else is extremely quick.
+We batch the commands against the different services used by the testbed, grouped per stage as each stage is dependant on the previous stage.
+So all resources in a stage, such as turning on guests, will be batched together.</p>
+<p>All commands and functionality based on the yaml file are generally based on the orchestration pipeline.
+This means they all require the state file to have been created (via generate-artefacts), and also usually for the guests to be running depending on the command (some commands like snapshot will turn them off).
+Every command is built together as a series of instructions, as mentioned before, each instruction has an order and can batch on multiple resources.
+For example, all commands start with the <cite>Init</cite> instruction as an initial check of the system, then followed by the series of instruction(s) to complete the command, completed with the <cite>End</cite> instruction.</p>
+</section>
+<section id="gui-technical-detail">
+<h2>GUI Technical Detail<a class="headerlink" href="#gui-technical-detail" title="Link to this heading"></a></h2>
+<p>The GUI works slightly differently to the CLI and TUI, where the command generation occurs on the server.
+Since the GUI does not have filesystem access, the GUI will make one extra call before command running to ask the server to read the state file and generate the commands on it’s behalf.
+Once generated, the server will send the command list in order to the GUI.
+Then, the GUI will continue with the command running in the same way as the CLI and TUI.</p>
+</section>
+<section id="command-running">
+<h2>Command Running<a class="headerlink" href="#command-running" title="Link to this heading"></a></h2>
+<p>The core functionality of this tool is to take a mapping from a hostname, which can either be a testbed guest or a testbed host and run a script/command or push a file to them.
+This enables the deployment across the distributed testbed using SSH.
+In this document, we will describe the execution of a command or script or pushing a file as a “task”.</p>
+<p>There are four different scenarios for command running of tasks:</p>
+<dl class="field-list simple">
+<dt class="field-odd">local testbed host<span class="colon">:</span></dt>
+<dd class="field-odd"><p>This is running a task on the current (main) testbed host.
+Note: there is no need for SSH as it will be a local command.
+Note: we do not need to push files since the artefacts will already be in this host’s file system.</p>
+</dd>
+<dt class="field-even">local testbed guest<span class="colon">:</span></dt>
+<dd class="field-even"><p>This is running a task on a testbed guest that is on the current (main) testbed host.
+This uses SSH.</p>
+</dd>
+<dt class="field-odd">remote testbed host<span class="colon">:</span></dt>
+<dd class="field-odd"><p>This is running a task on a remote testbed host.
+This uses SSH.</p>
+</dd>
+<dt class="field-even">remote testbed guest<span class="colon">:</span></dt>
+<dd class="field-even"><p>This is running a task on a testbed guest that is on a remote testbed host.
+This uses a proxied SSH, where we SSH onto the testbed host first then SSH onto the testbed guest.</p>
+</dd>
+</dl>
+</section>
+<section id="stages">
+<h2>Stages<a class="headerlink" href="#stages" title="Link to this heading"></a></h2>
+<p>There are several stages defined for each deployment stage of the testbed.
+Each stage, where possible will execute tasks on all target host/guest in parallel.
+These stages do have a dependency, as follows:</p>
+<ol class="arabic simple">
+<li><p>Check for Artefacts Stage (ensures the state JSON and artefacts folder exist and deserialise the state JSON)</p></li>
+<li><p>Check if all testbeds to be used in the deployment are running</p></li>
+<li><p>Create project folders on client testbed hosts (if being used)</p></li>
+<li><dl class="simple">
+<dt>Network Stage</dt><dd><ol class="arabic simple">
+<li><p>deploy the libvirt network on the main testbed host</p></li>
+<li><p>deploy the openvswitch bridges across all testbed hosts</p></li>
+<li><p>deploy the openvswitch tunnels across all testbed hosts</p></li>
+</ol>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>If clones are defined</dt><dd><ol class="arabic simple">
+<li><p>provision the golden image if shared install script supplied</p></li>
+<li><p>create .qcow2 linked clones from golden image</p></li>
+</ol>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Guest Deploy Stage</dt><dd><ol class="arabic simple">
+<li><p>distribute artefacts for all testbed guest to the respective testbed hosts</p></li>
+<li><p>rebase any linked clone images that are on remote testbed hosts</p></li>
+<li><p>start all guests</p></li>
+</ol>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Guest Setup Stage</dt><dd><ol class="arabic simple">
+<li><p>execute (if specified in the <a class="reference internal" href="../kvm-compose/kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a> file) the setup scripts for all testbed guests</p></li>
+</ol>
+</dd>
+</dl>
+</li>
+</ol>
+</section>
+<section id="cancellation">
+<h2>Cancellation<a class="headerlink" href="#cancellation" title="Link to this heading"></a></h2>
+<p>The orchestration and command running supports cancellation of commands.
+This means you are able to cancel or interrupt a command, while it is running on the server and have a graceful exist.
+For the CLI and TUI, there is a <cite>ctrl+c</cite> handler, which when triggered will cancel the command running and tell the server to stop.
+For the GUI, there is a cancel button on the command running page, which will do the same thing.</p>
+</section>
+<section id="scaling">
+<h2>Scaling<a class="headerlink" href="#scaling" title="Link to this heading"></a></h2>
+<p>Scaling is a feature in the testbed backed by the qemu linked clones functionality.
+The backing image for the clones will become .qcow2 images (qemu copy on write) so that they are efficient with space.
+Therefore the state in the backing image will be available to clones.
+Some state will be overwritten by cloud-init (if using cloud-init) such as the hostname and any other post install scripts or any other cloud-init functionality.</p>
+<p>Given the use of the scaling parameter (see kvm-compose.yaml schema and kvm-compose scaling architecture for more info) in the kvm-compose.yaml file, the orchestration of clones is similar to other non clone guests.
+There is an extra stage executed, if clones are present in the state.json to provision the golden image (backing image) and then create linked clones from it.
+The process to create the linked clones:</p>
+<ol class="arabic simple">
+<li><p>start the golden image</p></li>
+<li><p>wait for it to be available</p></li>
+<li><p>execute share install script</p></li>
+<li><p>turn off guest</p></li>
+<li><p>wait for guest to be shut down for write lock to be removed</p></li>
+<li><p>create n number of clones as specified in the kvm-compose.yaml file</p></li>
+</ol>
+</section>
+<section id="snapshots">
+<h2>Snapshots<a class="headerlink" href="#snapshots" title="Link to this heading"></a></h2>
+<p>The testbed also supports snapshots of libvirt guests.
+It supports multiple testbed hosts.
+You can create/restore/delete/list snapshots through the <cite>kvm-compose</cite> CLI.</p>
+<p>The snapshots are stored on the respective testbed hosts the guests are created on.
+The CLI is merely a wrapper around the libvirt snapshot API, so if you create a snapshot outside of the testbed tools the snapshot will be available to the testbed.</p>
+<section id="existing-disk">
+<h3>Existing Disk<a class="headerlink" href="#existing-disk" title="Link to this heading"></a></h3>
+<p>When you bring a pre-configured image to the testbed, we will not overwrite the original image to preserve it.
+Instead, by default the testbed will create a linked clone of this image in the project artefacts folder.
+This removed the need to create a deep copy of the image, saving time and space on disk.
+The user can still defer to a deep copy with the <cite>create_deep_copy</cite> option in the existing disk yaml section.</p>
+<p>When the existing disk linked clone is going to be placed on a remote testbed host, the testbed will need to send a full copy.
+This is because we cannot use linked clones over the network, and because we don’t have a distributed filesystem at the moment to support this.</p>
+</section>
+<section id="general-notes">
+<h3>General Notes<a class="headerlink" href="#general-notes" title="Link to this heading"></a></h3>
+<p>Once the guest deploy stage is reached, the linked clones are started in the same way as non linked clones.
+Note that the golden image must be present on any testbed host that has a clone, if the clones are distributed over multiple testbed hosts.
+Therefore the golden image is pushed (a copy) to any testbed host that has a linked clone that needs it.
+Note that the clone guests are treated as an ‘existing disk’ guest type internally.</p>
+<p>The timeout for waiting to connect to a guest is 2 minutes, this has been chosen arbitrarily with no consideration for a scaled setup where many guests are requested causing a big load on the CPU and could naturally push connection time to over 2 minutes.</p>
+</section>
+<section id="delta-change">
+<h3>Delta Change<a class="headerlink" href="#delta-change" title="Link to this heading"></a></h3>
+<p>The testbed currently does not yet factor in if you have made changes to the <a class="reference internal" href="../kvm-compose/kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a> file, after deploying.
+This means you will encounter state drift if running <cite>up</cite>, then changing the yaml and then running <cite>up</cite> again.
+To be sure there is no state drift, make sure to run <cite>down</cite> first.
+Note that since you have already deployed something and a state file exists, you will need to run up with the <cite>–provision</cite> flag.</p>
+<p>We look to improve this state drift use case in the future.</p>
+<section id="technical-architecture">
+<h4>Technical Architecture<a class="headerlink" href="#technical-architecture" title="Link to this heading"></a></h4>
+<p>The orchestration and command running are executed over a websocket from the client.
+The client will send a series of instructions that make up the orchestration command one by one until completion.
+For the CLI and TUI, the command generation happens locally as they have filesystem access.
+For the GUI, there is an extra step where the GUI will ask the server to generate the commands and send them to the GUI, before the GUI can then send the commands.
+This means the GUI, once it has the series of commands, will then open the websocket to the server’s orchestration endpoint to run commands like the CLI and TUI.</p>
+<p>Command generation has been designed to decouple the sending of the instructions generated to the sending of the instruction to the server.
+So that we can re-use this code for both the CLI/TUI and the GUI, we utilise channels to message from the functions that generate the command back to a listener.
+When called by the CLI/TUI, the instruction is immediately relayed to the server to be executed.
+For the GUI, when the server is running the generation code, it relays it to the GUI so that it can store them all before stating the orchestration.</p>
+<p>Once the CLI/TUI or GUI have the instructions ready, they will send them to the server for processing over a websocket.
+For this to work, the server needs to concurrently handle the orchestration websocket connection from the client, and the execution of the commands send over this websocket.
+While the orchestration websocket is open on the server, there is:</p>
+<ol class="arabic simple">
+<li><p>the send and receive websocket connection to the client</p></li>
+<li><dl class="simple">
+<dt>cancellation listener</dt><dd><ul class="simple">
+<li><p>for the GUI this comes over the websocket</p></li>
+<li><p>for the CLI/TUI this is another async task listening for <cite>ctrl+c</cite></p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+<p>The protocol between the client and server is as follows:</p>
+<ol class="arabic simple">
+<li><p>client sends instruction</p></li>
+<li><p>server sends acknowledgement that instruction is valid</p></li>
+<li><p>server sends result of the instruction execution, success or fail with some relevant message string</p></li>
+</ol>
+<p>This protocol is followed for all instructions, minus the <cite>End</cite> instruction.</p>
+<p>During orchestration and command running, there might be the need to also send further logging to the client.
+For example, the analysis tooling will have some output that is to be displayed to the user.
+This logging would be outside of the protocol outlined above.
+To manage this, during the run of each instruction, the server also has a logging specific channel that is sent to the instruction processing code.
+If any logging events are emitted from the instruction, the serer will emit this log to the client through the websocket, and it will be handled concurrently to the protocol.</p>
+</section>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Orchestration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../interfaces/index.html" class="btn btn-neutral float-right" title="Interfaces" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Bristol Cyber Security Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to TestbedOS documentation! &mdash; testbed-os 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=fc837d61"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Getting Started" href="getting-started/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            testbed-os
+          </a>
+              <div class="version">
+                1.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/index.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation/index.html">Testbed OS Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testbed-config/index.html">Testbed Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="kvm-compose/index.html">kvm-compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orchestration/index.html">Orchestration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interfaces/index.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guest-types/index.html">Guest Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testbedos-server/index.html">TestbedOS Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="networking/index.html">Networking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="resource-monitoring/index.html">Resource Monitoring</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test-harness/index.html">Test Harness</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">testbed-os</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Welcome to TestbedOS documentation!</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="welcome-to-testbedos-documentation">
+<h1>Welcome to TestbedOS documentation!<a class="headerlink" href="#welcome-to-testbedos-documentation" title="Link to this heading"></a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">TestbedOS</span></code> <a class="footnote-reference brackets" href="#f1" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a> is a testbed for launching virtual machines on abstract topologies to support research and testing.</p>
+<p>GitHub repository: <a class="reference external" href="https://github.com/Bristol-Cyber-Security-Group/testbed-os">https://github.com/Bristol-Cyber-Security-Group/testbed-os</a></p>
+<p>In addition to the tooling in the testbed, we aim to deliver a variety of example test cases that showcase the capability of the testbed as a reference to build your own test cases.
+The testbed uses yaml files to describe the testbed components to be deployed.
+The testbed will parse the yaml file and create the artefacts in the yaml file, create the network described in the yaml and then deploy the various virtual machines on this network.
+These steps are described further in the rest of the documentation.</p>
+<p>Please see <a class="reference internal" href="getting-started/index.html#getting-started"><span class="std std-ref">Getting Started</span></a> to do the initial configuration of the testbed server before running anything on the testbed.</p>
+<p>For guidance on the different topics:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="kvm-compose/kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a> section for the schema of the yaml file</p></li>
+<li><p><a class="reference internal" href="orchestration/index.html#orchestration"><span class="std std-ref">Orchestration</span></a> section for the deployment approach</p></li>
+<li><p><a class="reference internal" href="networking/index.html#networking"><span class="std std-ref">Networking</span></a> section for information on the network architecture of the testbed</p></li>
+<li><p><a class="reference internal" href="installation/index.html#testbed-os-installation"><span class="std std-ref">Testbed OS Installation</span></a>, <a class="reference internal" href="testbed-config/index.html#testbed-config"><span class="std std-ref">Testbed Config</span></a> sections for initial setup before using yaml files to create testbed deployments</p></li>
+</ul>
+<p>To get started with your first test case, see the <a class="reference internal" href="examples/index.html#examples"><span class="std std-ref">Examples</span></a> topic which will walk you through a minimal test case building up a <a class="reference internal" href="kvm-compose/kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a> file.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting-started/index.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/index.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/index.html#configuring-the-server">Configuring the Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/index.html#launching-the-server">Launching the Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/index.html#adding-a-client-testbed-to-the-testbed-cluster">Adding a client Testbed to the Testbed Cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started/index.html#running-test-cases">Running Test Cases</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation/index.html">Testbed OS Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation/index.html#host-dependencies">Host Dependencies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="installation/index.html#runtime">Runtime</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installation/index.html#ovn-and-ovs">OVN and OVS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installation/index.html#docker">Docker</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installation/index.html#android-emulator">Android Emulator</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="installation/index.html#setup-testbed">Setup Testbed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation/index.html#configure-libvirt-user-permissions">Configure Libvirt User Permissions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation/index.html#setup-kvm-compose-config">Setup kvm-compose Config</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation/index.html#run-testbed">Run Testbed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation/index.html#testbed-cluster">Testbed Cluster</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="installation/index.html#limitations">Limitations</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="installation/index.html#tear-down-testbed">Tear Down Testbed</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="testbed-config/index.html">Testbed Config</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="testbed-config/host.html">Host JSON</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="testbed-config/host.html#cluster-mode">Cluster Mode</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="testbed-config/mode.html">Testbed Mode</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="testbed-config/mode.html#main">Main</a></li>
+<li class="toctree-l3"><a class="reference internal" href="testbed-config/mode.html#client">Client</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="kvm-compose/index.html">kvm-compose</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="kvm-compose/architecture.html">Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/architecture.html#load-balancing">Load Balancing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/architecture.html#artefacts">Artefacts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/architecture.html#state-json">State JSON</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/architecture.html#scaling">Scaling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/architecture.html#log-streaming">Log Streaming</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/architecture.html#technical-detail-and-developer-notes">Technical Detail and Developer Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kvm-compose/kvm-compose-yaml/index.html">kvm-compose Yaml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/kvm-compose-yaml/schema.html">Schema</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/kvm-compose-yaml/libvirt.html">Libvirt Type</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kvm-compose/analysis-tools.html">Analysis Tools</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/analysis-tools.html#tcpdump">tcpdump</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kvm-compose/usage.html">Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/usage.html#description">Description</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/usage.html#options">Options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/usage.html#subcommands">Subcommands</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/usage.html#subcommand-up">Subcommand - up</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/usage.html#subcommand-down">Subcommand - down</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/usage.html#subcommand-deployment">Subcommand - deployment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="kvm-compose/usage.html#subcommand-snapshot">Subcommand - snapshot</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="orchestration/index.html">Orchestration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="orchestration/architecture.html">Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="orchestration/architecture.html#background">Background</a></li>
+<li class="toctree-l3"><a class="reference internal" href="orchestration/architecture.html#gui-technical-detail">GUI Technical Detail</a></li>
+<li class="toctree-l3"><a class="reference internal" href="orchestration/architecture.html#command-running">Command Running</a></li>
+<li class="toctree-l3"><a class="reference internal" href="orchestration/architecture.html#stages">Stages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="orchestration/architecture.html#cancellation">Cancellation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="orchestration/architecture.html#scaling">Scaling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="orchestration/architecture.html#snapshots">Snapshots</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="interfaces/index.html">Interfaces</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="interfaces/exec/index.html">Exec Commands</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="interfaces/exec/tool.html">Tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="interfaces/exec/shell-command.html">shell-command</a></li>
+<li class="toctree-l3"><a class="reference internal" href="interfaces/exec/user-script.html">user-script</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="interfaces/gui/index.html">Graphical User Interface</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="interfaces/gui/architecture.html">GUI Architecture</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="guest-types/index.html">Guest Types</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="guest-types/index.html#libvirt">Libvirt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guest-types/index.html#docker">Docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="guest-types/index.html#android-virtual-device">Android Virtual Device</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="testbedos-server/index.html">TestbedOS Server</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="testbedos-server/architecture.html">TestbedOS Server Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="testbedos-server/architecture.html#rest-api">REST API</a></li>
+<li class="toctree-l3"><a class="reference internal" href="testbedos-server/architecture.html#systemd-service">Systemd Service</a></li>
+<li class="toctree-l3"><a class="reference internal" href="testbedos-server/architecture.html#database-provider">Database Provider</a></li>
+<li class="toctree-l3"><a class="reference internal" href="testbedos-server/architecture.html#orchestration">Orchestration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="testbedos-server/architecture.html#error-handling">Error Handling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="testbedos-server/architecture.html#logging">Logging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="testbedos-server/architecture.html#log-streaming">Log Streaming</a></li>
+<li class="toctree-l3"><a class="reference internal" href="testbedos-server/architecture.html#cluster-management">Cluster Management</a></li>
+<li class="toctree-l3"><a class="reference internal" href="testbedos-server/architecture.html#developer-notes">Developer Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="testbedos-server/api.html">TestbedOS Server API</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="networking/index.html">Networking</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="networking/architecture.html">TestbedOS Networking Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="networking/architecture.html#background">Background</a></li>
+<li class="toctree-l3"><a class="reference internal" href="networking/architecture.html#ovn-background">OVN Background</a></li>
+<li class="toctree-l3"><a class="reference internal" href="networking/architecture.html#testbed-ovn-implementation-and-limitations">Testbed OVN Implementation and Limitations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="networking/architecture.html#observing-network-traffic-in-ovn">Observing Network Traffic in OVN</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="networking/access-control.html">Access Control</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="networking/access-control.html#creating-and-designing-rules">Creating and Designing Rules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="resource-monitoring/index.html">Resource Monitoring</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="resource-monitoring/architecture.html">Resource Monitoring Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="resource-monitoring/architecture.html#backend">Backend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="resource-monitoring/architecture.html#frontend">Frontend</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="test-harness/index.html">Test Harness</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="test-harness/index.html#architecture">Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="test-harness/index.html#technicals">Technicals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="test-harness/index.html#test-cases">Test Cases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="test-harness/index.html#asset-testing">Asset Testing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="test-harness/index.html#snapshot-testing">Snapshot Testing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="test-harness/index.html#debug-mode">DEBUG Mode</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples/index.html#creating-a-minimal-test-case">Creating a minimal test case</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<p class="rubric">Footnotes</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="f1" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>The term testbed operating system was being used by Professor Steve Wong at the Singapore Institute of Technology.</p>
+</aside>
+</aside>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="getting-started/index.html" class="btn btn-neutral float-right" title="Getting Started" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Bristol Cyber Security Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

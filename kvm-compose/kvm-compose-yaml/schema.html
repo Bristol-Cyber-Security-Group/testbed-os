@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Schema &mdash; testbed-os 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=fc837d61"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Libvirt Type" href="libvirt.html" />
+    <link rel="prev" title="kvm-compose Yaml" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            testbed-os
+          </a>
+              <div class="version">
+                1.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../getting-started/index.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation/index.html">Testbed OS Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testbed-config/index.html">Testbed Config</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">kvm-compose</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">kvm-compose Yaml</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Schema</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#machines">Machines</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#machines-libvirt">Machines - Libvirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#machines-docker">Machines - Docker</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#machines-avd">Machines - AVD</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#network">Network</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tooling">Tooling</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#testbed-options">Testbed Options</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="libvirt.html">Libvirt Type</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../analysis-tools.html">Analysis Tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage.html">Usage</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../orchestration/index.html">Orchestration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../interfaces/index.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../guest-types/index.html">Guest Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../testbedos-server/index.html">TestbedOS Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../networking/index.html">Networking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../resource-monitoring/index.html">Resource Monitoring</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../test-harness/index.html">Test Harness</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">testbed-os</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">kvm-compose</a></li>
+          <li class="breadcrumb-item"><a href="index.html">kvm-compose Yaml</a></li>
+      <li class="breadcrumb-item active">Schema</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/kvm-compose/kvm-compose-yaml/schema.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="schema">
+<h1>Schema<a class="headerlink" href="#schema" title="Link to this heading"></a></h1>
+<p>The top level of the schema has four main sections:</p>
+<dl class="field-list simple">
+<dt class="field-odd">machines<span class="colon">:</span></dt>
+<dd class="field-odd"><p>a list of machine definitions that specify the guest type and further specialisations</p>
+</dd>
+<dt class="field-even">network<span class="colon">:</span></dt>
+<dd class="field-even"><p>the network definition, including switch and topology definition</p>
+</dd>
+<dt class="field-odd">tooling<span class="colon">:</span></dt>
+<dd class="field-odd"><p>a list of tools and specialisation to be used with the testbed</p>
+</dd>
+<dt class="field-even">testbed_options<span class="colon">:</span></dt>
+<dd class="field-even"><p>a list of options to customise the testbed that doesn’t fall under the above sections</p>
+</dd>
+</dl>
+<p>These sections are explained further below.</p>
+<section id="machines">
+<h2>Machines<a class="headerlink" href="#machines" title="Link to this heading"></a></h2>
+<p>The machine section allows you to define different guests on the testbed.
+These definitions require you to specify the guest type such as libvirt, docker or avd.</p>
+<p>The schema for machines have a few levels of hierarchy to help you define and specialise the guest.
+At the top level, you can specify the following:</p>
+<dl class="field-list simple">
+<dt class="field-odd">name<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the unique name of the machine</p>
+</dd>
+<dt class="field-even">network<span class="colon">:</span></dt>
+<dd class="field-even"><p>optional, a list of interface definitions for the guest</p>
+</dd>
+<dt class="field-odd">machine type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>this is the first level of specialisation, you must pick one of the supported guest types</p>
+</dd>
+</dl>
+<p>For example, the following are snippets of the relevant parts possible machine definitions:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">libvirt-guest</span>
+<span class="w">  </span><span class="nt">network</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">switch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sw0</span>
+<span class="w">      </span><span class="nt">gateway</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0.0.1</span>
+<span class="w">      </span><span class="nt">mac</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:01&quot;</span>
+<span class="w">      </span><span class="nt">ip</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.0.10&quot;</span>
+<span class="w">  </span><span class="nt">libvirt</span><span class="p">:</span>
+<span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+</pre></div>
+</div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docker-guest</span>
+<span class="w">  </span><span class="nt">network</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">switch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sw0</span>
+<span class="w">      </span><span class="nt">gateway</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0.0.1</span>
+<span class="w">      </span><span class="nt">mac</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:01&quot;</span>
+<span class="w">      </span><span class="nt">ip</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.0.10&quot;</span>
+<span class="w">  </span><span class="nt">docker</span><span class="p">:</span>
+<span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+</pre></div>
+</div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">avd-guest</span>
+<span class="w">  </span><span class="nt">network</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">switch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sw0</span>
+<span class="w">      </span><span class="nt">gateway</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0.0.1</span>
+<span class="w">      </span><span class="nt">mac</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:01&quot;</span>
+<span class="w">      </span><span class="nt">ip</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.0.10&quot;</span>
+<span class="w">  </span><span class="nt">avd</span><span class="p">:</span>
+<span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+</pre></div>
+</div>
+</section>
+<section id="machines-libvirt">
+<h2>Machines - Libvirt<a class="headerlink" href="#machines-libvirt" title="Link to this heading"></a></h2>
+<p>The libvirt subsection of the schema offers the following libvirt specific options:</p>
+<dl class="field-list simple">
+<dt class="field-odd">cpus<span class="colon">:</span></dt>
+<dd class="field-odd"><p>number of virtual cpus to assign the guest</p>
+</dd>
+<dt class="field-even">memory_mb<span class="colon">:</span></dt>
+<dd class="field-even"><p>amount of memory in megabytes to assign the guest</p>
+</dd>
+<dt class="field-odd">libvirt_type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>a further specialisation for the different types of libvirt guests, see <a class="reference internal" href="libvirt.html#libvirt-type"><span class="std std-ref">Libvirt Type</span></a> for details</p>
+</dd>
+<dt class="field-even">scaling<span class="colon">:</span></dt>
+<dd class="field-even"><p>optional, allows you to scale out from one machine definition and create clones see <a class="reference internal" href="../architecture.html#scaling"><span class="std std-ref">Scaling</span></a> section for more information</p>
+</dd>
+</dl>
+<p>The <cite>libvirt_type</cite> section (see <a class="reference internal" href="libvirt.html#libvirt-type"><span class="std std-ref">Libvirt Type</span></a>) requires you to pick from the supported types such as cloud image, existing disk or iso guest.
+For example, the following are snippets of the relevant parts possible libvirt machine definitions:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cloud-image-guest</span>
+<span class="w">  </span><span class="nt">libvirt</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">libvirt_type</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">cloud_image</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu_20_04</span>
+</pre></div>
+</div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">existing-disk-guest</span>
+<span class="w">  </span><span class="nt">libvirt</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">libvirt_type</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">existing_disk</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/prebuilt/image.img</span>
+</pre></div>
+</div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">iso-guest</span>
+<span class="w">  </span><span class="nt">libvirt</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">libvirt_type</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">iso_guest</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/install/iso.iso</span>
+</pre></div>
+</div>
+<p>The <cite>scaling</cite> option has restrictions on what it can be used with.
+It can only be used with <cite>cloud_image</cite> and <cite>existing_disk</cite>.
+It cannot exist at the same time as the higher level <cite>interfaces</cite> section, as it has its own options for this.
+The following options are supported:</p>
+<dl class="field-list simple">
+<dt class="field-odd">count<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the number of clones to be made</p>
+</dd>
+<dt class="field-even">interfaces<span class="colon">:</span></dt>
+<dd class="field-even"><p>optional, a list of bridges and the clone guests assigned to that bridge, each bridge can take a list of clone ids</p>
+</dd>
+<dt class="field-odd">shared_setup<span class="colon">:</span></dt>
+<dd class="field-odd"><p>optional, a script that will be executed on the backing image before clones are made</p>
+</dd>
+<dt class="field-even">clone_setup<span class="colon">:</span></dt>
+<dd class="field-even"><p>optional, a list of scripts and assigned clones that will be executed on the clones</p>
+</dd>
+<dt class="field-odd">clone_run<span class="colon">:</span></dt>
+<dd class="field-odd"><p>optional, a list of scripts and assigned clones that will be executed on the clones at the end of orchestration</p>
+</dd>
+</dl>
+<p>For example, the following are snippets of the relevant parts possible scaling definitions:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1) this snippet will create 2 clones from a cloud image definition (ommited with ...)</span>
+<span class="c1"># 2) the clones are assigned to separate switches</span>
+<span class="c1"># 3) the clones will be cloned from an image created with the shared script already executed</span>
+<span class="c1"># 4) the clones will have a setup script executed on them when they are setup, they both have the same script</span>
+
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scaling-guest</span>
+<span class="w">  </span><span class="nt">libvirt</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">libvirt_type</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">cloud_image</span><span class="p">:</span>
+<span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">...</span><span class="w"> </span><span class="c1"># 1)</span>
+<span class="w">    </span><span class="nt">scaling</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">      </span><span class="nt">interfaces</span><span class="p">:</span><span class="w"> </span><span class="c1"># 2)</span>
+<span class="w">        </span><span class="nt">sw0</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">clones</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">]</span>
+<span class="w">          </span><span class="nt">gateway</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.0.1&quot;</span>
+<span class="w">          </span><span class="nt">ip_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dynamic</span>
+<span class="w">          </span><span class="nt">mac_range</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:01&quot;</span>
+<span class="w">            </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:01&quot;</span>
+<span class="w">        </span><span class="nt">sw1</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">clones</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">]</span>
+<span class="w">          </span><span class="nt">gateway</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.0.1&quot;</span>
+<span class="w">          </span><span class="nt">ip_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dynamic</span>
+<span class="w">          </span><span class="nt">mac_range</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:02&quot;</span>
+<span class="w">            </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:02&quot;</span>
+<span class="w">      </span><span class="nt">shared_setup</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shared.sh</span><span class="w"> </span><span class="c1"># 3)</span>
+<span class="w">      </span><span class="nt">clone_setup</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">script</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">install.sh</span>
+<span class="w">          </span><span class="nt">clones</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># 4)</span>
+</pre></div>
+</div>
+<p>For further information on the <cite>libvirt_type</cite> sub-schema, see <a class="reference internal" href="libvirt.html#libvirt-type"><span class="std std-ref">Libvirt Type</span></a>.</p>
+</section>
+<section id="machines-docker">
+<h2>Machines - Docker<a class="headerlink" href="#machines-docker" title="Link to this heading"></a></h2>
+<p>The docker subsection of the schema offers the following docker specific options:</p>
+<dl class="field-list simple">
+<dt class="field-odd">image<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the container image to be used</p>
+</dd>
+<dt class="field-even">command<span class="colon">:</span></dt>
+<dd class="field-even"><p>a command that will override the image’s CMD, if it exists</p>
+</dd>
+<dt class="field-odd">entrypoint<span class="colon">:</span></dt>
+<dd class="field-odd"><p>an entrypoint that will override the image’s ENTRYPOINT, if it exists</p>
+</dd>
+<dt class="field-even">environment<span class="colon">:</span></dt>
+<dd class="field-even"><p>a key value map of environment variables to give the container</p>
+</dd>
+<dt class="field-odd">env_file<span class="colon">:</span></dt>
+<dd class="field-odd"><p>a file containing environment variables, similar to the environment option</p>
+</dd>
+<dt class="field-even">volumes<span class="colon">:</span></dt>
+<dd class="field-even"><p>a list of mount points from the host to container</p>
+</dd>
+<dt class="field-odd">privileged<span class="colon">:</span></dt>
+<dd class="field-odd"><p>option to allow the container to be run as privileged</p>
+</dd>
+<dt class="field-even">device<span class="colon">:</span></dt>
+<dd class="field-even"><p>a list of device mount points, similar to volumes</p>
+</dd>
+</dl>
+<p>These are 1-1 replication from the docker run schema, for more information on the behaviours of these see <a class="reference external" href="https://docs.docker.com/engine/reference/commandline/run/">https://docs.docker.com/engine/reference/commandline/run/</a></p>
+<p>For example, the following are snippets of the relevant parts possible docker machine definitions:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginx</span>
+<span class="w">  </span><span class="nt">network</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">switch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sw0</span>
+<span class="w">      </span><span class="nt">gateway</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0.0.1</span>
+<span class="w">      </span><span class="nt">mac</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:01&quot;</span>
+<span class="w">      </span><span class="nt">ip</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.0.10&quot;</span>
+<span class="w">  </span><span class="nt">docker</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginx:stable</span>
+<span class="w">    </span><span class="nt">env_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docker.env</span>
+<span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${PWD}/html</span><span class="w">  </span><span class="c1"># the schema allows you to reference the project dir as ${PWD}</span>
+<span class="w">        </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/usr/share/nginx/html</span>
+
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">one-off</span>
+<span class="w">  </span><span class="nt">network</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">switch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sw0</span>
+<span class="w">      </span><span class="nt">gateway</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0.0.1</span>
+<span class="w">      </span><span class="nt">mac</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:01&quot;</span>
+<span class="w">      </span><span class="nt">ip</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.0.10&quot;</span>
+<span class="w">  </span><span class="nt">docker</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">busybox:latest</span>
+<span class="w">    </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;curl</span><span class="nv"> </span><span class="s">project-nginx:80&quot;</span><span class="w">  </span><span class="c1"># assuming the deployment name is &quot;project&quot;</span>
+</pre></div>
+</div>
+<p>There is also the <cite>scaling</cite> option, to allow defining multiple docker containers from one definition.
+It cannot exist at the same time as the higher level <cite>interfaces</cite> section, as it has its own options for this.
+The following options are supported:</p>
+<dl class="field-list simple">
+<dt class="field-odd">count<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the number of clones to be made</p>
+</dd>
+<dt class="field-even">interfaces<span class="colon">:</span></dt>
+<dd class="field-even"><p>optional, a list of bridges and the clone guests assigned to that bridge, each bridge can take a list of clone ids</p>
+</dd>
+</dl>
+<p>For example, the following are snippets of the relevant parts possible scaling definitions:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginx</span>
+<span class="w">  </span><span class="nt">docker</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginx:stable</span>
+<span class="w">    </span><span class="nt">env_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docker.env</span>
+<span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${PWD}/html</span>
+<span class="w">        </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/usr/share/nginx/html</span>
+<span class="w">    </span><span class="nt">scaling</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">      </span><span class="nt">interfaces</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">sw0</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">clones</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">gateway</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.0.1&quot;</span>
+<span class="w">        </span><span class="nt">ip_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dynamic</span>
+<span class="w">        </span><span class="nt">mac_range</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:01&quot;</span>
+<span class="w">          </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:01&quot;</span>
+<span class="w">      </span><span class="nt">sw1</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">clones</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">gateway</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.0.1&quot;</span>
+<span class="w">        </span><span class="nt">ip_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dynamic</span>
+<span class="w">        </span><span class="nt">mac_range</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:02&quot;</span>
+<span class="w">          </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:00:02&quot;</span>
+</pre></div>
+</div>
+<p>This example creates two nginx containers on different bridges, but they both share the same config - in this case the same set of mounted HTML.</p>
+<p>Further notes:</p>
+<ul class="simple">
+<li><p>docker containers are assigned an IP address by the testbed statically, meaning their IPs will increment up from the network’s gateway IP.</p></li>
+<li><p>mounting volumes
+- absolute paths should be used
+- but we allow <cite>${PWD}</cite> to refer to the project folder where the kvm-compose.yaml file exists, similar to how docker-compose.yaml works</p></li>
+<li><p>guests inside the network can access the containers by their name through the testbeds DNS server, but from the host you must address them by IP</p></li>
+</ul>
+</section>
+<section id="machines-avd">
+<h2>Machines - AVD<a class="headerlink" href="#machines-avd" title="Link to this heading"></a></h2>
+<p>Not yet implemented.</p>
+</section>
+<section id="network">
+<h2>Network<a class="headerlink" href="#network" title="Link to this heading"></a></h2>
+<p>The network section offers the following option, currently only one network schema available:</p>
+<dl class="field-list simple">
+<dt class="field-odd">ovn<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the main network schema</p>
+</dd>
+</dl>
+<p>Under OVN schema the following elements are available:</p>
+<dl class="field-list simple">
+<dt class="field-odd">switches<span class="colon">:</span></dt>
+<dd class="field-odd"><p>these are the logical switches</p>
+</dd>
+<dt class="field-even">routers<span class="colon">:</span></dt>
+<dd class="field-even"><p>these are the logical routers</p>
+</dd>
+</dl>
+<p>Both of these have different options for creating your logical network topology.</p>
+<section id="switches">
+<h3>Switches<a class="headerlink" href="#switches" title="Link to this heading"></a></h3>
+<p>You can create a basic logical switch with the following:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">sw0</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">subnet</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.0.0/24&quot;</span>
+</pre></div>
+</div>
+<p>This logical switch will have the subnet defined as metadata.
+The subnet doesn’t limit the ip addresses you statically assign, but it is used for other features of OVN such as DHCP.</p>
+<p>You can create special logical switches that expose the host’s networking to the logical switch, via the external OVS bridge usually called <cite>br-ex</cite>.
+For example:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">public</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">subnet</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;172.16.1.0/24&quot;</span>
+<span class="w">  </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ls-public</span>
+<span class="w">      </span><span class="nt">localnet</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">network_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">public</span>
+</pre></div>
+</div>
+<p>For this switch, you must specify a port of type <cite>localnet</cite> that is mapped to the bridge mapping for the <cite>br-ex</cite> OVS bridge.
+This means, in the <cite>host.json</cite> file, you will have defined at least one <cite>bridge_mappings</cite> value such as:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>&quot;bridge_mappings&quot;: [
+  [
+    &quot;public&quot;,
+    &quot;br-ex&quot;,
+    &quot;172.16.1.1/24&quot;
+  ]
+]
+</pre></div>
+</div>
+<p>You must use the name <cite>public</cite>.</p>
+<p>Note, to connect switches together, you must use logical routers.</p>
+</section>
+<section id="routers">
+<h3>Routers<a class="headerlink" href="#routers" title="Link to this heading"></a></h3>
+<p>Logical routers allow traffic to flow between logical switches.
+This can be achieved by creating router ports that will be connected to logical switches.
+You can also then set static routes to send traffic to specific ports, such as routing traffic to other logical switches or to the internet.
+These routers are also responsible for providing network address translation (NAT) and dynamic host configuration protocol (DHCP).</p>
+<p>A basic router with a port on a logical switch can be defined with:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">routers</span><span class="p">:</span>
+
+<span class="w">  </span><span class="nt">lr0</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lr0-sw0</span>
+<span class="w">        </span><span class="nt">mac</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:00:00:ff:01&quot;</span>
+<span class="w">        </span><span class="nt">gateway_ip</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;10.0.0.1/24&quot;</span>
+<span class="w">        </span><span class="nt">switch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sw0</span>
+</pre></div>
+</div>
+<p>This definition will create a router port connecting logical router <cite>lr0</cite> to logical switch <cite>sw0</cite>.
+The port needs a mac address and an IP address.
+These are important as guests need to know the gateway.</p>
+<p>If the router port is to be connected to a switch that is exposing the logical network to a testbed host’s network.
+This means an extra element is required, similar to the logical switch example above on exposing host networking:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lr0-public</span>
+<span class="w">  </span><span class="nt">mac</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;00:00:20:20:12:13&quot;</span>
+<span class="w">  </span><span class="nt">gateway_ip</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;172.16.1.200/24&quot;</span>
+<span class="w">  </span><span class="nt">switch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">public</span>
+<span class="w">  </span><span class="nt">set_gateway_chassis</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main</span>
+</pre></div>
+</div>
+<p>You must use the same chassis name for the testbed host that you want to expose the network on.
+In your <cite>host.json</cite> file, if the testbed host is named <cite>main</cite>, you must place <cite>main</cite> here as well.</p>
+</section>
+</section>
+<section id="tooling">
+<h2>Tooling<a class="headerlink" href="#tooling" title="Link to this heading"></a></h2>
+<p>No tooling options via the yaml are implemented at the moment.</p>
+</section>
+<section id="testbed-options">
+<h2>Testbed Options<a class="headerlink" href="#testbed-options" title="Link to this heading"></a></h2>
+<p>No options options via the yaml are implemented at the moment.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="kvm-compose Yaml" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="libvirt.html" class="btn btn-neutral float-right" title="Libvirt Type" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Bristol Cyber Security Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

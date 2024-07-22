@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resource Monitoring Architecture &mdash; testbed-os 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=fc837d61"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Test Harness" href="../test-harness/index.html" />
+    <link rel="prev" title="Resource Monitoring" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            testbed-os
+          </a>
+              <div class="version">
+                1.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/index.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Testbed OS Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbed-config/index.html">Testbed Config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../kvm-compose/index.html">kvm-compose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../orchestration/index.html">Orchestration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interfaces/index.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guest-types/index.html">Guest Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbedos-server/index.html">TestbedOS Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../networking/index.html">Networking</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Resource Monitoring</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Resource Monitoring Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#backend">Backend</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#libvirt">Libvirt</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#docker">Docker</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#android">Android</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#frontend">Frontend</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../test-harness/index.html">Test Harness</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">testbed-os</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Resource Monitoring</a></li>
+      <li class="breadcrumb-item active">Resource Monitoring Architecture</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/resource-monitoring/architecture.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="resource-monitoring-architecture">
+<h1>Resource Monitoring Architecture<a class="headerlink" href="#resource-monitoring-architecture" title="Link to this heading"></a></h1>
+<p>This architecture document contains info on the backend and frontend architectures.</p>
+<section id="backend">
+<h2>Backend<a class="headerlink" href="#backend" title="Link to this heading"></a></h2>
+<p>We deploy the resource monitoring stack using docker-compose.
+This stack contains 1) Grafana 2) Prometheus 3) Nginx.
+Note: the stack has been set to auto restart through docker-compose.</p>
+<p>Nginx is used as a reverse proxy to group the grafana endpoints and the testbed server dashboard dashboard.
+This is because we embed the grafana graphs as iframes inside the testbed dashboard.
+Since the localhost URLs are using different ports, we run into CORS problems.
+So to avoid changing the browser settings to reduce security, we put everything under a reverse proxy.</p>
+<p>The testbed server provides endpoints for prometheus to scrape metrics, these are grouped under host and guests.
+In these endpoints, the testbed server (main) will collect metrics on the active testbed hosts, then the guests in all active deployments.
+Every testbed, both main and client will have endpoints that provide the metrics for itself and the guests it is running.
+The main will work out where everything is, based on the state.json for each active deployment and call the respective testbed host.
+Prometheus will scrape the main testbed host’s metrics endpoint periodically (5s) to collect the metrics for every eligible host/guest.
+Note: the metric scraping endpoint is only enabled on the testbed server when in main mode.</p>
+<p>To get metrics such as CPU time, we need to sample the cpu time twice.
+Given we have a limit of 5s between prometheus scraping metrics, we are just sampling between 0.5s on each endpoint request.
+This does mean the metrics can be a little inaccurate.
+While this can be tuned, we need to consider the time it takes for the main testbed host to poll every testbed for each guest.
+Therefore the tuning must consider how this scales as we add more testbed hosts and more guests to the testbed cluster.</p>
+<section id="libvirt">
+<h3>Libvirt<a class="headerlink" href="#libvirt" title="Link to this heading"></a></h3>
+<p>A connection to the libvirt daemon is made to request metric data.</p>
+</section>
+<section id="docker">
+<h3>Docker<a class="headerlink" href="#docker" title="Link to this heading"></a></h3>
+<p>We look directly at the filesystem under <cite>/sys/fs/cgroup/system.slice/docker-&lt;container id&gt;.scope/</cite> for live metrics.
+Docker offers a <cite>stats</cite> endpoint, but this uses a 1s sample rate.
+Rather than connecting to the unix socket over and over for this, we have opted to directly inspect the files.
+This means we are at least consistent in the sampling rate of all guest types.</p>
+</section>
+<section id="android">
+<h3>Android<a class="headerlink" href="#android" title="Link to this heading"></a></h3>
+<p>N/A</p>
+</section>
+</section>
+<section id="frontend">
+<h2>Frontend<a class="headerlink" href="#frontend" title="Link to this heading"></a></h2>
+<p>The testbed server resource monitoring dashboard endpoint takes in a named deployment.
+It will look at the state.json and get the names of the testbed hosts and guests that make up the deployment, then render an html page requesting graphs from grafane for each host/guest.
+These graphs are embedded in an iframe</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Resource Monitoring" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../test-harness/index.html" class="btn btn-neutral float-right" title="Test Harness" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Bristol Cyber Security Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

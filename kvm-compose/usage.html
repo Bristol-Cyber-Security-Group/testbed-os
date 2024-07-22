@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usage &mdash; testbed-os 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=fc837d61"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Orchestration" href="../orchestration/index.html" />
+    <link rel="prev" title="Analysis Tools" href="analysis-tools.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            testbed-os
+          </a>
+              <div class="version">
+                1.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/index.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Testbed OS Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbed-config/index.html">Testbed Config</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">kvm-compose</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="kvm-compose-yaml/index.html">kvm-compose Yaml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis-tools.html">Analysis Tools</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#description">Description</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#options">Options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#subcommands">Subcommands</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#subcommand-up">Subcommand - up</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#subcommand-down">Subcommand - down</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#subcommand-deployment">Subcommand - deployment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#subcommand-snapshot">Subcommand - snapshot</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../orchestration/index.html">Orchestration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interfaces/index.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guest-types/index.html">Guest Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbedos-server/index.html">TestbedOS Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../networking/index.html">Networking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resource-monitoring/index.html">Resource Monitoring</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../test-harness/index.html">Test Harness</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">testbed-os</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">kvm-compose</a></li>
+      <li class="breadcrumb-item active">Usage</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/kvm-compose/usage.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="usage">
+<h1>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h1>
+<p>kvm-compose [–input] [–project-name] [-v|–verbosity] [–no-ask] [-h|–help] [-V|–version] &lt;SUBCOMMANDS&gt;</p>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Link to this heading"></a></h2>
+<blockquote>
+<div><p><strong>kvm-compose</strong> must be run in the desired project directory, where the <a class="reference internal" href="kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a> (or whichever file name used with <strong>–input=</strong>) file exists.</p>
+</div></blockquote>
+</section>
+<section id="options">
+<h2>Options<a class="headerlink" href="#options" title="Link to this heading"></a></h2>
+<blockquote>
+<div><blockquote>
+<div><dl class="option-list">
+<dt><kbd><span class="option">--input <var>&lt;INPUT&gt;</var></span></kbd></dt>
+<dd><p>Configuration file [default: kvm-compose.yaml]</p>
+</dd>
+</dl>
+<p class="attribution">—project-name &lt;PROJECT_NAME&gt;
+Defaults to the current folder name</p>
+</div></blockquote>
+<dl class="option-list">
+<dt><kbd><span class="option">-v</span>, <span class="option">--verbosity <var>&lt;VERBOSITY&gt;</var></span></kbd></dt>
+<dd><dl class="option-list">
+<dt><kbd><span class="option">--no-ask</span></kbd></dt>
+<dd><p>Suppress (accept) continue prompts</p>
+</dd>
+</dl>
+</dd>
+<dt><kbd><span class="option">-l</span>, <span class="option">--local-command</span></kbd></dt>
+<dd><blockquote>
+<div><p>Choose to use commands with or without the testbed server, not all work without the server</p>
+</div></blockquote>
+<dl class="option-list">
+<dt><kbd><span class="option">--server-connection <var>&lt;SERVER_CONNECTION&gt;</var></span></kbd></dt>
+<dd><p>Specify the URL to the testbed server [default: <a class="reference external" href="http://localhost:3355/">http://localhost:3355/</a>]</p>
+</dd>
+</dl>
+</dd>
+<dt><kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></dt>
+<dd><p>Print help</p>
+</dd>
+<dt><kbd><span class="option">-V</span>, <span class="option">--version</span></kbd></dt>
+<dd><p>Print version</p>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="subcommands">
+<h2>Subcommands<a class="headerlink" href="#subcommands" title="Link to this heading"></a></h2>
+<blockquote>
+<div><dl class="simple">
+<dt>generate-artefacts</dt><dd><p>Create all artefacts for virtual devices in the current configuration</p>
+</dd>
+<dt>clear-artefacts</dt><dd><p>Destroy all artefacts for the current configuration</p>
+</dd>
+<dt>cloud-images</dt><dd><p>List supported cloud images</p>
+</dd>
+<dt>setup-config</dt><dd><p>Setup kvm compose config</p>
+</dd>
+<dt>deployment</dt><dd><p>Control deployments on the testbed server</p>
+</dd>
+<dt>up</dt><dd><p>Deploy the test case</p>
+</dd>
+<dt>down</dt><dd><p>Undeploy the test case</p>
+</dd>
+<dt>snapshot</dt><dd><p>Snapshot guests</p>
+</dd>
+<dt>analysis-tools</dt><dd><p>Analysis tools</p>
+</dd>
+<dt>snapshot-testbed</dt><dd><p>Prepare all artefacts in deployment to be shared and used in another testbed</p>
+</dd>
+<dt>help</dt><dd><p>Print this message or the help of the given subcommand(s)</p>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="subcommand-up">
+<h2>Subcommand - up<a class="headerlink" href="#subcommand-up" title="Link to this heading"></a></h2>
+<p>Deploy the test case</p>
+<p>Usage: kvm-compose up [OPTIONS]</p>
+<dl>
+<dt>Options:</dt><dd><dl class="option-list">
+<dt><kbd><span class="option">-p</span>, <span class="option">--provision</span></kbd></dt>
+<dd><p>Force regenerate guest images</p>
+</dd>
+<dt><kbd><span class="option">-r</span>, <span class="option">--rerun-scripts</span></kbd></dt>
+<dd><p>Force rerunning use specified guest setup scripts</p>
+</dd>
+<dt><kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></dt>
+<dd><p>Print help</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+<section id="subcommand-down">
+<h2>Subcommand - down<a class="headerlink" href="#subcommand-down" title="Link to this heading"></a></h2>
+<p>Undeploy the test case</p>
+<p>Usage: kvm-compose down</p>
+<dl>
+<dt>Options:</dt><dd><dl class="option-list">
+<dt><kbd><span class="option">-h</span>, <span class="option">--help</span></kbd></dt>
+<dd><p>Print help</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+<section id="subcommand-deployment">
+<h2>Subcommand - deployment<a class="headerlink" href="#subcommand-deployment" title="Link to this heading"></a></h2>
+<p>Control deployments on the testbed server</p>
+<p>Usage: kvm-compose deployment &lt;COMMAND&gt;</p>
+<dl class="simple">
+<dt>Commands:</dt><dd><dl class="simple">
+<dt>create</dt><dd><p>Create a deployment</p>
+</dd>
+<dt>destroy</dt><dd><p>Destroy a deployment</p>
+</dd>
+<dt>list</dt><dd><p>List all deployments</p>
+</dd>
+<dt>info</dt><dd><p>This is the name of the deployment that is passed to the deployment commands</p>
+</dd>
+<dt>help</dt><dd><p>Print this message or the help of the given subcommand(s)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+<section id="subcommand-snapshot">
+<h2>Subcommand - snapshot<a class="headerlink" href="#subcommand-snapshot" title="Link to this heading"></a></h2>
+<p>Snapshot guests</p>
+<p>Usage: kvm-compose snapshot &lt;COMMAND&gt;</p>
+<dl class="simple">
+<dt>Commands:</dt><dd><dl class="simple">
+<dt>create</dt><dd><p>Create a snapshot for a guest</p>
+</dd>
+<dt>delete</dt><dd><p>Destroy a snapshot</p>
+</dd>
+<dt>info</dt><dd><p>Get information about a guest and it’s snapshots</p>
+</dd>
+<dt>list</dt><dd><p>List guest snapshots</p>
+</dd>
+<dt>restore</dt><dd><p>Restore guest from snapshot or all guests from latest snapshot, if any</p>
+</dd>
+<dt>help</dt><dd><p>Print this message or the help of the given subcommand(s)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="analysis-tools.html" class="btn btn-neutral float-left" title="Analysis Tools" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../orchestration/index.html" class="btn btn-neutral float-right" title="Orchestration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Bristol Cyber Security Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

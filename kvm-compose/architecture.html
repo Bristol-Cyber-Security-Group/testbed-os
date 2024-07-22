@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture &mdash; testbed-os 1.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=fc837d61"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="kvm-compose Yaml" href="kvm-compose-yaml/index.html" />
+    <link rel="prev" title="kvm-compose" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            testbed-os
+          </a>
+              <div class="version">
+                1.1
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting-started/index.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation/index.html">Testbed OS Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbed-config/index.html">Testbed Config</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">kvm-compose</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#load-balancing">Load Balancing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#artefacts">Artefacts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#state-json">State JSON</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scaling">Scaling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#log-streaming">Log Streaming</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#technical-detail-and-developer-notes">Technical Detail and Developer Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="kvm-compose-yaml/index.html">kvm-compose Yaml</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis-tools.html">Analysis Tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html">Usage</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../orchestration/index.html">Orchestration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../interfaces/index.html">Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../guest-types/index.html">Guest Types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../testbedos-server/index.html">TestbedOS Server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../networking/index.html">Networking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resource-monitoring/index.html">Resource Monitoring</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../test-harness/index.html">Test Harness</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">testbed-os</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">kvm-compose</a></li>
+      <li class="breadcrumb-item active">Architecture</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/kvm-compose/architecture.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="architecture">
+<h1>Architecture<a class="headerlink" href="#architecture" title="Link to this heading"></a></h1>
+<p><cite>kvm-compose</cite> is a binary CLI tool written in rust.
+It uses the serde library to deserialise and parse the <a class="reference internal" href="kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a> file to start building a state representation in memory.
+The state representation, once enumerated with details from the <a class="reference internal" href="kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a> and <a class="reference internal" href="../testbed-config/index.html#testbed-config"><span class="std std-ref">Testbed Config</span></a>, will be also serialised with serde into the state JSON file to be used with <a class="reference internal" href="../orchestration/index.html#orchestration"><span class="std std-ref">Orchestration</span></a>.
+Along with the state JSON, the artefacts are also generated.
+Note: this CLI tool uses the APIs on the <a class="reference internal" href="../testbedos-server/index.html#testbedos-server"><span class="std std-ref">testbed server</span></a> to execute the testbed processes.</p>
+<p>Note: the testbed has been designed in this way to expose the artefacts generated before running the testbed orchestration to allow the user to inspect the artefacts.
+This also allows you to further customise the deployment if you wish or if the testbed tooling does not yet support a specific feature you are looking for.
+Additionally, since these are mostly text files, it allows you to version control your test case (don’t forget to ignore the large binary files in your .gitignore if you use git).
+As long as you keep to the convention of the artefacts generated, the orchestration tool will just push and execute these scripts/config/images to the correct locations.
+The orchestration tool “doesn’t care” what is inside these, as long as the generated <a class="reference internal" href="#state-json"><span class="std std-ref">state JSON</span></a> file is valid.</p>
+<p><cite>kvm-compose</cite> needs access to the libvirt daemon to access information about existing libvirt networks.</p>
+<p>See the <a class="reference internal" href="../networking/index.html#networking"><span class="std std-ref">Networking</span></a> section for more information on the architecture for generating the distributed bridges and tunnels configuration.</p>
+<section id="load-balancing">
+<h2>Load Balancing<a class="headerlink" href="#load-balancing" title="Link to this heading"></a></h2>
+<p>Given an arbitrary network topology and machine definitions in the <a class="reference internal" href="kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a> file, these will be distributed over the testbed hosts listed in the <a class="reference internal" href="../testbed-config/index.html#testbed-config"><span class="std std-ref">Testbed Config</span></a> file.</p>
+<p>The following are the current possible load balancing algorithms with heuristics that can be used with the testbed:</p>
+<dl class="field-list simple">
+<dt class="field-odd">round robin<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The topology is distributed based on the bridges defined across the testbed hosts in a round robin allocation.
+Starting on the first host in the <a class="reference internal" href="../testbed-config/index.html#testbed-config"><span class="std std-ref">Testbed Config</span></a> file, each bridge is allocated until all bridges allocated.
+The machines that have that bridge as an interface will then also be allocated to that testbed host.
+This is a simple implementation with no consideration for resource usage and minimising potential number of tunnels between testbed hosts.
+Note: if a machine has multiple bridges as interfaces and the bridges are on different hosts, it will not work as there is no check for this.</p>
+</dd>
+</dl>
+</section>
+<section id="artefacts">
+<h2>Artefacts<a class="headerlink" href="#artefacts" title="Link to this heading"></a></h2>
+<p>The artefacts generated are placed in the <cite>artefacts</cite> folder inside the project folder, that contains the <a class="reference internal" href="kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a> file.</p>
+<p>Example for three testbed hosts, each allocated with one machine definition.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>kvm-compose.yaml
+state.json<span class="w"> </span><span class="c1"># see State JSON section</span>
+artefacts/machine1-domain.xml
+artefacts/machine1-cloud-init.img
+artefacts/machine1-cloud-init.iso
+artefacts/machine2-domain.xml
+artefacts/machine2-cloud-init.img
+artefacts/machine2-cloud-init.iso
+artefacts/machine3-domain.xml
+artefacts/machine3-cloud-init.img
+artefacts/machine3-cloud-init.iso
+</pre></div>
+</div>
+</section>
+<section id="state-json">
+<h2>State JSON<a class="headerlink" href="#state-json" title="Link to this heading"></a></h2>
+<p>The state JSON file is a direct serialisation of the desired state from the <a class="reference internal" href="kvm-compose-yaml/index.html#kvm-compose-yaml"><span class="std std-ref">kvm-compose Yaml</span></a> file in memory.
+This data structure is used to enumerate all the artefacts, so is computed before writing any artefacts to disk.</p>
+</section>
+<section id="scaling">
+<h2>Scaling<a class="headerlink" href="#scaling" title="Link to this heading"></a></h2>
+<p>To speed up the provisioning of guests that share a common install, the scaling features utilises the linked clone functionality offered by .qcow2 image file tipe.
+Qcow2 stands for qemu copy on write, which means the clone disks will only contain the difference from the original image we call ‘golden image’.
+This offers disk usage optimisation, for example without linked clones if we have 3 guests that share the same install and take up 10GB of space each then we use a total of 30GB of space.
+With clones (3 to match the example), the golden image would take 10GB of space and the 3 guests would start with a few kilobytes in disk space used and only grow as the guest creates/edits files.
+Furthermore, if the common install was bandwidth or CPU intensive, using clones we only need to do this once rather than 3 times concurrently which is likely to compete for resources and take more time.</p>
+<p>We implement this scaling feature by offering the <cite>scaling</cite> option in the kvm-compose.yaml file schema, see the schema doc for the limitation of the syntax.
+In the artefact generation stage, the clone guests have artefacts prepped ready for when the clone .qcow2 images are prepared in the orchestration stage.
+The cloned guests are treated like any other guest in the testbed, it is only their provisioning steps  (creating a clone from the golden image) that is different.
+Note that the golden image is also a guest but it will be turned off for the duration of the testbed test case as it’s disk must not have a write lock, such that the guests may copy on write as they need.</p>
+</section>
+<section id="log-streaming">
+<h2>Log Streaming<a class="headerlink" href="#log-streaming" title="Link to this heading"></a></h2>
+<p>The kvm-compose CLI tool will use the various APIs on the testbed server to run commands and control deployments.
+Since these commands can be long running, the CLI also uses a websocket to stream the logs of the command from the server.
+Currently the websocket is solely one directional, from the server to the client.</p>
+<p>See the <a class="reference internal" href="../testbedos-server/index.html#testbedos-server"><span class="std std-ref">testbed server</span></a> section for details on the architecture of the log streaming.</p>
+</section>
+<section id="technical-detail-and-developer-notes">
+<h2>Technical Detail and Developer Notes<a class="headerlink" href="#technical-detail-and-developer-notes" title="Link to this heading"></a></h2>
+<p>This text outlines the process to go from the kvm-compose.yaml file to the resulting state json file and artefacts.
+The yaml file is deserialised and a <cite>Config</cite> struct is filled.
+With this struct, a logical testbed is started to be constructed, which works with testbed <cite>components</cite>.
+These <cite>components</cite> can be of various types, i.e. a <cite>guest component</cite> could be a Libvirt guest or Libvirt clone.
+The logical testbed is logically load balanced between the available testbed hosts, based on the load balancing algorithm.
+Then specialisation occurs on the testbed <cite>components</cite>, so that these components will have data generated such as paths that are specific to the testbed host they are assigned to.
+The <cite>State</cite> is created, which becomes the state json file to be used by the orchestrator.</p>
+<p>As a developer, you may want to add new components.
+The possible components:</p>
+<ul class="simple">
+<li><p>Testbed Host</p></li>
+<li><p>Testbed Guest</p></li>
+<li><p>Testbed Bridge</p></li>
+<li><p>Testbed Network</p></li>
+</ul>
+<p>These components are traits, meaning your component must implement the trait.
+You will only need to implement the trait and the rest of the code will treat it like any other component, so you don’t need to add extra code in the core codebase.
+You will need to also create a new entry for <cite>Config</cite> so that the new component is part of the yaml schema.
+This abstraction allows you to focus only in how a testbed <cite>Component</cite> is converted from a <cite>Config</cite> and into artefacts.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="kvm-compose" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="kvm-compose-yaml/index.html" class="btn btn-neutral float-right" title="kvm-compose Yaml" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Bristol Cyber Security Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
