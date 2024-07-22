@@ -22,11 +22,11 @@ pub struct TestbedServerArgs {
 /// Options to launch the server
 #[derive(Parser, Debug, Clone, Deserialize, Serialize)]
 pub enum ServerModeCmd {
-    /// Run server in master mode
-    Master,
+    /// Run server in main mode
+    Main,
     /// Run server in client mode
     Client(ClientMode),
-    /// Wizard for creating the kvm-compose-config file for master mode
+    /// Wizard for creating the kvm-compose-config file for main mode
     CreateConfig,
 }
 
@@ -43,9 +43,9 @@ impl fmt::Display for ServerModeCmd {
 #[derive(Parser, Debug, Clone, Deserialize, Serialize)]
 pub struct ClientMode {
     // TODO - make this take an IpAddr then add the http:// or even tcp://
-    /// The ip address of the master testbed host
+    /// The ip address of the main testbed host
     #[clap(long, short)]
-    pub master_ip: String,
+    pub main_ip: String,
 
     /// The network interface to be used to connect to other testbed servers
     #[clap(long, short)]
@@ -70,8 +70,8 @@ pub async fn parse_cli_args(
     let mode = if args.mode.is_some() {
         // update the mode config file depending on the mode
         match args.mode.as_ref().unwrap() {
-            ServerModeCmd::Master => {
-                create_mode_config(ServerModeCmd::Master).await?;
+            ServerModeCmd::Main => {
+                create_mode_config(ServerModeCmd::Main).await?;
             }
             ServerModeCmd::Client(client) => {
                 validate_client_mode_arguments(&client)?;
@@ -87,7 +87,7 @@ pub async fn parse_cli_args(
         let path = format!("{TESTBED_SETTINGS_FOLDER}config/mode.json");
         let text = tokio::fs::read_to_string(&path).await?;
         let mode_config: ServerModeCmd = serde_json::from_str(&text)
-            .context(format!("Could not load {path}, does not exist. Please run with create-config argument to configure the testbed server."))?;
+            .context(format!("Could not load {path}. Please run with create-config argument to configure the testbed server."))?;
         // check if config is in create config mode, should not be
         match mode_config {
             ServerModeCmd::CreateConfig => bail!("server start mode cannot be set to CreateConfig, please update the mode.json"),
@@ -117,7 +117,7 @@ pub fn create_config_wizard(
 
     // TODO - do this once the kvmComposeConfig has been cut down once we have testbed cluster
 
-    // TODO - ask the user if they want to default the server to start as master/client and update
+    // TODO - ask the user if they want to default the server to start as main/client and update
     //  the systemd file
     todo!()
 }

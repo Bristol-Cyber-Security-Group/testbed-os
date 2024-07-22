@@ -35,11 +35,11 @@ In this document, we will describe the execution of a command or script or pushi
 
 There are four different scenarios for command running of tasks:
 
-:local testbed host: This is running a task on the current (master) testbed host.
+:local testbed host: This is running a task on the current (main) testbed host.
     Note: there is no need for SSH as it will be a local command.
     Note: we do not need to push files since the artefacts will already be in this host's file system.
 
-:local testbed guest: This is running a task on a testbed guest that is on the current (master) testbed host.
+:local testbed guest: This is running a task on a testbed guest that is on the current (main) testbed host.
     This uses SSH.
 
 :remote testbed host: This is running a task on a remote testbed host.
@@ -58,7 +58,7 @@ These stages do have a dependency, as follows:
 2) Check if all testbeds to be used in the deployment are running
 3) Create project folders on client testbed hosts (if being used)
 4) Network Stage
-    1) deploy the libvirt network on the master testbed host
+    1) deploy the libvirt network on the main testbed host
     2) deploy the openvswitch bridges across all testbed hosts
     3) deploy the openvswitch tunnels across all testbed hosts
 5) If clones are defined
@@ -107,6 +107,18 @@ You can create/restore/delete/list snapshots through the `kvm-compose` CLI.
 
 The snapshots are stored on the respective testbed hosts the guests are created on.
 The CLI is merely a wrapper around the libvirt snapshot API, so if you create a snapshot outside of the testbed tools the snapshot will be available to the testbed.
+
+Existing Disk
+^^^^^^^^^^^^^
+
+When you bring a pre-configured image to the testbed, we will not overwrite the original image to preserve it.
+Instead, by default the testbed will create a linked clone of this image in the project artefacts folder.
+This removed the need to create a deep copy of the image, saving time and space on disk.
+The user can still defer to a deep copy with the `create_deep_copy` option in the existing disk yaml section.
+
+When the existing disk linked clone is going to be placed on a remote testbed host, the testbed will need to send a full copy.
+This is because we cannot use linked clones over the network, and because we don't have a distributed filesystem at the moment to support this.
+
 
 General Notes
 ^^^^^^^^^^^^^
@@ -171,4 +183,4 @@ If any logging events are emitted from the instruction, the serer will emit this
 
 .. |state JSON| replace:: :ref:`state JSON <kvm-compose/architecture:State JSON>`
 .. |artefacts| replace:: :ref:`artefacts <kvm-compose/architecture:artefacts>`
-.. |kvm-compose.yaml| replace:: :ref:`kvm-compose-yaml/index:kvm-compose Yaml`
+.. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`

@@ -21,7 +21,7 @@ use testbedos_lib::config::handlers::*;
 use testbedos_lib::deployments::handlers::*;
 use testbedos_lib::deployments::providers::DeploymentProvider;
 use testbedos_lib::cluster::handlers::{check_membership, join_cluster};
-use testbedos_lib::cluster::ovn::{set_up_cluster_client_check_cron_jobs, set_up_cluster_master_check_cron_jobs};
+use testbedos_lib::cluster::ovn::{set_up_cluster_client_check_cron_jobs, set_up_cluster_main_check_cron_jobs};
 use testbedos_lib::config::db::get_cluster_config_db;
 use testbedos_lib::config::provider::TestbedConfigProvider;
 use testbedos_lib::gui::add_gui_handlers;
@@ -60,7 +60,7 @@ async fn main() {
     // run server in the mode supplied by CLI arguments or via the default mode in the settings file
     // at /var/lib/testbedos/config/mode.json
     match mode {
-        ServerModeCmd::Master => {
+        ServerModeCmd::Main => {
             // setup provider for state, this could be interchangeable to different databases
             // the provider will implement DeploymentProvider trait to make database calls available
             // inside the handlers - this should become a match statement when multiple providers exist
@@ -91,7 +91,7 @@ async fn main() {
             // TODO - use router combination syntax?
             // build routers for server endpoints
             // add trim slash middleware
-            let app = NormalizePathLayer::trim_trailing_slash().layer(master_app(app_state));
+            let app = NormalizePathLayer::trim_trailing_slash().layer(main_app(app_state));
 
             // set up cron job to monitor clients
             match set_up_cluster_client_check_cron_jobs().await {
@@ -113,7 +113,7 @@ async fn main() {
             // TODO - run the server on a socket so that the user must have sudo rights since the supporting
             //  software such as libvirt also requires sudo - or create a testbedOS group to cover all
             // Run our app with hyper
-            tracing::info!("listening on {} in master mode", addr);
+            tracing::info!("listening on {} in main mode", addr);
             let listener = TcpListener::bind(&addr).await.unwrap();
             axum::serve::serve(listener, ServiceExt::<Request>::into_make_service_with_connect_info::<SocketAddr>(app))
                 .await
@@ -124,17 +124,18 @@ async fn main() {
             let config_db = get_cluster_config_db();
             let config_db: Arc<RwLock<Box<(dyn TestbedConfigProvider + Sync + Send)>>> =
                 Arc::new(RwLock::new(config_db));
+            // given the mode, make sure settings are correct
+            try_configure_host(&mode, &config_db).await;
+
             let app_state = Arc::new(ClientAppState {
                 config_db,
-                master_server_url: client_mode.master_ip.clone(),
+                main_server_url: client_mode.main_ip.clone(),
                 system_monitor: Arc::new(RwLock::new(System::new_all())),
                 service_clients: Arc::new(ServiceClients::new().await)
             });
-            // given the mode, make sure settings are correct
-            try_configure_host(&mode, &app_state.config_db).await;
-            // set up cron job to check master is online
-            match set_up_cluster_master_check_cron_jobs(
-                client_mode.master_ip.clone(),
+            // set up cron job to check main is online
+            match set_up_cluster_main_check_cron_jobs(
+                client_mode.main_ip.clone(),
             ).await {
                 Ok(_) => {}
                 Err(err) => {
@@ -144,7 +145,7 @@ async fn main() {
             }
             // build routers for server endpoints
             let app = client_app(app_state);
-            tracing::info!("listening on {} in client mode with remote server {}", addr, &client_mode.master_ip);
+            tracing::info!("listening on {} in client mode with remote server {}", addr, &client_mode.main_ip);
             let listener = TcpListener::bind(&addr).await.unwrap();
             axum::serve::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
                 .await
@@ -174,8 +175,8 @@ async fn main() {
 }
 
 /// Produce the app in a separate function to allow for testing without creating an http server.
-/// This also represents the master mode set of urls.
-pub fn master_app(app_state: Arc<AppState>) -> Router {
+/// This also represents the main mode set of urls.
+pub fn main_app(app_state: Arc<AppState>) -> Router {
     Router::new()
         .route(
             "/api/config/cluster",
@@ -207,14 +208,14 @@ pub fn master_app(app_state: Arc<AppState>) -> Router {
                 .put(update_deployment),
         )
         // .route("/api/deployments/:name/action", post(action_deployment))
-        .route("/api/deployments/:name/state", get(get_state))
+        .route("/api/deployments/:name/state", get(get_state).post(set_state))
         .route("/api/metrics/prometheus/hosts", get(prometheus_scrape_endpoint_for_hosts))
         .route("/api/metrics/prometheus/libvirt", get(prometheus_scrape_endpoint_for_libvirt))
         .route("/api/metrics/prometheus/android", get(prometheus_scrape_endpoint_for_android))
         .route("/api/metrics/prometheus/docker", get(prometheus_scrape_endpoint_for_docker))
-        .route("/api/metrics/host", get(get_master_testbed_host_resource))
+        .route("/api/metrics/host", get(get_main_testbed_host_resource))
         .route("/api/metrics/state", get(get_metrics_state))
-        .route("/api/metrics/guest/:project/:name", get(get_master_testbed_guest_resource))
+        .route("/api/metrics/guest/:project/:name", get(get_main_testbed_guest_resource))
         .route("/api/metrics/dashboard/:project", get(resource_monitoring_dashboard))
         .nest("/api/orchestration", add_orchestration_handlers())
         .nest("/", add_gui_handlers())

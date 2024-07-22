@@ -2,10 +2,10 @@ machines:
 
   - name: server
     network:
-      switch: sw0
-      gateway: 10.0.0.1
-      mac: "00:00:00:00:00:01"
-      ip: "10.0.0.10"
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:01"
+        ip: "10.0.0.10"
     libvirt:
       cpus: 2
       memory_mb: 2048
@@ -18,10 +18,10 @@ machines:
 
   - name: client1
     network:
-      switch: sw0
-      gateway: 10.0.0.1
-      mac: "00:00:00:00:00:02"
-      ip: "10.0.0.11"
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:02"
+        ip: "10.0.0.11"
     libvirt:
       cpus: 2
       memory_mb: 2048
@@ -37,10 +37,10 @@ machines:
 
   - name: client2
     network:
-      switch: sw0
-      gateway: 10.0.0.1
-      mac: "00:00:00:00:00:03"
-      ip: "10.0.0.12"
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:03"
+        ip: "10.0.0.12"
     libvirt:
       cpus: 2
       memory_mb: 2048
@@ -82,7 +82,7 @@ network:
             mac: "00:00:20:20:12:13"
             gateway_ip: "172.16.1.200/24"
             switch: public
-            set_gateway_chassis: master
+            set_gateway_chassis: main
 
         static_routes:
           - prefix: "0.0.0.0/0"

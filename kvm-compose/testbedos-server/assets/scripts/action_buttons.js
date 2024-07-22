@@ -67,7 +67,7 @@ function parseStateData(stateData) {
     var edgesArray = [];
 
 
-    // Add master node
+    // Add main node
     if (stateData.testbed_hosts) {
         for (var hostKey in stateData.testbed_hosts) {
             var host = stateData.testbed_hosts[hostKey]; 

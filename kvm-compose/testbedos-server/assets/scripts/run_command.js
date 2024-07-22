@@ -25,24 +25,24 @@ $(document).ready(function() {
         // Define options for commands
         const options = {
             'create': [
-                {label: 'Guest name', type: 'text', id: 'name'},
+                {label: 'Guest name', type: 'guest', id: 'name'},
                 {label: 'Snapshot ID', type: 'text', id: 'snapshot'},
                 {label: 'Apply to all guests', type: 'checkbox', id: 'all'}
             ],
             'delete': [
-                {label: 'Guest name', type: 'text', id: 'name'},
+                {label: 'Guest name', type: 'guest', id: 'name'},
                 {label: 'Snapshot ID', type: 'text', id: 'snapshot'},
                 {label: 'Apply to all snapshots', type: 'checkbox', id: 'all'}
             ],
             'info': [
-                {label: 'Guest name', type: 'text', id: 'name'}
+                {label: 'Guest name', type: 'guest', id: 'name'}
             ],
             'list': [
-                {label: 'Guest name', type: 'text', id: 'name'},
+                {label: 'Guest name', type: 'guest', id: 'name'},
                 {label: 'Apply to all guests', type: 'checkbox', id: 'all'}
             ],
             'restore': [
-                {label: 'Guest name', type: 'text', id: 'name'},
+                {label: 'Guest name', type: 'guest', id: 'name'},
                 {label: 'Snapshot ID', type: 'text', id: 'snapshot'},
                 {label: 'Apply to all guests', type: 'checkbox', id: 'all'}
             ]
@@ -107,8 +107,8 @@ $(document).ready(function() {
     
                 generateInputs(optionsToDisplay, '#execDynamicButtons', false);
 
-                // add device text box
-                const deviceTextRow = addDeviceTextBox();
+                // add device dropdown
+                const deviceTextRow = addDeviceDropDown();
                 // TODO this is added as part of the form, while it works, the server is sent the device name twice,
                 //  once properly and once again inside the tool under "deviceName" which is currently ignored
                 //  this should be fixed
@@ -121,13 +121,13 @@ $(document).ready(function() {
                 ],
                 'user_script': [
                     {label: 'Script', type: 'text', id: 'script'},
-                    {label: 'Run on master', type: 'checkbox', id:'run_on_master'}
+                    {label: 'Run on main', type: 'checkbox', id:'run_on_master'}
                 ]
             };
             generateInputs(options[selectedCommand] || [], '#execDynamicButtons', false);
 
-            // add device text box
-            const deviceTextRow = addDeviceTextBox();
+            // add device drop down
+            const deviceTextRow = addDeviceDropDown();
             execDynamicButtons.append(deviceTextRow);
         }
     });
@@ -145,6 +145,9 @@ $(document).ready(function() {
             } else if (option.type == 'text') {
                 const textRow = createTextInput(option, inputFieldId);
                 $(dynamicButtonsId).append(textRow);
+            }else if (option.type == 'guest') {
+                const checkboxDiv = addDeviceDropDown();
+                $(dynamicButtonsId).append(checkboxDiv);
             }
         });
     
@@ -159,10 +162,9 @@ $(document).ready(function() {
         }
     }
 
-    function addDeviceTextBox() {
+    function addDeviceDropDown() {
         // all tooling needs to have be assigned to a tool, this will add a textbox to enter the name
-        // TODO this should eventually be a dropdown showing all eligible devices for this deployment, taken from the
-        //  state and filtered by guest type compatible with tool
+        // TODO this should eventually be filtered by guest type compatible with tool
         const textRow = $('<div></div>', {class: 'row'});
         const textLabelCol = $('<div></div>', {class: 'col-auto'});
         const textInputCol = $('<div></div>', {class: 'col'});
@@ -173,15 +175,27 @@ $(document).ready(function() {
             text: textLabel,
             class: 'form-label'
         });
-        const textInput = $('<input>', {
-            type: 'text',
+
+        const selectInput = $('<select>', {
             class: 'form-control form-control-sm',
             id: 'guestName',
-            value: ''
+            style: 'cursor: pointer;'
+        });
+
+        // Fetch state JSON to dynamically add available guests to dropdown menu
+        $.get(server_url + '/api/deployments/' + project_name + '/state?pretty=true', function(statejson) {
+            const guests = statejson.testbed_guests;
+            const guestNames = Object.keys(guests).map(key => guests[key].name);
+            console.log(guestNames);
+
+            guestNames.forEach(function(guest) {
+                selectInput.append($('<option>', { text: guest }));
+            });
+
+            textInputCol.append(selectInput);
         });
 
         textLabelCol.append(textLabelElement);
-        textInputCol.append(textInput);
         return textRow.append(textLabelCol).append(textInputCol);
     }
     
@@ -269,6 +283,9 @@ function request_command(init_schema) {
     // enable cancel button
     cancel_button.prop("disabled", false);
 
+    // track if the command generation was successful
+    let command_generation_failure = false;
+
     // we must wait for the socket to be open before sending and receiving, specifically on open, send the
     // init command but defer to the onmessage to handle the processing on the web page
     command_generator_websocket.onopen = function (event) {
@@ -306,6 +323,7 @@ function request_command(init_schema) {
                     append_terminal_text(terminal, "Executing the following command: <br>" + server_message['message']);
                 } else {
                     append_terminal_text(terminal, "Command sent to server was not understood: <br>" + server_message['message']);
+                    command_generation_failure = true;
                 }
 
             } else {
@@ -315,6 +333,7 @@ function request_command(init_schema) {
                     append_terminal_text(terminal, server_message['message']);
                 } else {
                     append_terminal_text(terminal, server_message['message'] + '<br>Please see server logs for more details.');
+                    command_generation_failure = true;
                 }
             }
         } else {
@@ -344,8 +363,13 @@ function request_command(init_schema) {
 
     // once the command generation socket closed, lets run the next socket
     command_generator_websocket.addEventListener('close', function () {
-        // console.log(generated_commands);
-        run_orchestration(generated_commands, websocket_url, terminal, connection_state);
+        // console.log("generated commands: " +generated_commands);
+        if (command_generation_failure === false) {
+            run_orchestration(generated_commands, websocket_url, terminal, connection_state);
+        } else {
+            append_terminal_text(terminal, "Due to an error in command generation, will not continue to orchestration.");
+            reset_running_state(connection_state);
+        }
     })
 
 }
@@ -476,19 +500,24 @@ function run_orchestration(generated_commands, websocket_url, terminal, connecti
         append_terminal_text(terminal, '<br>' + event['reason']);
 
         // set state badge to inactive
-        set_connection_state_inactive(connection_state);
-
-        // disable cancel button
-        let cancel_button = $('#cancelCommandButton');
-        cancel_button.prop("disabled", true);
-
-        // check deployment page and check for state
-        get_last_command_state();
+        reset_running_state(connection_state);
     }
 
 
     // command_runner_websocket.close();
 
+}
+
+function reset_running_state(connection_state) {
+    // set state badge to inactive
+    set_connection_state_inactive(connection_state);
+
+    // disable cancel button
+    let cancel_button = $('#cancelCommandButton');
+    cancel_button.prop("disabled", true);
+
+    // check deployment page and check for state
+    get_last_command_state();
 }
 
 function blobToString(blob) {
@@ -612,6 +641,7 @@ function get_button_command_json(button_id, selectedOption, selectedToolOption, 
             "Up": {
                 "provision": $('#upProvisionFlag').is(':checked'),
                 "rerun_scripts": $('#upReRunScriptsFlag').is(':checked'),
+                "reapply_acl": $('upReRunACLFlag').is(':checked'),
             }
         };
 
@@ -683,7 +713,7 @@ function get_button_command_json(button_id, selectedOption, selectedToolOption, 
         // Check if there are text inputs or checkboxes within the execDynamicButtons container
         $('#execDynamicButtons input').each(function() {
             let inputType = $(this).attr('type');
-            let inputValue = $(this).val();
+            let inputValue = $(this).val().trim().replace(/\s+/g, ' '); // Remove whitespace from start and end of command string
             let inputId = $(this).attr('id');
             
             if(inputType === 'checkbox') {
@@ -775,14 +805,16 @@ function toolingGetGuestName() {
 }
 
 function convertCommandToListOfStrings(sub_command, command_name) {
-    // take the string with command arguments separated by whitespace and split by the whitespace to give a list of
-    // strings
+    const regex = /(?:[^\s"]+|"[^"]*")+/g; // Regex to match quoted strings or individual words
     let command = sub_command["Exec"]["command_type"]["tool"]["tool"][command_name]["command"];
+    
     // command starts as a list of one string
     let command_string = command[0];
-    command_string = command_string.split(" ");
+    let command_list = command_string.match(regex).map(arg => arg.replace(/(^"|"$)/g, ''));
+    
     // add formatted command back to json
-    sub_command["Exec"]["command_type"]["tool"]["tool"][command_name]["command"] = command_string;
+    sub_command["Exec"]["command_type"]["tool"]["tool"][command_name]["command"] = command_list;
+    
     return sub_command;
 }
 

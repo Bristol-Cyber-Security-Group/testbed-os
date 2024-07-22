@@ -88,11 +88,11 @@ pub async fn collect_from_host(
 pub async fn collect_from_guest(
     guest_name: String,
     project_name: String,
-    master_ip: &String,
+    main_ip: &String,
     service_clients: Arc<ServiceClients>,
 ) -> anyhow::Result<Value> {
-    let deployment_state_url = format!("http://{master_ip}:3355/api/deployments/{}/state", &project_name);
-    // make call to master testbed to get the deployment and then find the guest to get it's type
+    let deployment_state_url = format!("http://{main_ip}:3355/api/deployments/{}/state", &project_name);
+    // make call to main testbed to get the deployment and then find the guest to get it's type
     let deployment_state = reqwest::get(deployment_state_url)
         .await?
         .text()
@@ -102,7 +102,7 @@ pub async fn collect_from_guest(
         .context("getting guest from state in metrics collection")?;
     let guest_type = &guest_state.guest_type.guest_type;
 
-    // let metrics_url = format!("http://{master_ip}:3355/api/metrics/guest/{}/{}", &project_name, &guest_name);
+    // let metrics_url = format!("http://{main_ip}:3355/api/metrics/guest/{}/{}", &project_name, &guest_name);
 
     let guest_stats = match guest_type {
         GuestType::Libvirt(_) => {
@@ -133,10 +133,10 @@ pub async fn collect_metrics_for_hosts(
 
     // get testbed host resource data (any host in the cluster)
     for (_, host_config) in &testbed_cluster_config.testbed_host_ssh_config {
-        // in case the testbed is running only on master and the private interface is not up or
+        // in case the testbed is running only on main and the private interface is not up or
         // set in the config, we must just resort to localhost
-        let host_metrics_url = if let Some(is_master) = host_config.is_master_host {
-            if is_master {
+        let host_metrics_url = if let Some(is_main) = host_config.is_main_host {
+            if is_main {
                 format!("http://localhost:3355/api/metrics/host")
             } else {
                 format!("http://{}:3355/api/metrics/host", &host_config.ip)
@@ -202,8 +202,8 @@ pub async fn collect_metrics_for_guests(
                 .get(&testbed_host)
 
             {
-                if let Some(is_master) = testbed_host.is_master_host {
-                    if is_master {
+                if let Some(is_main) = testbed_host.is_main_host {
+                    if is_main {
                         format!("http://localhost:3355/api/metrics/guest/{}/{}", &deployment.name, &guest_name)
                     } else {
                         format!("http://{}:3355/api/metrics/guest/{}/{}", &testbed_host.ip, &deployment.name, &guest_name)
@@ -258,7 +258,7 @@ async fn guest_metrics_from_testbed_hosts(
     Ok(Some(metrics))
 }
 
-/// Get the state file for the given deployment on the master testbed's filesystem
+/// Get the state file for the given deployment on the main testbed's filesystem
 async fn get_state_file(
     deployment: &Deployment,
 ) -> anyhow::Result<State> {

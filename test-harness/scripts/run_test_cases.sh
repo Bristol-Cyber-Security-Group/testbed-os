@@ -2,7 +2,7 @@
 
 # Run all test cases, each test case requires a fresh set of testbed hosts built from the base
 # testbed host image (using linked clones). The config for each test case must be pushed to the
-# master testbed host for the test case. Once test is completed, the testbed hosts must be
+# main testbed host for the test case. Once test is completed, the testbed hosts must be
 # destroyed before the next test case.
 
 # The testbed hosts will each need 4GB of memory as the single testbed test case will create three 1GB memory guests.
@@ -11,7 +11,7 @@
 
 # this script can be run with debug mode to skip the base install (if it has already been done)
 # DEBUG= ./run_test_cases.sh
-# this will also push the current state of the source code into the master
+# this will also push the current state of the source code into the main
 #  (helpful to test new code changes without rebuilding the base image)
 
 #cd scripts/ || exit
@@ -24,7 +24,7 @@ CURRENT_DIR=$(pwd)
 #echo $USER_POETRY
 #echo $USER_PYTHON
 
-configure_master () {
+configure_main () {
   TEST_CASE_NAME="$1"
   KVM_COMPOSE_CONFIG="$2"
   # wait for host to be up
@@ -51,7 +51,7 @@ configure_master () {
   ssh -i ../assets/ssh_key/id_ed25519 -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" nocloud@testbed-host-one "sudo mv ~/project/$KVM_COMPOSE_CONFIG /var/lib/testbedos/config/kvm-compose-config.json" || exit 1
   # in debug mode, we push the codebase again and build source code again
   if [ -n "$DEBUG" ]; then
-    echo "DEBUG: in debug mode current codebase will be pushed and built to master"
+    echo "DEBUG: in debug mode current codebase will be pushed and built to main"
     rsync -avr -e "ssh -i ../assets/ssh_key/id_ed25519 -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null'"  \
       --exclude "test-harness/" \
       --exclude "artefacts/*" \
@@ -78,7 +78,7 @@ test_case () {
   KVM_COMPOSE_CONFIG="$2"
   echo "Running test case '$TEST_CASE_NAME'"
 
-  configure_master $TEST_CASE_NAME $KVM_COMPOSE_CONFIG
+  configure_main $TEST_CASE_NAME $KVM_COMPOSE_CONFIG
 
   # start the testbed os server
   ssh -i ../assets/ssh_key/id_ed25519 -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" nocloud@testbed-host-one "sudo systemctl start testbedos-server.service" || exit 1
@@ -113,7 +113,7 @@ test_snapshot () {
   KVM_COMPOSE_CONFIG="$2"
   echo "Running test case '$TEST_CASE_NAME'"
 
-  configure_master $TEST_CASE_NAME $KVM_COMPOSE_CONFIG
+  configure_main $TEST_CASE_NAME $KVM_COMPOSE_CONFIG
 
   # run test case
 #  ssh -i ../assets/ssh_key/id_ed25519 -o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null" nocloud@testbed-host-one "cd ~/project/ && kvm-compose generate-artefacts" || exit 1

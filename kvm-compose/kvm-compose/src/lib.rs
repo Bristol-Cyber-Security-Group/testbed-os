@@ -13,7 +13,7 @@ use kvm_compose_schemas::settings::TestbedClusterConfig;
 pub mod assets;
 pub mod components;
 
-pub mod server_client;
+pub mod server_web_client;
 pub mod state;
 pub mod orchestration;
 pub mod snapshot;

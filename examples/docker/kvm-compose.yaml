@@ -2,10 +2,10 @@ machines:
 
   - name: nginx
     network:
-      switch: sw0
-      gateway: 10.0.0.1
-      mac: "00:00:00:00:00:01"
-      ip: "10.0.0.10"
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:01"
+        ip: "10.0.0.10"
     docker:
       image: nginx:stable
 #      command: "echo 'hi'"

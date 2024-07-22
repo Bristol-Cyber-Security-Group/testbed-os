@@ -4,7 +4,7 @@ use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationProtocol, OrchestrationResource};
 use crate::orchestration::websocket::{send_orchestration_instruction_over_channel};
 use crate::orchestration::{OrchestrationCommon};
-use crate::state::orchestration_tasks::guests::{get_master_testbed_name};
+use crate::state::orchestration_tasks::guests::{get_main_testbed_name};
 use crate::state::State;
 
 pub async fn deploy_guest_stage(
@@ -187,7 +187,7 @@ pub async fn push_guest_images_stage(
                     OrchestrationResource::Guest(guest_data.clone())
                 );
             }
-            GuestType::Android(_) => {} // Android guests currently only supported on master testbed host
+            GuestType::Android(_) => {} // Android guests currently only supported on main testbed host
         }
     }
     if orchestration_resources.is_empty() {
@@ -212,13 +212,13 @@ pub async fn push_backing_guest_images_stage(
 
     // based on `calculate_backing_images_to_push`
 
-    let master_testbed_name = get_master_testbed_name(common);
+    let main_testbed_name = get_main_testbed_name(common);
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
             GuestType::Libvirt(libvirt) => {
-                // check if guest is a clone and if not on the master testbed
+                // check if guest is a clone and if not on the main testbed
                 let guest_testbed = guest_data.testbed_host.as_ref().unwrap();
-                if libvirt.is_clone_of.is_some() && !guest_testbed.eq(&master_testbed_name) {
+                if libvirt.is_clone_of.is_some() && !guest_testbed.eq(&main_testbed_name) {
                     // need to push a copy
                     orchestration_resources.push(
                         OrchestrationResource::Guest(guest_data.clone())
@@ -251,7 +251,7 @@ pub async fn rebase_clone_images_stage(
 
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         // only rebase on remote testbeds
-        if !guest_data.testbed_host.as_ref().unwrap().eq(&get_master_testbed_name(&common)) {
+        if !guest_data.testbed_host.as_ref().unwrap().eq(&get_main_testbed_name(&common)) {
             match &guest_data.guest_type.guest_type {
                 GuestType::Libvirt(libvirt) => {
                     if libvirt.is_clone_of.is_some() {

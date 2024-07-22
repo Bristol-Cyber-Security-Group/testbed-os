@@ -71,10 +71,10 @@ pub async fn prometheus_scrape_endpoint_for_android(
     Ok(metrics)
 }
 
-// these handlers are the for master testbed to poll each testbed for raw metrics
+// these handlers are the for main testbed to poll each testbed for raw metrics
 
-/// This endpoint returns the master testbed host resource data
-pub async fn get_master_testbed_host_resource(
+/// This endpoint returns the main testbed host resource data
+pub async fn get_main_testbed_host_resource(
     State(db_config): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     let host_name = db_config.config_db.read().await
@@ -87,7 +87,7 @@ pub async fn get_master_testbed_host_resource(
     Ok(Json(host_data))
 }
 
-/// This endpoint returns the master testbed host resource data
+/// This endpoint returns the main testbed host resource data
 pub async fn get_client_testbed_host_resource(
     State(db_config): State<Arc<ClientAppState>>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -101,8 +101,8 @@ pub async fn get_client_testbed_host_resource(
     Ok(Json(host_data))
 }
 
-/// This endpoint returns the specified guest resource data on the master testbed
-pub async fn get_master_testbed_guest_resource(
+/// This endpoint returns the specified guest resource data on the main testbed
+pub async fn get_main_testbed_guest_resource(
     State(db_config): State<Arc<AppState>>,
     Path((project, name)): Path<(String, String)>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -123,7 +123,7 @@ pub async fn get_client_testbed_guest_resource(
     let guest_data = collect_from_guest(
         name,
         project,
-        &db_config.master_server_url,
+        &db_config.main_server_url,
         db_config.service_clients.clone(),
     ).await?;
     Ok(Json(guest_data))

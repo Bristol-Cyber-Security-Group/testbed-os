@@ -1,7 +1,7 @@
 {
     "ip": "10.50.0.1",
     "testbed_nic": "enp5s0",
-    "is_master_host": true,
+    "is_main_host": true,
     "ovn": {
         "chassis_name": "ovn",
         "bridge": "br-int",

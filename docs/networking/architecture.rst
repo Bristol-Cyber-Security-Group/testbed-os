@@ -1,7 +1,7 @@
-Testbed-OS Networking Architecture
+TestbedOS Networking Architecture
 ##################################
 
-This document describe the components of the Testbed-OS networking system and its components.
+This document describe the components of the TestbedOS networking system and its components.
 
 Background
 **********
@@ -100,6 +100,15 @@ Logical ports on this logical switch with ip="dynamic" will be allocated an IP s
 
 Currently, there is some incompatibility in using OVN's native DHCP and giving guests a static external IP address.
 We look to resolve this in the future.
+
+Multiple Interfaces on Guests
+=============================
+
+In the kvm-compose.yaml file you can specify one or more interfaces for guests.
+Currently, only libvirt guests support multiple interfaces.
+
+The libvirt guests will have their domain.xml generated with the list of interfaces defined in the yaml file.
+For libvirt cloud-init guests, this interface information is placed in the cloud-init network config and will boot with the interfaces configured automatically.
 
 External Networking
 ===================
@@ -201,5 +210,5 @@ Note that `ovs-tcpdump` is a specific version of `tcp-dump` for OVS bridges, we 
 OVN also provides ways to virtually test traffic from two endpoints, to test if your network works as intended.
 Please see the documentation on `ovn-trace <https://www.ovn.org/support/dist-docs/ovn-trace.8.html>`_.
 
-.. |kvm-compose.yaml| replace:: :ref:`kvm-compose-yaml/index:kvm-compose Yaml`
+.. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`
 

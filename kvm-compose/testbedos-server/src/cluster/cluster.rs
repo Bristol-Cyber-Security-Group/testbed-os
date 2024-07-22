@@ -9,9 +9,9 @@ use crate::cluster::ovn::{configure_host_ovn, configure_ovn_cluster, infer_subne
 use crate::cluster::{ClusterOperation, ServerModeCmd};
 use crate::config::provider::TestbedConfigProvider;
 
-/// This function will run on startup of the server, if the server is a master then it will check
-/// if there is a kvm-compose-config, if not the master then it will try to join the cluster at the
-/// specified master ip - triggering the master to update the kvm-compose-config
+/// This function will run on startup of the server, if the server is a main then it will check
+/// if there is a kvm-compose-config, if not the main then it will try to join the cluster at the
+/// specified main ip - triggering the main to update the kvm-compose-config
 pub async fn configure_testbed_host(
     mode: &ServerModeCmd,
     db_config: &Arc<RwLock<Box<dyn TestbedConfigProvider + Sync + Send>>>,
@@ -46,22 +46,36 @@ pub async fn configure_testbed_host(
     ).await?;
 
     // make sure OVN settings are correct for this host
-    let is_master = match host_config.is_master_host {
+    let is_main = match host_config.is_main_host {
         None => false,
-        Some(master) => master,
+        Some(main) => main,
     };
 
     // configure any OVN related settings and make sure ovn and ovs are up, before other services
-    configure_host_ovn(&host_config.ovn, &host_config.main_interface, is_master, &host_config).await?;
+    configure_host_ovn(&host_config.ovn, &host_config.main_interface, is_main, &host_config).await?;
 
     // make sure libvirt, docker are up
     ensure_services_up().await?;
 
+    // if in client mode, make sure ssh server is running for main testbed to be able to control
+    match mode {
+        ServerModeCmd::Client(_) => {
+            tracing::info!("making sure sshd is up");
+            run_subprocess_command_allow_fail(
+                "sudo",
+                vec!["systemctl", "start", "sshd"],
+                false,
+                None,
+            ).await?;
+        }
+        _ => {}
+    }
+
     match mode {
         ServerModeCmd::Client(client) => {
             // request to join cluster
-            let client_ovn_remote = client_join_cluster(&host_config, &client.master_ip).await?;
-            // update local ovn remote to point to master
+            let client_ovn_remote = client_join_cluster(&host_config, &client.main_ip).await?;
+            // update local ovn remote to point to main
             host_config.ovn.client_ovn_remote = Some(client_ovn_remote.clone());
             let _ = &db_config.write()
                 .await
@@ -69,7 +83,7 @@ pub async fn configure_testbed_host(
                 .await?;
             // update openvswitch
             let remote = format!("external-ids:ovn-remote={}", &client_ovn_remote);
-            tracing::info!("updating ovn remote to point to master host: {}", &remote);
+            tracing::info!("updating ovn remote to point to main host: {}", &remote);
             run_subprocess_command_allow_fail(
                 "sudo",
                 vec!["ovs-vsctl", "set", "open", ".", &remote],
@@ -77,7 +91,7 @@ pub async fn configure_testbed_host(
                 None,
             ).await?;
         }
-        ServerModeCmd::Master => {
+        ServerModeCmd::Main => {
             manage_cluster(&ClusterOperation::Init, db_config).await?;
         }
         ServerModeCmd::CreateConfig => {}
@@ -89,7 +103,7 @@ pub async fn configure_testbed_host(
     Ok(())
 }
 
-/// The master testbed server will maintain the `TestbedClusterConfig`, at any time there needs to
+/// The main testbed server will maintain the `TestbedClusterConfig`, at any time there needs to
 /// be an update or the server starts, it needs to check the validity of the config
 pub async fn manage_cluster(
     cluster_operation: &ClusterOperation,
@@ -111,7 +125,7 @@ pub async fn manage_cluster(
             tracing::info!("TestbedClusterConfig not found, creating one");
             // does not exist, create one
             let mut host_config = HashMap::new();
-            host_config.insert("master".into(), db_config.read().await.get_host_config().await?);
+            host_config.insert("main".into(), db_config.read().await.get_host_config().await?);
             let mut new_config = TestbedClusterConfig {
                 testbed_host_ssh_config: host_config,
                 ssh_public_key_location: "".to_string(),
@@ -128,13 +142,13 @@ pub async fn manage_cluster(
         ClusterOperation::Init => {
             tracing::info!("Running cluster Init");
             // make sure a fresh cluster config is used, we don't want previous state here as we can't
-            // guarantee between the master turning on and off the cluster is the same
+            // guarantee between the main turning on and off the cluster is the same
             tracing::debug!("getting cluster config");
-            // TODO - make sure we insert the master config if it is not there for some reason
+            // TODO - make sure we insert the main config if it is not there for some reason
             let mut cluster_config = db_config.read().await.get_cluster_config().await?;
             tracing::debug!("getting host config");
             let host_config = db_config.read().await.get_host_config().await?;
-            // filter for the master (this host)
+            // filter for the main (this host)
             cluster_config.testbed_host_ssh_config.retain(|name,_| {
                 if name.eq(&host_config.ovn.chassis_name) {
                     true
@@ -158,8 +172,8 @@ pub async fn manage_cluster(
             }
             // overwrite the client info to make sure it is a client
             let mut client_config_copy = client_config.clone();
-            // make sure it is not master host so the client doesnt have to edit this
-            client_config_copy.is_master_host = Some(false);
+            // make sure it is not main host so the client doesnt have to edit this
+            client_config_copy.is_main_host = Some(false);
 
             // a client testbed wants to join the cluster
             cluster_config.testbed_host_ssh_config.insert(
@@ -180,13 +194,13 @@ pub async fn manage_cluster(
     Ok(())
 }
 
-/// This function will ask the master testbed server to join the cluster, which will update the
-/// master's kvm-compose-config.
+/// This function will ask the main testbed server to join the cluster, which will update the
+/// main's kvm-compose-config.
 pub async fn client_join_cluster(
     client_config: &SshConfig,
-    master_ip: &String
+    main_ip: &String
 ) -> anyhow::Result<String> {
-    let server_url = format!("http://{master_ip}:3355/api/cluster");
+    let server_url = format!("http://{main_ip}:3355/api/cluster");
     tracing::info!("joining testbed cluster at {}", &server_url);
     // TODO - make sure protocol and port are correct
     let http_client = Client::new();
@@ -198,7 +212,7 @@ pub async fn client_join_cluster(
     Ok(ovn_remote)
 }
 
-/// This function will check each member of the cluster (that is not the master) and check if they
+/// This function will check each member of the cluster (that is not the main) and check if they
 /// are still up. If they are not up, then the kvm-compose-config will be updated.
 pub async fn check_cluster_clients(
 
@@ -207,7 +221,7 @@ pub async fn check_cluster_clients(
     todo!()
 }
 
-/// Removes a cluster client from the kvm-compose-config on the master testbed.
+/// Removes a cluster client from the kvm-compose-config on the main testbed.
 pub async fn remove_cluster_client(
 
 ) {

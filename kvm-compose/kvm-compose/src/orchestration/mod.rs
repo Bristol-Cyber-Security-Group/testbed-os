@@ -7,6 +7,7 @@ use tokio::process::Command;
 use tokio::io::AsyncReadExt;
 use futures_util::stream::{SplitSink, SplitStream};
 use nix::unistd::{Gid, Uid};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::{Sender};
@@ -40,6 +41,7 @@ pub struct OrchestrationCommon {
     pub project_working_dir: PathBuf,
     pub force_provisioning: bool,
     pub force_rerun_scripts: bool,
+    pub reapply_acl: bool,
     pub kvm_compose_config: TestbedClusterConfig,
     pub network: StateNetwork,
     pub fs_user: u32, //Uid,
@@ -52,13 +54,13 @@ impl OrchestrationCommon {
         Ok(())
     }
 
-    pub fn get_master(&self) -> anyhow::Result<String> {
+    pub fn get_main_testbed(&self) -> anyhow::Result<String> {
         for (tb_name, tb_config) in &self.testbed_hosts {
-            if tb_config.is_master_host {
+            if tb_config.is_main_host {
                 return Ok(tb_name.clone())
             }
         }
-        bail!("could not find master")
+        bail!("could not find main")
     }
 }
 
@@ -72,6 +74,7 @@ impl Default for OrchestrationCommon {
             project_working_dir: Default::default(),
             force_provisioning: false,
             force_rerun_scripts: false,
+            reapply_acl: false,
             kvm_compose_config: Default::default(),
             network: Default::default(),
             fs_user: Uid::from(0).as_raw(),
@@ -229,15 +232,15 @@ pub async fn run_subprocess_command(
     _run_subprocess_command(starting_command, command_string, false, in_background, working_dir).await
 }
 
-/// Checks if the testbed host input is the master host
-pub fn is_master(
+/// Checks if the testbed host input is the main host
+pub fn is_main_testbed(
     common: &OrchestrationCommon,
     testbed_host: &String,
 ) -> bool {
     for (host, config) in &common.testbed_hosts {
         if host.eq(testbed_host) {
             // match
-            if config.is_master_host {
+            if config.is_main_host {
                 return true;
             }
         }
@@ -278,8 +281,8 @@ async fn _run_testbed_orchestration_command(
     in_background: bool,
     working_dir: Option<String>,
 ) -> anyhow::Result<String> {
-    if is_master(common, testbed_host) {
-        // running on master host
+    if is_main_testbed(common, testbed_host) {
+        // running on main host
         if allow_fail {
             let output = run_subprocess_command_allow_fail(
                 starting_command,
@@ -313,17 +316,31 @@ async fn _run_testbed_orchestration_command(
 
 }
 
-pub async fn read_previous_state(
-    project_location: PathBuf,
-    project_name: &String,
+/// Read the state json file via that server's api
+pub async fn read_previous_state_request(
+    http_client: &Client,
+    server_conn: &String,
+    project_name: &String
 ) -> anyhow::Result<State> {
-    let mut state_path = project_location.clone();
-    state_path.push(format!("{}-state.json", project_name));
-    // tracing::info!("reading existing state at {state_path:?}");
-    // get state from file, should destroy only what is up
-    let text = tokio::fs::read_to_string(&state_path).await?;
-    let old_state: State = serde_json::from_str(&text)?;
-    Ok(old_state)
+    let previous_state_json = http_client.get(format!("{}api/deployments/{}/state", server_conn, project_name))
+        .send()
+        .await
+        .context("getting state file for project")?
+        .text()
+        .await?;
+    let previous_state: State = serde_json::from_str(&previous_state_json).context("parsing state with serde")?;
+    Ok(previous_state)
+}
+
+/// Send new state to be written on server
+pub async fn write_state_request(
+    http_client: &Client,
+    server_conn: &String,
+    project_name: &String,
+    state: &State,
+) -> anyhow::Result<()> {
+    http_client.post(format!("{}api/deployments/{}/state", server_conn, project_name)).json(&state).send().await?;
+    Ok(())
 }
 
 pub async fn create_logical_testbed(
@@ -348,8 +365,8 @@ pub async fn create_remote_project_folders(
     tracing::info!("creating remote project folders");
 
     for (host_name, host_config) in &common.testbed_hosts {
-        if !host_config.is_master_host {
-            // not master, create testbed projects folder
+        if !host_config.is_main_host {
+            // not main, create testbed projects folder
             let folder = format!(
                 "/home/{}/testbed-projects/{}/artefacts/",
                 host_config.username,
@@ -375,8 +392,8 @@ pub async fn destroy_remote_project_folders(
     tracing::info!("destroying remote project folders");
 
     for (host_name, host_config) in &common.testbed_hosts {
-        if !host_config.is_master_host {
-            // not master, create testbed projects folder
+        if !host_config.is_main_host {
+            // not main, create testbed projects folder
             let folder = format!(
                 "/home/{}/testbed-projects/{}/",
                 host_config.username,

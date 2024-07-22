@@ -11,7 +11,7 @@ use kvm_compose_schemas::kvm_compose_yaml::machines::docker::ConfigDockerMachine
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::{ConfigLibvirtMachine, LibvirtGuestOptions};
 use crate::components::get_guest_interface_name;
-use crate::orchestration::{is_master, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail};
+use crate::orchestration::{is_main_testbed, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail};
 use crate::orchestration::ssh::SSHClient;
 use crate::ovn::components::logical_switch_port::LogicalSwitchPortType;
 use crate::state::{State, StateNetwork, StateTestbedGuest, StateTestbedGuestList};
@@ -77,7 +77,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
             let backing_image_clone = self.is_clone_of.as_ref().unwrap();
             tracing::info!("creating clone guest {} from {}", &machine_config.guest_type.name, backing_image_clone);
 
-            let master_testbed = get_master_testbed_name(&common);
+            let main_testbed = get_main_testbed_name(&common);
 
             let project_folder = common.project_working_dir.to_str().unwrap();
             let guest_name_no_project = &machine_config.guest_type.name;
@@ -103,7 +103,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
             let cmd = vec!["qemu-img", "create", "-f", "qcow2", "-b", backing_image_location.to_str().unwrap(), "-F", "qcow2", &clone_image_location];
             let clone_create_res = run_testbed_orchestration_command(
                 &common,
-                &master_testbed,
+                &main_testbed,
                 "sudo",
                 cmd,
                 false,
@@ -138,10 +138,10 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 
         let mut futures = Vec::new();
 
-        // check if the guest is on master or not
+        // check if the guest is on main testbed or not
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
-        if !is_master(&common, testbed_host) {
-            // not on master, must push files
+        if !is_main_testbed(&common, testbed_host) {
+            // not on main testbed, must push files
 
             // get image
             let project_path = common.project_working_dir.to_str().unwrap().to_string();
@@ -226,11 +226,11 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
     async fn pull_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
         let target_testbed = machine_config.testbed_host.as_ref().unwrap();
         let guest_name = format!("{}", &machine_config.guest_type.name);
-        if is_master(&common, target_testbed) {
+        if is_main_testbed(&common, target_testbed) {
             // clone is local, dont rebase
             return Ok(());
         } else {
-            tracing::info!("pulling guest {} image from testbed host {} to master", &guest_name, target_testbed);
+            tracing::info!("pulling guest {} image from testbed host {} to main testbed", &guest_name, target_testbed);
             let remote_image_path = match &self.libvirt_type {
                 LibvirtGuestOptions::CloudImage { path, .. } => path.as_ref().unwrap(),
                 LibvirtGuestOptions::ExistingDisk { path, .. } => path,
@@ -252,7 +252,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
     async fn rebase_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest, guest_list: StateTestbedGuestList) -> anyhow::Result<()> {
         tracing::info!("rebasing image for guest {}", &machine_config.guest_type.name);
         let target_testbed = machine_config.testbed_host.as_ref().unwrap();
-        if is_master(&common, target_testbed) {
+        if is_main_testbed(&common, target_testbed) {
             // clone is local, dont rebase
             return Ok(());
         }
@@ -285,7 +285,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
     async fn create_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
         tracing::info!("deploying guest {}", &machine_config.guest_type.name);
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
-        let project_path = if is_master(&common, testbed_host) {
+        let project_path = if is_main_testbed(&common, testbed_host) {
             common.project_working_dir.to_str().unwrap().to_string()
         } else {
             let testbed_user = &common.testbed_hosts.get(testbed_host)
@@ -323,41 +323,45 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         }
         // only provision an OVN port of is not a backing image guest (linked clones)
         if self.scaling.is_none() {
-            let interface = get_guest_interface_name(&common.project_name, machine_config.guest_id);
-            tracing::info!("creating guest {} OVS port {} to bind to OVN network", &machine_config.guest_type.name, &interface);
             // add guest's interface to network
             // TODO - need to get OVN integration bridge name from config rather than hardcode
             let net = &machine_config.guest_type.network
                 .context("getting guest network in libvirt create action")?;
-            let lsp = format!("{}-{}-{}", &common.project_name, net.switch, &machine_config.guest_type.name);
-            let ext_id = format!("external_ids:iface-id={}", &lsp);
 
-            let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
-                .unwrap().ovn.bridge;
+            for (idx, machine_network) in net.iter().enumerate() {
+                let interface = get_guest_interface_name(&common.project_name, machine_config.guest_id, idx);
+                tracing::info!("creating guest {} OVS port {} to bind to OVN network", &machine_config.guest_type.name, &interface);
 
-            let cmd = vec![
-                "ovs-vsctl", "add-port", integration_bridge, &interface,
-                "--", "set", "Interface", &interface,
-                &ext_id,
-            ];
-            let create_guest_port_res = run_testbed_orchestration_command(
-                &common,
-                testbed_host,
-                "sudo",
-                cmd,
-                false,
-                None,
-            ).await;
-            match create_guest_port_res {
-                Ok(_) => {}
-                Err(err) => {
-                    let expected_err = "already exists on bridge".to_string();
-                    return if !err.to_string().trim().contains(&expected_err) {
-                        // error in joining blocking thread
-                        Err(err)
-                    } else {
-                        tracing::warn!("tried to add guest {} interface {} but it already exists, continuing...", &machine_config.guest_type.name, &interface);
-                        Ok(())
+                let lsp = format!("{}-{}-{}-{}", &common.project_name, machine_network.switch, &machine_config.guest_type.name, idx);
+                let ext_id = format!("external_ids:iface-id={}", &lsp);
+
+                let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
+                    .unwrap().ovn.bridge;
+
+                let cmd = vec![
+                    "ovs-vsctl", "add-port", integration_bridge, &interface,
+                    "--", "set", "Interface", &interface,
+                    &ext_id,
+                ];
+                let create_guest_port_res = run_testbed_orchestration_command(
+                    &common,
+                    testbed_host,
+                    "sudo",
+                    cmd,
+                    false,
+                    None,
+                ).await;
+                match create_guest_port_res {
+                    Ok(_) => {}
+                    Err(err) => {
+                        let expected_err = "already exists on bridge".to_string();
+                        return if !err.to_string().trim().contains(&expected_err) {
+                            // error in joining blocking thread
+                            Err(err)
+                        } else {
+                            tracing::warn!("tried to add guest {} interface {} but it already exists, continuing...", &machine_config.guest_type.name, &interface);
+                            Ok(())
+                        }
                     }
                 }
             }
@@ -420,17 +424,20 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
             // skip OVN bit for backing image guests, they dont have a port
             return Ok(());
         }
-        // destroy the port
-        let interface = get_guest_interface_name(&common.project_name, machine_config.guest_id);
-        let cmd = vec!["ovs-vsctl", "del-port", &interface];
-        run_testbed_orchestration_command_allow_fail(
-            &common,
-            machine_config.testbed_host.as_ref().unwrap(),
-            "sudo",
-            cmd,
-            false,
-            None,
-        ).await?;
+        // destroy the port(s)
+
+        for (idx, _) in machine_config.guest_type.network.iter().enumerate() {
+            let interface = get_guest_interface_name(&common.project_name, machine_config.guest_id, idx);
+            let cmd = vec!["ovs-vsctl", "del-port", &interface];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                machine_config.testbed_host.as_ref().unwrap(),
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+        }
 
         Ok(())
     }
@@ -469,7 +476,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
 
         let mut futures = Vec::new();
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
-        if !is_master(&common, testbed_host) {
+        if !is_main_testbed(&common, testbed_host) {
             // TODO - if the image is a local only image, needs to be pushed
 
             tracing::info!("pushing artefacts for guest {} to {}", &machine_config.guest_type.name, &testbed_host);
@@ -560,7 +567,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
         if let Some(env_file) = &self.env_file {
             cmd_string.push("--env-file".to_string());
             // need to set the absolute path for env file since it might be running on remote
-            if is_master(&common, testbed_host) {
+            if is_main_testbed(&common, testbed_host) {
                 cmd_string.push(format!("{env_file}"));
             } else {
                 // on remote
@@ -592,8 +599,12 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
             .context("getting guest network in docker create action")?;
 
         // add dns servers to prevent the use of the host's dns. add cloudflare and the libvirt dns
-        if let Some(gateway) = &net.gateway {
-            cmd_string.push(format!("--dns={}", gateway));
+        // assume there is only one interface for docker
+        if !net.is_empty() {
+            // for now assume only one interface
+            if let Some(gateway) = &net[0].gateway {
+                cmd_string.push(format!("--dns={}", gateway));
+            }
         }
 
         // cmd_string.push(format!("--dns=1.0.0.1"));
@@ -617,9 +628,6 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
             cmd_string.push(command.clone());
         }
 
-        // get bridge from config, logical testbed should ensure that this is Some
-        let ip = self.static_ip.as_ref().context("docker guest has no IP, something went wrong")?;
-
         let mut ovs_cmd = vec!["sudo".to_string(), "ovs-docker".to_string(), "add-port".to_string()];
 
         let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
@@ -633,31 +641,38 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
 
         match &common.network {
             StateNetwork::Ovn(ovn) => {
-                let lsp_name = format!("{}-{}-{}", &common.project_name, &net.switch, &machine_config.guest_type.name);
-                let lsp = ovn.switch_ports.get(&lsp_name)
-                    .context(format!("Getting LSP for docker guest {}", &guest_name))?;
-                // do ip address
-                // if guest has been given a dynamic ip, need to check on OVN for the assigned ip
-                if ip.eq("dynamic") {
-                    let dynamic_ip = get_lsp_dynamic_ip(&lsp_name, testbed_host, &common).await?;
-                    ovs_cmd.push(format!("--ipaddress={dynamic_ip}/24"));
-                } else {
-                    ovs_cmd.push(format!("--ipaddress={ip}/24"));
-                }
+                if !net.is_empty() {
+                    // assume only interface
+                    let lsp_name = format!("{}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
+                    let lsp = ovn.switch_ports.get(&lsp_name)
+                        .context(format!("Getting LSP for docker guest {}", &guest_name))?;
+                    // do ip address
+                    // if guest has been given a dynamic ip, need to check on OVN for the assigned ip
+                    let ip = &net[0].ip;
+                    if ip.eq("dynamic") {
+                        let dynamic_ip = get_lsp_dynamic_ip(&lsp_name, testbed_host, &common).await?;
+                        ovs_cmd.push(format!("--ipaddress={dynamic_ip}/24"));
+                    } else {
+                        ovs_cmd.push(format!("--ipaddress={ip}/24"));
+                    }
 
-                // do mac address
-                let mac = match &lsp.port_type {
-                    LogicalSwitchPortType::Internal { mac_address, .. } => mac_address.address.clone(),
-                    _ => unreachable!(),
-                };
-                ovs_cmd.push(format!("--macaddress={mac}"));
+                    // do mac address
+                    let mac = match &lsp.port_type {
+                        LogicalSwitchPortType::Internal { mac_address, .. } => mac_address.address.clone(),
+                        _ => unreachable!(),
+                    };
+                    ovs_cmd.push(format!("--macaddress={mac}"));
+                }
             }
             StateNetwork::Ovs(_) => unimplemented!(),
         };
 
 
-        if let Some(gateway) = &net.gateway {
-            ovs_cmd.push(format!("--gateway={gateway}"));
+        // assume only one interface
+        if !net.is_empty() {
+            if let Some(gateway) = &net[0].gateway {
+                ovs_cmd.push(format!("--gateway={gateway}"));
+            }
         }
 
         // in the case when container is already defined on target host, but is not running we need
@@ -702,17 +717,19 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
                             None,
                         ).await?;
                     }
-                    // and remove the ovs bridge
-                    let port = format!("{}-{}-{}", common.project_name, &net.switch, &machine_config.guest_type.name);
-                    let cmd = vec!["ovs-docker", "del-port", &port, "eth0", &guest_name];
-                    run_testbed_orchestration_command(
-                        &common,
-                        testbed_host,
-                        "sudo",
-                        cmd,
-                        false,
-                        None,
-                    ).await?;
+                    if !net.is_empty() {
+                        // and remove the ovs bridge - assume one interface
+                        let port = format!("{}-{}-{}-0", common.project_name, &net[0].switch, &machine_config.guest_type.name);
+                        let cmd = vec!["ovs-docker", "del-port", &port, "eth0", &guest_name];
+                        run_testbed_orchestration_command(
+                            &common,
+                            testbed_host,
+                            "sudo",
+                            cmd,
+                            false,
+                            None,
+                        ).await?;
+                    }
 
                 } else {
                     tracing::info!("guest container {guest_name} already defined")
@@ -795,19 +812,22 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
                 .context("stripping newline from docker port uuid")?.to_string();
             // now set the external id on this interface with the OVN data so that it is bound to
             // our logical network
-            let iface_id = format!("external_ids:iface-id={}-{}-{}", &common.project_name, &net.switch, &machine_config.guest_type.name);
-            let set_interface_cmd = vec![
-                "ovs-vsctl", "set", "interface", &port_uuid, &iface_id
-            ];
-            tracing::debug!("docker set interface cmd: {:?}", set_interface_cmd);
-            run_testbed_orchestration_command(
-                &common,
-                testbed_host,
-                "sudo",
-                set_interface_cmd,
-                false,
-                None,
-            ).await?;
+            if !net.is_empty() {
+                // assume one interface
+                let iface_id = format!("external_ids:iface-id={}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
+                let set_interface_cmd = vec![
+                    "ovs-vsctl", "set", "interface", &port_uuid, &iface_id
+                ];
+                tracing::debug!("docker set interface cmd: {:?}", set_interface_cmd);
+                run_testbed_orchestration_command(
+                    &common,
+                    testbed_host,
+                    "sudo",
+                    set_interface_cmd,
+                    false,
+                    None,
+                ).await?;
+            }
         }
 
         Ok(())
@@ -905,7 +925,7 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
 
         tracing::info!("deploying guest {}", &machine_config.guest_type.name);
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
-        if !is_master(&common, testbed_host) {
+        if !is_main_testbed(&common, testbed_host) {
             bail!("currently dont support AVD guests on remote testbed hosts");
         }
 
@@ -919,93 +939,94 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
         let namespace = format!("{project_name}-{guest_name}-nmspc");
         let net = &machine_config.guest_type.network
             .context("getting guest network in android create action")?;
-        let guest_interface = get_guest_interface_name(&common.project_name, machine_config.guest_id);
-        let lsp_name = format!("{}-{}-{}", &common.project_name, &net.switch, &machine_config.guest_type.name);
-        let mac = match &common.network {
-            StateNetwork::Ovn(ovn) => {
-                let lsp = ovn.switch_ports.get(&lsp_name)
-                    .context(format!("Getting LSP for android guest {}", &guest_name))?;
-                match &lsp.port_type {
-                    LogicalSwitchPortType::Internal { mac_address, .. } => mac_address.address.clone(),
-                    _ => unreachable!(),
+        if !net.is_empty() {
+            // only one interface allowed
+            let guest_interface = get_guest_interface_name(&common.project_name, machine_config.guest_id, 0);
+            let lsp_name = format!("{}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
+            let mac = match &common.network {
+                StateNetwork::Ovn(ovn) => {
+                    let lsp = ovn.switch_ports.get(&lsp_name)
+                        .context(format!("Getting LSP for android guest {}", &guest_name))?;
+                    match &lsp.port_type {
+                        LogicalSwitchPortType::Internal { mac_address, .. } => mac_address.address.clone(),
+                        _ => unreachable!(),
+                    }
                 }
-            }
-            StateNetwork::Ovs(_) => unimplemented!(),
-        };
-        let gateway = &net.gateway.as_ref()
-            .context("android guest was not given a gateway")?;
+                StateNetwork::Ovs(_) => unimplemented!(),
+            };
+            let gateway = &net[0].gateway.as_ref()
+                .context("android guest was not given a gateway")?;
 
-        // create port for android guest
-        let iface_id = format!("external_ids:iface-id={}", &lsp_name);
-        let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
-            .unwrap().ovn.bridge;
-        let cmd = vec![
-            "ovs-vsctl", "--may-exist", "add-port", integration_bridge, &guest_interface,
-            "--", "set", "Interface", &guest_interface, "type=internal",
-            "--", "set", "Interface", &guest_interface, &iface_id,
-        ];
-        run_testbed_orchestration_command_allow_fail(
-            &common,
-            testbed_host,
-            "sudo",
-            cmd,
-            false,
-            None,
-        ).await?;
+            // create port for android guest
+            let iface_id = format!("external_ids:iface-id={}", &lsp_name);
+            let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
+                .unwrap().ovn.bridge;
+            let cmd = vec![
+                "ovs-vsctl", "--may-exist", "add-port", integration_bridge, &guest_interface,
+                "--", "set", "Interface", &guest_interface, "type=internal",
+                "--", "set", "Interface", &guest_interface, &iface_id,
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
 
 
-        // create namespace
-        let cmd = vec!["ip", "netns", "add", &namespace];
-        run_testbed_orchestration_command_allow_fail(
-            &common,
-            testbed_host,
-            "sudo",
-            cmd,
-            false,
-            None,
-        ).await?;
-        // make sure loopback is up
-        let cmd = vec!["ip", "netns", "exec", &namespace, "ip", "link", "set", "dev", "lo", "up"];
-        run_testbed_orchestration_command_allow_fail(
-            &common,
-            testbed_host,
-            "sudo",
-            cmd,
-            false,
-            None,
-        ).await?;
-        // put ovs port into namespace
-        let cmd = vec![
-            "ip", "link", "set", &guest_interface, "netns", &namespace,
-        ];
-        run_testbed_orchestration_command_allow_fail(
-            &common,
-            testbed_host,
-            "sudo",
-            cmd,
-            false,
-            None,
-        ).await?;
-        // set mac address of ovs port
-        let cmd = vec![
-            "ip", "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "address", &mac
-        ];
-        run_testbed_orchestration_command_allow_fail(
-            &common,
-            testbed_host,
-            "sudo",
-            cmd,
-            false,
-            None,
-        ).await?;
-        // set ip of ovs port
-        if let Some(namespace_ip) = &self.static_ip {
-            let ip = if namespace_ip.eq("dynamic") {
-                let lsp_name = format!("{}-{}-{}", &common.project_name, &net.switch, &machine_config.guest_type.name);
+            // create namespace
+            let cmd = vec!["ip", "netns", "add", &namespace];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+            // make sure loopback is up
+            let cmd = vec!["ip", "netns", "exec", &namespace, "ip", "link", "set", "dev", "lo", "up"];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+            // put ovs port into namespace
+            let cmd = vec![
+                "ip", "link", "set", &guest_interface, "netns", &namespace,
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+            // set mac address of ovs port
+            let cmd = vec![
+                "ip", "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "address", &mac
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+            // set ip of ovs port
+            let ip = if net[0].ip.eq("dynamic") {
+                let lsp_name = format!("{}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
                 let dynamic_ip = get_lsp_dynamic_ip(&lsp_name, testbed_host, &common).await?;
                 dynamic_ip
             } else {
-                namespace_ip.clone()
+                net[0].ip.clone()
             };
             // TODO - get mask for this ip
             let namespace_ip = format!("{ip}/24");
@@ -1020,35 +1041,32 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
                 false,
                 None,
             ).await?;
-        } else {
-            bail!("guest {guest_name} was not given an ip address");
+
+            // set ovs port up
+            let cmd = vec![
+                "ip", "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "up"
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+            // set default route for ovs port
+            let cmd = vec![
+                "ip", "netns", "exec", &namespace, "ip", "route", "add", "default", "via", gateway, "dev", &guest_interface,
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
         }
-
-
-        // set ovs port up
-        let cmd = vec![
-            "ip", "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "up"
-        ];
-        run_testbed_orchestration_command_allow_fail(
-            &common,
-            testbed_host,
-            "sudo",
-            cmd,
-            false,
-            None,
-        ).await?;
-        // set default route for ovs port
-        let cmd = vec![
-            "ip", "netns", "exec", &namespace, "ip", "route", "add", "default", "via", gateway, "dev", &guest_interface,
-        ];
-        run_testbed_orchestration_command_allow_fail(
-            &common,
-            testbed_host,
-            "sudo",
-            cmd,
-            false,
-            None,
-        ).await?;
 
 
         // finally, deploy avd in background
@@ -1085,7 +1103,7 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
         let project_name = &common.project_name;
         let namespace = format!("{project_name}-{guest_name}-nmspc");
 
-        let guest_interface = get_guest_interface_name(&common.project_name, machine_config.guest_id);
+        let guest_interface = get_guest_interface_name(&common.project_name, machine_config.guest_id, 0);
 
         // kill avd using ADB - will be the only emulator in namespace so will be called emulator-5554
         // with respect to the ADB server, since it is isolated
@@ -1186,15 +1204,15 @@ pub async fn calculate_backing_images_to_push(
 ) -> anyhow::Result<HashSet<(String, String)>> {
     // look at only the clones to see which remote testbed hosts they are being assigned so that we
     // can push a copy of the backing image to that testbed host
-    let master_testbed_name = get_master_testbed_name(common);
+    let main_testbed_name = get_main_testbed_name(common);
     // use a set to prevent duplicates
     let mut assignment = HashSet::new();
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
             GuestType::Libvirt(libvirt) => {
-                // check if guest is a clone and if not on the master testbed
+                // check if guest is a clone and if not on the main testbed
                 let guest_testbed = guest_data.testbed_host.as_ref().unwrap();
-                if libvirt.is_clone_of.is_some() && !guest_testbed.eq(&master_testbed_name) {
+                if libvirt.is_clone_of.is_some() && !guest_testbed.eq(&main_testbed_name) {
                     // need to push a copy
                     let backing_image_name = libvirt.is_clone_of.as_ref().unwrap();
                     assignment.insert((backing_image_name.clone(), guest_testbed.clone()));
@@ -1209,14 +1227,14 @@ pub async fn calculate_backing_images_to_push(
     Ok(assignment)
 }
 
-pub fn get_master_testbed_name(
+pub fn get_main_testbed_name(
     common: &OrchestrationCommon,
 ) -> String {
-    let master_testbed = {
+    let main_testbed = {
         let temp: Vec<_> = common.testbed_hosts
             .iter()
             .filter(|(_, data)| {
-                if data.is_master_host {
+                if data.is_main_host {
                     true
                 } else {
                     false
@@ -1224,9 +1242,9 @@ pub fn get_master_testbed_name(
             })
             .map(|(name, _)| {name})
             .collect();
-        temp[0] // get just the master as the vec is len 1
+        temp[0] // get just the main as the vec is len 1
     };
-    master_testbed.clone()
+    main_testbed.clone()
 }
 
 pub fn get_backing_image_local_path(

@@ -8,7 +8,6 @@ use std::path::{PathBuf};
 use async_trait::async_trait;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
-use crate::components;
 use crate::ovn::components::MacAddress;
 
 // This file describes all the different possible guests the kvm-compose yaml file supports.
@@ -51,7 +50,7 @@ pub fn get_guest_from_config(
 /// due to definitions that have scaling. Scaling guests do not have a network section as they
 /// represent the base image and are provisioned differently, only the clones of these guests have
 /// networks.
-fn get_guest_network<G: TestbedGuest>(guest: &G) -> anyhow::Result<MachineNetwork> {
+fn get_guest_network<G: TestbedGuest>(guest: &G) -> anyhow::Result<Vec<MachineNetwork>> {
     if let Some(net) = guest.get_machine_definition().network {
         Ok(net)
     } else {
@@ -65,14 +64,14 @@ pub struct LibvirtGuest {
     pub config_machine: Machine,
     pub testbed_host: Option<String>,
     pub original_disk_path: Option<PathBuf>,
-    // is either master filesystem or remote filesystem path
+    // is either main filesystem or remote filesystem path
     pub disk_path: Option<String>,
     pub iso_path: Option<String>,
-    // master filesystem, path to disk
-    pub master_disk_path: Option<String>,
-    // master filesystem, path to guest folder
+    // main filesystem, path to disk
+    pub main_testbed_disk_path: Option<String>,
+    // main filesystem, path to guest folder
     pub path_for_command: Option<String>,
-    // is either master filesystem or remote filesystem path
+    // is either main filesystem or remote filesystem path
     pub guest_folder: Option<String>,
     pub path_to_domain_xml: Option<String>,
     pub mac_address: Option<MacAddress>,
@@ -89,7 +88,7 @@ impl TestbedGuest for LibvirtGuest {
             original_disk_path: None,
             disk_path: None,
             iso_path: None,
-            master_disk_path: None,
+            main_testbed_disk_path: None,
             path_for_command: None,
             guest_folder: None,
             path_to_domain_xml: None,
@@ -104,8 +103,8 @@ impl TestbedGuest for LibvirtGuest {
         &self.config_machine.name
     }
 
-    fn get_network(&self) -> anyhow::Result<String> {
-        Ok(get_guest_network(self)?.switch)
+    fn get_network(&self) -> anyhow::Result<Vec<MachineNetwork>> {
+        Ok(get_guest_network(self)?)
     }
 
     fn get_machine_definition(&self) -> Machine {
@@ -116,31 +115,8 @@ impl TestbedGuest for LibvirtGuest {
         &mut self.config_machine
     }
 
-    // fn set_mac_address(&mut self, mac_address: MacAddress) {
-    //     self.mac_address = Some(mac_address);
-    // }
-
-    fn get_mac_address(&self) -> anyhow::Result<MacAddress> {
-        MacAddress::new(
-            self.config_machine.network.as_ref()
-                .context("getting mac address for guest")?.mac.clone()
-        )
-    }
-
-    fn get_gateway(&self) -> Option<String> {
-        if let Some(net) = &self.config_machine.network {
-            net.gateway.clone()
-        } else {
-            None
-        }
-    }
-
     fn get_guest_id(&self) -> u32 {
         self.unique_id
-    }
-
-    fn get_interface_name(&self, project_name: &String) -> String {
-        components::get_guest_interface_name(project_name, self.unique_id)
     }
 
     fn get_reference_image(&self) -> anyhow::Result<Option<String>> {
@@ -182,20 +158,16 @@ impl TestbedComponent for LibvirtGuest {
         &self.testbed_host
     }
 
-    fn set_static_ip(&mut self, in_ip: String) {
-        self.ip_address = Some(in_ip);
-    }
-
     fn get_static_ip(&self) -> Option<String> {
         self.ip_address.clone()
     }
 
     fn specialise(&mut self, context: &SpecialisationContext) -> anyhow::Result<()> {
-        // check if guest is on master or not
+        // check if guest is on main or not
         let testbed_host_name = self.get_testbed_host().clone().unwrap();
         let project_path = context.project_folder_path.to_str().unwrap().to_string();
-        let local_path = if context.master_host.eq(&testbed_host_name) {
-            // on master
+        let local_path = if context.main_host.eq(&testbed_host_name) {
+            // on main
             format!("{project_path}/artefacts/")
         } else {
             let remote_host_username =
@@ -250,7 +222,7 @@ impl TestbedComponent for LibvirtGuest {
         };
 
         // get the local disk path even if guest will be on remote
-        self.master_disk_path = match &self.config_machine.guest_type {
+        self.main_testbed_disk_path = match &self.config_machine.guest_type {
             GuestType::Libvirt(libvirt_guest) => {
                 let folder_for_script = self.path_for_command.clone().unwrap();
                 if libvirt_guest.is_clone_of.is_some() {
@@ -327,7 +299,7 @@ pub struct DockerGuest {
     pub config_machine: Machine,
     pub testbed_host: Option<String>,
     pub container_name: Option<String>,
-    // change dir for running docker command, depends on if master or remote testbed host
+    // change dir for running docker command, depends on if main or remote testbed host
     pub change_dir: Option<String>,
     pub unique_id: u32,
 }
@@ -347,8 +319,8 @@ impl TestbedGuest for DockerGuest {
         &self.config_machine.name
     }
 
-    fn get_network(&self) -> anyhow::Result<String> {
-        Ok(get_guest_network(self)?.switch)
+    fn get_network(&self) -> anyhow::Result<Vec<MachineNetwork>> {
+        Ok(get_guest_network(self)?)
     }
 
     fn get_machine_definition(&self) -> Machine {
@@ -359,31 +331,8 @@ impl TestbedGuest for DockerGuest {
         &mut self.config_machine
     }
 
-    // fn set_mac_address(&mut self, mac_address: MacAddress) {
-    //     self.mac_address = Some(mac_address);
-    // }
-
-    fn get_mac_address(&self) -> anyhow::Result<MacAddress> {
-        MacAddress::new(
-            self.config_machine.network.as_ref()
-                .context("getting mac address for guest")?.mac.clone()
-        )
-    }
-
-    fn get_gateway(&self) -> Option<String> {
-        if let Some(net) = &self.config_machine.network {
-            net.gateway.clone()
-        } else {
-            None
-        }
-    }
-
     fn get_guest_id(&self) -> u32 {
         self.unique_id
-    }
-
-    fn get_interface_name(&self, project_name: &String) -> String {
-        components::get_guest_interface_name(project_name, self.unique_id)
     }
 
     fn get_reference_image(&self) -> anyhow::Result<Option<String>> {
@@ -403,15 +352,6 @@ impl TestbedComponent for DockerGuest {
         &self.testbed_host
     }
 
-    fn set_static_ip(&mut self, in_ip: String) {
-        match self.config_machine.guest_type {
-            GuestType::Docker(ref mut docker) => {
-                docker.static_ip = Some(in_ip)
-            }
-            _ => unreachable!()
-        }
-    }
-
     fn get_static_ip(&self) -> Option<String> {
         match &self.config_machine.guest_type {
             GuestType::Docker(docker) => {
@@ -424,8 +364,8 @@ impl TestbedComponent for DockerGuest {
     fn specialise(&mut self, context: &SpecialisationContext) -> anyhow::Result<()> {
         self.container_name = Some(format!("{}-{}", context.project_name, self.get_guest_name()).clone());
 
-        self.change_dir = if context.master_host.eq(self.testbed_host.as_ref().unwrap()) {
-            // is on master
+        self.change_dir = if context.main_host.eq(self.testbed_host.as_ref().unwrap()) {
+            // is on main
             Some(context.project_folder_path.to_str().unwrap().to_string())
         } else {
             let testbed_host_name = self.get_testbed_host().clone().unwrap();
@@ -478,8 +418,8 @@ impl TestbedGuest for AndroidGuest {
         &self.config_machine.name
     }
 
-    fn get_network(&self) -> anyhow::Result<String> {
-        Ok(get_guest_network(self)?.switch)
+    fn get_network(&self) -> anyhow::Result<Vec<MachineNetwork>> {
+        Ok(get_guest_network(self)?)
     }
 
     fn get_machine_definition(&self) -> Machine {
@@ -490,31 +430,8 @@ impl TestbedGuest for AndroidGuest {
         &mut self.config_machine
     }
 
-    // fn set_mac_address(&mut self, mac_address: MacAddress) {
-    //     self.mac_address = Some(mac_address);
-    // }
-
-    fn get_mac_address(&self) -> anyhow::Result<MacAddress> {
-        MacAddress::new(
-            self.config_machine.network.as_ref()
-                .context("getting mac address for guest")?.mac.clone()
-        )
-    }
-
-    fn get_gateway(&self) -> Option<String> {
-        if let Some(net) = &self.config_machine.network {
-            net.gateway.clone()
-        } else {
-            None
-        }
-    }
-
     fn get_guest_id(&self) -> u32 {
         self.unique_id
-    }
-
-    fn get_interface_name(&self, project_name: &String) -> String {
-        components::get_guest_interface_name(project_name, self.unique_id)
     }
 
     fn get_reference_image(&self) -> anyhow::Result<Option<String>> {
@@ -531,15 +448,6 @@ impl TestbedComponent for AndroidGuest {
 
     fn get_testbed_host(&self) -> &Option<String> {
         &self.testbed_host
-    }
-
-    fn set_static_ip(&mut self, in_ip: String) {
-        match self.config_machine.guest_type {
-            GuestType::Android(ref mut android) => {
-                android.static_ip = Some(in_ip)
-            }
-            _ => unreachable!()
-        }
     }
 
     fn get_static_ip(&self) -> Option<String> {

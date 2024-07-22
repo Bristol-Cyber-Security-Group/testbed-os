@@ -1,0 +1,92 @@
+machines:
+
+  - name: client1
+    network:
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:01"
+        ip: "10.0.0.10"
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:02"
+        ip: "10.0.0.11"
+    libvirt:
+      cpus: 2
+      memory_mb: 2048
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 5
+
+  - name: client2
+    network:
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:03"
+        ip: "10.0.0.12"
+    libvirt:
+      cpus: 2
+      memory_mb: 2048
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 5
+
+network:
+  ovn:
+    switches:
+
+      sw0:
+        subnet: "10.0.0.0/24"
+
+      public:
+        subnet: "172.16.1.0/24"
+        ports:
+          - name: ls-public
+            localnet:
+              network_name: public
+
+    routers:
+
+      lr0:
+        ports:
+
+          - name: lr0-sw0
+            mac: "00:00:00:00:ff:01"
+            gateway_ip: "10.0.0.1/24"
+            switch: sw0
+
+          - name: lr0-public
+            mac: "00:00:20:20:12:13"
+            gateway_ip: "172.16.1.200/24"
+            switch: public
+            set_gateway_chassis: main
+
+        static_routes:
+          - prefix: "0.0.0.0/0"
+            nexthop: "172.16.1.1"
+
+        nat:
+          - nat_type: snat
+            external_ip: "172.16.1.200"
+            logical_ip: "10.0.0.0/16"
+
+    acl:
+      apply_deny_all: false
+      switches:
+        sw0:
+          - direction: to-lport
+            priority: 1001
+            match: "ip"
+            action: drop
+          # allow client1 to communicate with client2 via second interface
+          - direction: to-lport
+            priority: 1002
+            match: "ip4 && ip4.src == 10.0.0.11 && ip4.dst == 10.0.0.12"
+            action: allow-related
+          # allow client2 to communicate with client1 only via first interface
+          - direction: to-lport
+            priority: 1003
+            match: "ip4 && ip4.src == 10.0.0.12 && ip4.dst == 10.0.0.11"
+            action: allow-related
+

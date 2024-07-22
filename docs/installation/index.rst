@@ -5,11 +5,13 @@ Testbed OS Installation
 There are various dependencies needed to be installed with some based configuration needed to get the testbed ready to deploy test cases.
 This installation guide will outline each component needed.
 
-The following dependency install has been packaged together into the ``pre-req-setup.sh`` script in the root of the repo (for ubuntu/debian based distros, replace ``apt`` with your distributions package manager i.e. ``pacman``).
+The following dependency install has been packaged together into the ``pre-req-setup.sh`` script in the root of the repo designed for ubuntu/debian based distros.
+The script will check if the software is already installed and if the version is correct.
 Note that this script will try to edit your bash profile such as ``~/.bashrc``, please check the script and comment out anything you do not want to be executed.
-This script is used in the projects test quite (see test-harness folder in the root of the repo), so will be working on a fresh ubuntu install.
+This script is used in the projects test suite (see test-harness folder in the root of the repo), so will be working on a fresh ubuntu install.
 
 You can either follow the instructions in this document, or run ``./pre-req-setup.sh`` script in the root of the repo automate the pre-requisite dependencies installation.
+Note that the script will ask you to confirm what it will install after it has run checks.
 
 Host Dependencies
 -----------------
@@ -27,19 +29,16 @@ While it is possible to use others, you will need to manually replace the use of
 The use of ``poetry run`` for ad-hoc use of the python environment to remove the need to load the virtual environment in the current session.
 
 
-Compile-time
-^^^^^^^^^^^^
-
-``sudo apt install libvirt-dev libssl-dev gcc make zlib1g zlib1g-dev libssl-dev libbz2-dev libsqlite3-dev libffi-dev libncurses5 libncurses5-dev libncursesw5 libreadline-dev lzma liblzma-dev libbz2-dev libtool autoconf``
-
-For building python with pyenv
-
-``sudo apt install libffi-dev libncurses5 libncurses5-dev libncursesw5 libreadline-dev lzma liblzma-dev libbz2-dev``
-
 Runtime
 ^^^^^^^
 
-``sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients libnss-libvirt genisoimage``
+The dependency ``genisoimage`` is used to create .iso files for cloud-image guest startup configuration.
+
+The dependency ``virt-manager`` is used as a graphical viewer for libvirt guests.
+Virtual Machine manager is a useful GUI for libvirt, which allows you to inspect the network and guest configuration.
+It also allows you to open a graphical window to the guest which will either be a terminal or the graphical desktop if installed.
+
+Consider using ``sudo virsh console <guest name>`` to open a TTY to the guest as the graphical window may not support copy paste etc without guest tools installed.
 
 OVN and OVS
 ^^^^^^^^^^^
@@ -67,6 +66,8 @@ Docker
 ^^^^^^
 
 Docker is used to allow the user to deploy containers on the testbed, the installation steps for docker are the same as in `https://docs.docker.com/desktop/install/linux-install/`.
+If you are already using Docker Desktop, do not install docker via this documentation or scripts.
+We can re-use the Docker installation.
 
 Android Emulator
 ^^^^^^^^^^^^^^^^
@@ -104,15 +105,6 @@ You must accept the licenses with `sdkmanager --licenses` or `yes | sdkmanager -
 
 Then you will need to install the emulator with `sdkmanager --install "emulator" "platform-tools"`.
 
-Optional
-^^^^^^^^
-
-``sudo apt install virt-manager``
-
-Virtual Machine manager is a useful GUI for libvirt, which allows you to inspect the network and guest configuration.
-It also allows you to open a graphical window to the guest which will either be a terminal or the graphical desktop if installed.
-
-Consider using ``sudo virsh console <guest name>`` to open a TTY to the guest as the graphical window may not support copy paste etc without guest tools installed.
 
 Setup Testbed
 -------------
@@ -124,16 +116,6 @@ Execute::
 
 to compile the rust code, build the poetry virtual environments and documentation for the project.
 
-
-Setup local DNS
----------------
-
-With the libnss-libvirt package, you will need to edit the following file /etc/nsswitch.conf and add libvirt to the hosts config as so (your list may differ, that is fine just add libvirt to the end)::
-
-    hosts:          files mdns4_minimal resolve dns mymachines libvirt
-
-This will allow you to SSH directly to the guest via their hostname which will resolve to their local IP address.
-You must do this or the ``kvm-orchestrator`` tool will not work.
 
 Configure Libvirt User Permissions
 ----------------------------------
@@ -170,7 +152,7 @@ The target supported platform for the testbed currently assumes you have adminis
 Setup kvm-compose Config
 ------------------------
 
-You will need to create the ``kvm-compose-config.json`` file and enumerate it with the testbed host information that will participate in the testbed.
+You will need to create the ``host.json`` file and enumerate it with the testbed host information that will participate in the testbed.
 You must do this before running the testbed or it will not know what are the testbed hosts.
 See |kvm-compose-config| documentation for more information.
 
@@ -181,9 +163,9 @@ Run Testbed
 
 There are three ways to start the server.
 You can either use the server in daemon mode by running `sudo systemctl start testbedos-server.service`.
-You can also directly run the server from the CLI with `sudo testbedos-server master`.
-Or you can run via cargo, if you are in the testbedos-server project folder in the source code with `sudo -E bash -c  'cargo run -- master' $USER`.
-Once you have successfully run the server once in master mode, you do not need to specify `master` unless you edit the `mode.json`.
+You can also directly run the server from the CLI with `sudo testbedos-server main`.
+Or you can run via cargo, if you are in the testbedos-server project folder in the source code with `sudo -E bash -c  'cargo run -- main' $USER`.
+Once you have successfully run the server once in main mode, you do not need to specify `main` unless you edit the `mode.json`.
 
 You are now ready to use the testbed, you can either use an example in the ``examples/`` folder or roll your own.
 Refer to the examples on how to build a ``kvm-compose.yaml`` file.
@@ -200,14 +182,14 @@ Testbed Cluster
 It is possible to create a cluster of testbed hosts to increase the resource capability of your testbed.
 The testbed hosts must be accessible i.e. on the same local network.
 You will still need to individually configure each host's `host.json`.
-You will then need to start the non master testbed hosts in client mode.
-This is similar to the master mode commands, but instead you can use the following methods:
+You will then need to start the non main testbed hosts in client mode.
+This is similar to the main mode commands, but instead you can use the following methods:
 
-- ``sudo testbedos-server client -m <ip of master testbed host> -t <interface visible to master host on local network>```
-- ``sudo -E bash -c  'cargo run -- client -m <ip of master testbed host> -t <interface visible to master host on local network>' $USER```
+- ``sudo testbedos-server client -m <ip of main testbed host> -t <interface visible to main host on local network>```
+- ``sudo -E bash -c  'cargo run -- client -m <ip of main testbed host> -t <interface visible to main host on local network>' $USER```
 - If you are using the ``systemctl``` method, you must make sure the `mode.json` in ``/var/lib/testbedos/config/`` has been configured with the client configuration
 
-Similar to the master mode, once you have successfully run the server in the client mode, you do not have to specify the client with arguments as this will be read from the `mode.json`.
+Similar to the main mode, once you have successfully run the server in the client mode, you do not have to specify the client with arguments as this will be read from the `mode.json`.
 Please see the testbed server |Cluster Management| for more information.
 
 Limitations

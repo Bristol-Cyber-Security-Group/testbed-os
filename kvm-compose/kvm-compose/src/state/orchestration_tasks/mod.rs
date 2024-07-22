@@ -30,6 +30,7 @@ pub async fn get_orchestration_common(
     state: &State,
     force_provisioning: bool,
     force_rerun_scripts: bool,
+    reapply_acl: bool,
     kvm_compose_config: TestbedClusterConfig,
 ) -> anyhow::Result<OrchestrationCommon> {
     // permissions
@@ -41,6 +42,7 @@ pub async fn get_orchestration_common(
         project_working_dir: state.project_working_dir.clone(),
         force_provisioning,
         force_rerun_scripts,
+        reapply_acl,
         kvm_compose_config,
         network: state.network.clone(),
         fs_user: user_group.0.as_raw(),
@@ -157,13 +159,13 @@ impl OrchestrationTask for State {
                         docker.push_image_action(common.clone(), guest_data.clone())
                     );
                 }
-                GuestType::Android(_) => {} // Android guests currently only supported on master testbed host
+                GuestType::Android(_) => {} // Android guests currently only supported on main testbed host
             }
         }
         // push backing images where necessary
         let images_to_push = calculate_backing_images_to_push(&self, &common).await?;
         for (backing_guest_name, target_testbed) in images_to_push.into_iter() {
-            // from the images_to_push set, work out the local path on master and the remote path
+            // from the images_to_push set, work out the local path on main and the remote path
             // on the target testbed host
             let local_src = get_backing_image_local_path(
                 &self.testbed_guests,
@@ -189,7 +191,7 @@ impl OrchestrationTask for State {
         let mut rebase_futures = Vec::new();
         for (_guest_name, guest_data) in self.testbed_guests.0.iter() {
             // only rebase on remote testbeds
-            if !guest_data.testbed_host.as_ref().unwrap().eq(&get_master_testbed_name(&common)) {
+            if !guest_data.testbed_host.as_ref().unwrap().eq(&get_main_testbed_name(&common)) {
                 match &guest_data.guest_type.guest_type {
                     GuestType::Libvirt(libvirt) => {
                         if libvirt.is_clone_of.is_some() {
@@ -307,6 +309,7 @@ impl OrchestrationTask for State {
             // receiver,
             OrchestrationInstruction::TestbedHostCheck,
         ).await.context("requesting if testbed hosts are up")?;
+
         send_orchestration_instruction_over_channel(
             sender,
             // receiver,
@@ -397,7 +400,7 @@ impl OrchestrationTask for State {
     }
 }
 
-/// Dedicated task to clear artefacts on both the master, and remote testbed hosts if any. Will
+/// Dedicated task to clear artefacts on both the main, and remote testbed hosts if any. Will
 /// check if guests are running first before clearing artefacts.
 pub async fn clear_artefacts(
     state: &State,
@@ -484,7 +487,7 @@ pub async fn check_if_testbed_hosts_up(
     common: &OrchestrationCommon,
 ) -> anyhow::Result<()> {
     for (name, host) in common.testbed_hosts.iter() {
-        if host.is_master_host {
+        if host.is_main_host {
             continue;
         }
         tracing::info!("checking if testbed host {} is up", name);

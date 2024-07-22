@@ -8,6 +8,7 @@ pub mod logical_switch;
 pub mod logical_router;
 pub mod logical_router_port;
 pub mod logical_switch_port;
+pub mod acl;
 
 /// Helper macro to convert Vec<&str> to Vec<String> to avoid having to keep writing `.to_string()`
 #[macro_export]

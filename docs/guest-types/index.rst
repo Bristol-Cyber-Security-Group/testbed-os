@@ -25,7 +25,7 @@ The Libvirt virtual machines are split into three sub-types based on their mode 
 - existing disk (bring a preconfigured image)
 - iso guest (bring an installation .iso image)
 
-The cloud image based guests will have full automation possible, due to the ability to seed the deployment using cloud-init.
+The cloud image based guests will have full automation capabilities offered by the testbed, due to the ability to seed the deployment using cloud-init.
 We are able to customise the deployment using the cloud-init functionality.
 Additionally, this allows us to insert SSH keys to be able to remotely control the guest and customise further and run scripts etc.
 
@@ -72,7 +72,7 @@ where `android-test` is the namespace name.
 
 However you can also use the built in `exec` commands to run commands via ADB but note that since the command runs from the testbed server, you cannot open a shell to the guest - only one time commands.
 
-Additionally, due to how we deploy and control guests through the testbed-os server, the AVD configuration will be under the root user.
+Additionally, due to how we deploy and control guests through the TestbedOS server, the AVD configuration will be under the root user.
 This is a critical detail to allow the ADB connection to authenticate using the key that is found in the `$USER` directory, which in this case will be under root.
 If the emulator is not under the root user, say you are bringing in a pre-configured emulator you may need to use the command as following:
 

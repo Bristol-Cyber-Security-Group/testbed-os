@@ -9,7 +9,7 @@ use crate::components::logical_load_balancing::load_balance;
 use kvm_compose_schemas::cli_models::Common;
 use anyhow::{bail, Context};
 use kvm_compose_schemas::kvm_compose_yaml::network_old::NetworkInterface;
-use kvm_compose_schemas::kvm_compose_yaml::{Config, Machine};
+use kvm_compose_schemas::kvm_compose_yaml::{Config, Machine, MachineNetwork};
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -17,7 +17,7 @@ use async_trait::async_trait;
 use tokio::sync::mpsc::{Sender};
 use kvm_compose_schemas::kvm_compose_yaml::network::NetworkBackend;
 use kvm_compose_schemas::settings::TestbedClusterConfig;
-use crate::components::network::{assign_and_validate_guest_ip, LogicalNetwork};
+use crate::components::network::{LogicalNetwork};
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationProtocol};
 use crate::orchestration::websocket::{send_orchestration_instruction_over_channel};
 use crate::ovn::components::MacAddress;
@@ -48,7 +48,7 @@ pub struct SpecialisationContext {
     pub project_name: String,
     pub ssh_config: TestbedClusterConfig,
     pub project_folder_path: PathBuf,
-    pub master_host: String,
+    pub main_host: String,
     // send the deserialised yaml config
     pub config: Config,
     pub guest_ip_mapping: Option<BTreeMap<String, Option<String>>>,
@@ -70,10 +70,6 @@ pub trait TestbedComponent {
     fn set_testbed_host(&mut self, in_host: String);
 
     fn get_testbed_host(&self) -> &Option<String>;
-
-    /// Set the ip address for the component. If using OVN then it is possible the IP is set to
-    /// `dynamic`, meaning OVN will provide DHCP services.
-    fn set_static_ip(&mut self, in_ip: String);
 
     fn get_static_ip(&self) -> Option<String>;
 
@@ -102,7 +98,7 @@ pub trait TestbedGuest {
     fn get_guest_name(&self) -> &String;
 
     /// Return the guest's interface on the network
-    fn get_network(&self) -> anyhow::Result<String>;
+    fn get_network(&self) -> anyhow::Result<Vec<MachineNetwork>>;
 
     /// Get the guest machine definition as specified in the yaml file but could be more up to date
     /// as the logical testbed setup could have further specialised or edited the definition.
@@ -113,21 +109,10 @@ pub trait TestbedGuest {
     /// edited the definition.
     fn get_machine_definition_mut(&mut self) -> &mut Machine;
 
-    // /// Set the guest's mac address
-    // fn set_mac_address(&mut self, mac_address: MacAddress);
-
-    /// Get the guest's mac address
-    fn get_mac_address(&self) -> anyhow::Result<MacAddress>;
-
-    fn get_gateway(&self) -> Option<String>;
-
     /// get unique guest ID
     fn get_guest_id(&self) -> u32;
 
-    /// get the name of the interface for this guest based on the project name and guest id
-    fn get_interface_name(&self, project_name: &String) -> String;
-
-    /// If the guest is using an image or an iso as a reference for it's own image, this should return Some with the
+    /// If the guest is using an image or an iso as a reference for its own image, this should return Some with the
     /// path to this reference image
     fn get_reference_image(&self) -> anyhow::Result<Option<String>>;
 }
@@ -237,14 +222,14 @@ impl LogicalTestbed {
         //     &self.common.project,
         // )?;
 
-        // assign guest ips, this will depend on the port definitions for the guest
-        //  if android or docker, need to check they're not dynamic
-        tracing::info!("validating guest ip addresses");
-        assign_and_validate_guest_ip(
-            &mut self.logical_guests,
-            self.network.as_ref().context("getting network from config")?,
-            &self.common.project,
-        )?;
+        // // assign guest ips, this will depend on the port definitions for the guest
+        // //  if android or docker, need to check they're not dynamic
+        // tracing::info!("validating guest ip addresses");
+        // assign_and_validate_guest_ip(
+        //     &mut self.logical_guests,
+        //     self.network.as_ref().context("getting network from config")?,
+        //     &self.common.project,
+        // )?;
 
         // TODO - validate logical testbed
 
@@ -280,16 +265,16 @@ impl LogicalTestbed {
         Ok(())
     }
 
-    /// Get the master testbed host from the configuration
-    pub fn get_master_testbed_host(&self) -> anyhow::Result<&String> {
+    /// Get the main testbed host from the configuration
+    pub fn get_main_testbed_host(&self) -> anyhow::Result<&String> {
         for (name, config) in self.common.kvm_compose_config.testbed_host_ssh_config.iter() {
-            if let Some(is_master) = config.is_master_host {
-                if is_master {
+            if let Some(is_main) = config.is_main_host {
+                if is_main {
                     return Ok(name);
                 }
             }
         }
-        bail!("there was no master host set in kvm-compose-config.json")
+        bail!("there was no main host set in kvm-compose-config.json")
     }
 
     /// Request to the server to generate artefacts
@@ -316,9 +301,9 @@ impl LogicalTestbed {
             project_name: self.common.project.clone(),
             project_folder_path: self.common.project_working_dir.clone(),
             ssh_config: self.common.kvm_compose_config.clone(),
-            master_host: self
-                .get_master_testbed_host()
-                .context("Getting master testbed host")?
+            main_host: self
+                .get_main_testbed_host()
+                .context("Getting main testbed host")?
                 .clone(),
             config: self.common.config.clone(),
             guest_ip_mapping: self.guest_ip_mapping.clone(),
@@ -330,15 +315,15 @@ impl LogicalTestbed {
 /// This function will generate the interface name based on the project name and the unique guest
 /// id due to linux interface name limitations, the interface name must be max 15 characters. We
 /// will truncate the project name in case it is a long project name. We will give the project name
-/// 8 characters and the id 4 characters and start with 'vm-', meaning we can support 9999 guests
-/// which should be enough for the foreseeable future..
-pub fn get_guest_interface_name(project_name: &String, unique_id: u32) -> String {
-    let truncated_project_name = if project_name.len() > 8 {
+/// 7 characters, the interface id 1 character, and the id 4 characters and start with 'vm-',
+/// meaning we can support 9999 guests which should be enough for the foreseeable future..
+pub fn get_guest_interface_name(project_name: &String, unique_id: u32, idx: usize) -> String {
+    let truncated_project_name = if project_name.len() > 7 {
         let mut temp = project_name.clone();
-        temp.truncate(8);
+        temp.truncate(7);
         temp
     } else {
         project_name.clone()
     };
-    format!("vm-{truncated_project_name}{unique_id}")
+    format!("vm-{truncated_project_name}{unique_id}{idx}")
 }
