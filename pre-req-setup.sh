@@ -1,4 +1,4 @@
-
+#!/bin/bash
 echo "pre-requisite script will check for existing dependencies before continuing ..."
 
 package_installed() {
