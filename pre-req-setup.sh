@@ -1,5 +1,3 @@
-#!/bin/bash
-
 
 echo "pre-requisite script will check for existing dependencies before continuing ..."
 
@@ -173,6 +171,15 @@ else
   if test -f ~/.pyenv/bin/pyenv
   then
     echo "pyenv is installed but not in PATH"
+
+  if [ -z $(grep "$PYENV_BASHRC" "$BASHRC")  ]; then
+	  echo 'export PYENV_ROOT="$HOME/.pyenv"' >> $BASHRC
+	  echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> $BASHRC
+	  echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> $BASHRC
+	  source $BASHRC
+	  echo 'Pyenv has been automatically added to your ~/.bashrc file. Restart your terminal or use source ~/.bashrc'
+  else echo "Pyenv exist in ~/.bashrc"
+  fi
     PYENV_NOT_IN_PATH=true
   else
    echo "pyenv missing"
@@ -228,7 +235,10 @@ INSTALL_GENERAL_DEPENDENCIES=
 INSTALL_PYTHON=
 INSTALL_PYENV=
 INSTALL_POETRY=
-
+# Environment variables to configure shell after installation.
+BASHRC="$HOME/.bashrc"
+POETRY_BASHRC="export PATH="$HOME/.local/bin:$PATH""
+PYENV_BASHRC="export PYENV_ROOT="$HOME/.pyenv""
 
 # For OVS and OVS, we want to make sure that the versions align, so ideally both are installed from source and not mix
 # and matched from apt. So if any of the EXIST and VERSION variables are not true, stop the script and tell the user
@@ -443,9 +453,18 @@ fi
 
 if [ "$INSTALL_PYENV" = true ]; then
   echo -e "\ninstalling Pyenv"
+  if [ -z $(grep "$PYENV_BASHRC" "$BASHRC")  ]; then
+	  echo 'export PYENV_ROOT="$HOME/.pyenv"' >> $BASHRC
+	  echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> $BASHRC
+	  echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> $BASHRC
+	  source $BASHRC
+	  echo 'Pyenv has been automatically added to your ~/.bashrc file. Restart your terminal or use source ~/.bashrc'
+  else 
+	  echo "Pyenv exist in ~/.bashrc"
+  fi
 
   if [ "$PYENV_NOT_IN_PATH" = true ]; then
-    echo -e "\e[38;5;214mWARNING\e[0m Please place Pyenv in your shell PATH, as it is already installed."
+    echo -e "\e[38;5;214mWARNING\e[0m Please ensure Pyenv is in your shell PATH, as it is already installed."
     echo "See documentation at https://github.com/pyenv/pyenv?tab=readme-ov-file#set-up-your-shell-environment-for-pyenv"
   else
 
@@ -460,16 +479,23 @@ fi
 if [ "$INSTALL_POETRY" = true ]; then
   echo -e "\ninstalling Poetry"
 
+  if [ -z $(grep "$POETRY_BASHRC" "$BASHRC")  ]; then
+	  echo "export PATH="$HOME/.local/bin:$PATH"" >> $BASHRC
+	  source $BASHRC
+  else 
+	  echo "Poetry exist in ~/.bashrc"
+  fi
   if [ "$POETRY_NOT_IN_PATH" = true ]; then
-      echo -e "\e[38;5;214mWARNING\e[0m Please place poetry in your shell PATH, as it is already installed"
+      echo -e "\e[38;5;214mWARNING\e[0m Please ensure poetry is in your shell PATH"
       echo -e "You can add the following line to your ~/.bashrc\n"
       echo 'export PATH=$PATH:/home/$USER/.local/bin'
   else
     curl -sSL https://install.python-poetry.org | python3 -
+
     # TODO - ask user if they want to add poetry to the shell PATH
   fi
 fi
 
-echo -e "\nInstallation complete, make sure to add Pyenv and Poetry to your shell PATH. Then, restart your shell or run:"
+echo -e "\nInstallation complete, make sure Pyenv and Poetry are in your shell PATH. Then, restart your shell or run:"
 echo "source ~/.bashrc"
 echo "You will need to do this before running the setup.sh script."
