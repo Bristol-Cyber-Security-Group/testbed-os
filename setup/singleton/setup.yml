@@ -1,0 +1,232 @@
+---
+
+- hosts: all
+  become: true
+  tasks:
+
+
+  - name: Update Repositories
+    apt: 
+      update_cache: yes
+
+  - name: Install Prerequisites via Aptitude
+    apt:
+      name: 
+      - libvirt-dev 
+      - libssl-dev 
+      - gcc 
+      - make 
+      - zlib1g 
+      - zlib1g-dev
+      - libssl-dev
+      - libbz2-dev
+      - libsqlite3-dev 
+      - libffi-dev 
+      - libncurses5 
+      - libncurses5-dev
+      - libncursesw5
+      - libreadline-dev 
+      - lzma 
+      - liblzma-dev 
+      - libbz2-dev 
+      - libtool 
+      - autoconf
+      - git 
+      - pip 
+      - python3.10-venv
+      - qemu-kvm 
+      - libvirt-daemon-system 
+      - libvirt-clients
+      - libnss-libvirt
+      - genisoimage
+      state: latest
+
+  - name: Check if OVS is installed
+    command: ovs-vsctl --version
+    register: ovs_version
+    ignore_errors: yes
+
+
+  - name: Check if OVN is installed
+    command: ovn-nbctl --version
+    register: ovn_version
+    ignore_errors: yes
+
+  - name: Clone OVN from GitHub
+    git:
+      repo: "https://github.com/ovn-org/ovn.git"
+      dest: "/tmp/ovn"
+      version: "v24.03.1"
+    when: ovs_version.rc != 0 or ovn_version != 0
+
+  - name: Compile and Install OVN and OVS
+    shell: |
+      cd /tmp/ovn
+      git submodule update --init
+      ./boot.sh
+      cd ovs
+      ./boot.sh
+      ./configure
+      make
+      sudo make install
+      cd ..
+      ./configure
+      make
+      sudo make install
+    become: yes
+    when: ovs_version.rc != 0 or ovn_version != 0
+
+  - name: Report if OVS And OVN are installed
+    debug:
+      msg: "OVS and OVN already exist on this machine"
+    when: ovs_version.rc == 0 and ovn_version.rc == 0
+
+
+  - name: Gather installed package facts
+    package_facts:
+      manager: apt
+    become: yes
+
+  - name: Ensure necessary packages are installed
+    apt:
+      name:
+        - ca-certificates
+        - curl
+        - gnupg
+      state: present
+    become: yes
+    when: "'ca-certificates' not in ansible_facts.packages or 'curl' not in ansible_facts.packages or 'gnupg' not in ansible_facts.packages"
+
+  - name: Create /etc/apt/keyrings directory
+    file:
+      path: /etc/apt/keyrings
+      state: directory
+      mode: '0755'
+    become: yes
+
+  - name: Add Docker's official GPG key
+    ansible.builtin.command: |
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    become: yes
+    when: "'docker-ce' not in ansible_facts.packages"
+
+  - name: Set permissions for Docker's GPG key
+    file:
+      path: /etc/apt/keyrings/docker.gpg
+      mode: '0644'
+    become: yes
+    when: "'docker-ce' not in ansible_facts.packages"
+
+  - name: Add Docker APT repository
+    ansible.builtin.command: |
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    become: yes
+    when: "'docker-ce' not in ansible_facts.packages"
+
+  - name: Update APT package index
+    apt:
+      update_cache: yes
+    become: yes
+    when: "'docker-ce' not in ansible_facts.packages"
+
+  - name: Install Docker packages
+    apt:
+      name:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+        - docker-compose
+      state: present
+    become: yes
+    when: "'docker-ce' not in ansible_facts.packages"
+
+  - name: Ensure necessary packages are installed
+    apt:
+      name:
+        - openjdk-17-jdk
+        - android-tools-adb
+        - unzip
+        - wget
+      state: present
+    become: yes
+
+  - name: Check if sdkmanager is installed
+    command: sdkmanager --version
+    register: sdkmanager_check
+    ignore_errors: yes
+
+  - name: Create Android SDK directory
+    file:
+      path: /opt/android-sdk/cmdline-tools/
+      state: directory
+      mode: '0755'
+    become: yes
+    when: sdkmanager_check.rc != 0
+
+  - name: Change ownership of Android SDK directory
+    file:
+      path: /opt/android-sdk/
+      state: directory
+      owner: "{{ ansible_user_id }}"
+      recurse: yes
+    become: yes
+    when: sdkmanager_check.rc != 0
+
+  - name: Download Android SDK Command-Line Tools
+    get_url:
+      url: https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+      dest: /opt/android-sdk/cmdline-tools/tools.zip
+    when: sdkmanager_check.rc != 0
+
+  - name: Unzip Android SDK Command-Line Tools
+    unarchive:
+      src: /opt/android-sdk/cmdline-tools/tools.zip
+      dest: /opt/android-sdk/cmdline-tools/
+      remote_src: yes
+    when: sdkmanager_check.rc != 0
+
+  - name: Rename cmdline-tools directory to latest
+    command: mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
+    when: sdkmanager_check.rc != 0
+
+  - name: Remove the downloaded zip file
+    file:
+      path: /opt/android-sdk/cmdline-tools/tools.zip
+      state: absent
+    when: sdkmanager_check.rc != 0
+
+  - name: Add Android SDK to PATH and set environment variables
+    lineinfile:
+      path: ~/.bashrc
+      line: |
+        export PATH=$PATH:/opt/android-sdk/cmdline-tools/latest/bin
+        export ANDROID_HOME=/opt/android-sdk/
+        export ANDROID_SDK_ROOT=/opt/android-sdk/
+      create: yes
+      state: present
+    when: sdkmanager_check.rc != 0
+
+  - name: Source .bashrc to update PATH
+    shell: source ~/.bashrc
+    args:
+      executable: /bin/bash
+    when: sdkmanager_check.rc != 0
+
+  - name: Accept Android SDK licenses
+    shell: yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+    when: sdkmanager_check.rc != 0
+
+  - name: Install Android SDK components
+    shell: echo y | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --install "emulator" "platform-tools"
+    when: sdkmanager_check.rc != 0
+
+  - name: Create platforms directory
+    file:
+      path: /opt/android-sdk/platforms
+      state: directory
+      mode: '0755'
+    become: yes
+    when: sdkmanager_check.rc != 0
+
