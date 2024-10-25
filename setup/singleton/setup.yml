@@ -42,22 +42,22 @@
       state: latest
 
   - name: Check if OVS is installed
-    command: ovs-vsctl --version
-    register: ovs_version
-    ignore_errors: yes
-
+    ansible.builtin.stat:
+      path: /usr/local/bin/ovs-vsctl
+    register: ovs_check
 
   - name: Check if OVN is installed
-    command: ovn-nbctl --version
-    register: ovn_version
-    ignore_errors: yes
+    ansible.builtin.stat:
+      path: /usr/local/bin/ovn-nbctl
+    register: ovn_check
+
 
   - name: Clone OVN from GitHub
     git:
       repo: "https://github.com/ovn-org/ovn.git"
       dest: "/tmp/ovn"
       version: "v24.03.1"
-    when: ovs_version.rc != 0 or ovn_version != 0
+    when: not ovs_check.stat.exists or not ovn_check.stat.exists
 
   - name: Compile and Install OVN and OVS
     shell: |
@@ -74,13 +74,12 @@
       make
       sudo make install
     become: yes
-    when: ovs_version.rc != 0 or ovn_version != 0
+    when: not ovs_check.stat.exists or not ovn_check.stat.exists
 
   - name: Report if OVS And OVN are installed
     debug:
       msg: "OVS and OVN already exist on this machine"
-    when: ovs_version.rc == 0 and ovn_version.rc == 0
-
+    when: ovs_check.stat.exists and ovn_check.stat.exists
 
   - name: Gather installed package facts
     package_facts:
@@ -95,7 +94,6 @@
         - gnupg
       state: present
     become: yes
-    when: "'ca-certificates' not in ansible_facts.packages or 'curl' not in ansible_facts.packages or 'gnupg' not in ansible_facts.packages"
 
   - name: Create /etc/apt/keyrings directory
     file:
@@ -153,9 +151,9 @@
     become: yes
 
   - name: Check if sdkmanager is installed
-    command: sdkmanager --version
+    stat:
+      path: /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager
     register: sdkmanager_check
-    ignore_errors: yes
 
   - name: Create Android SDK directory
     file:
@@ -163,7 +161,7 @@
       state: directory
       mode: '0755'
     become: yes
-    when: sdkmanager_check.rc != 0
+    when: not sdkmanager_check.stat.exists
 
   - name: Change ownership of Android SDK directory
     file:
@@ -172,30 +170,30 @@
       owner: "{{ ansible_user_id }}"
       recurse: yes
     become: yes
-    when: sdkmanager_check.rc != 0
+    when: not sdkmanager_check.stat.exists
 
   - name: Download Android SDK Command-Line Tools
     get_url:
       url: https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
       dest: /opt/android-sdk/cmdline-tools/tools.zip
-    when: sdkmanager_check.rc != 0
+    when: not sdkmanager_check.stat.exists
 
   - name: Unzip Android SDK Command-Line Tools
     unarchive:
       src: /opt/android-sdk/cmdline-tools/tools.zip
       dest: /opt/android-sdk/cmdline-tools/
       remote_src: yes
-    when: sdkmanager_check.rc != 0
+    when: not sdkmanager_check.stat.exists
 
   - name: Rename cmdline-tools directory to latest
     command: mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
-    when: sdkmanager_check.rc != 0
+    when: not sdkmanager_check.stat.exists
 
   - name: Remove the downloaded zip file
     file:
       path: /opt/android-sdk/cmdline-tools/tools.zip
       state: absent
-    when: sdkmanager_check.rc != 0
+    when: not sdkmanager_check.stat.exists
 
   - name: Add Android SDK to PATH and set environment variables
     lineinfile:
@@ -206,21 +204,21 @@
         export ANDROID_SDK_ROOT=/opt/android-sdk/
       create: yes
       state: present
-    when: sdkmanager_check.rc != 0
+    when: not sdkmanager_check.stat.exists
 
   - name: Source .bashrc to update PATH
     shell: source ~/.bashrc
     args:
       executable: /bin/bash
-    when: sdkmanager_check.rc != 0
+    when: not sdkmanager_check.stat.exists
 
   - name: Accept Android SDK licenses
     shell: yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-    when: sdkmanager_check.rc != 0
+    when: not sdkmanager_check.stat.exists
 
   - name: Install Android SDK components
     shell: echo y | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --install "emulator" "platform-tools"
-    when: sdkmanager_check.rc != 0
+    when: not sdkmanager_check.stat.exists
 
   - name: Create platforms directory
     file:
@@ -228,5 +226,5 @@
       state: directory
       mode: '0755'
     become: yes
-    when: sdkmanager_check.rc != 0
+    when: not sdkmanager_check.stat.exists
 
