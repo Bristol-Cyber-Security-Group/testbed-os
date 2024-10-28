@@ -1,6 +1,7 @@
 ---
 
-- hosts: all
+- name: Install Pre-Requisites 
+  hosts: all
   become: true
   tasks:
 
@@ -39,7 +40,12 @@
       - libvirt-clients
       - libnss-libvirt
       - genisoimage
+      - virt-manager
       state: latest
+
+- name: Install OVN and OVS
+  hosts: all
+  tasks:
 
   - name: Check if OVS is installed
     ansible.builtin.stat:
@@ -80,6 +86,10 @@
     debug:
       msg: "OVS and OVN already exist on this machine"
     when: ovs_check.stat.exists and ovn_check.stat.exists
+
+- name: Install Docker
+  hosts: all
+  tasks:
 
   - name: Gather installed package facts
     package_facts:
@@ -139,6 +149,10 @@
       state: present
     become: yes
     when: "'docker-ce' not in ansible_facts.packages"
+
+- name: Install Android SDK
+  hosts: all
+  tasks:
 
   - name: Ensure necessary packages are installed
     apt:
@@ -228,3 +242,126 @@
     become: yes
     when: not sdkmanager_check.stat.exists
 
+
+- name: Ensure Rust is installed
+  hosts: all
+  tasks:
+  - name: Check if Rust is installed
+    ansible.builtin.stat:
+       path: ~/.cargo/bin/rustc
+    register: rust_check
+
+  - name: Install Rust using RustUp
+    shell: |
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    args:
+      creates: ~/.cargo/bin/rustc  
+    when: not rust_check.stat.exists 
+
+  - name: Check if rust is in PATH
+    lineinfile: 
+      path: ~/.bashrc
+      line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+
+  - name: Rust is installed
+    debug:
+      msg: "Rust has already been installed"
+    when: rust_check.stat.exists
+
+- name: Ensure PyEnv is Installed and run it
+  hosts: all
+  tasks:
+    
+  - name: Check if PyEnv is installed
+    ansible.builtin.stat: 
+      path: ~/.pyenv/bin/pyenv
+    register: pyenv_check
+  
+  - name: Install PyEnv
+    shell: |
+      curl https://pyenv.run | bash
+    args:
+      creates: ~/.pyenv/bin/pyenv
+    when: not pyenv_check.stat.exists
+
+  - name: Ensure PyEnv is in PATH
+    blockinfile:
+      path: ~/.bashrc
+      block: |
+        export PYENV_ROOT="$HOME/.pyenv"
+        command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init -)"
+    when: not pyenv_check.stat.exists
+
+  - name: Install Python 3.10.5 using PyEnv
+    shell: |
+     ~/.pyenv/bin/pyenv install 3.10.5
+    args:
+      creates: ~/.pyenv/shims/python3.10
+ 
+  - name: Confirm if PyEnv exists
+    debug:
+      msg: "PyEnv exists, we recommend you ensure Python3.10.5 is installed and both PyEnv and Python are in the PATH"
+
+- name: Ensure Poetry is installed
+  hosts: all
+  tasks:
+
+  - name: Check if Poetry is installed
+    ansible.builtin.stat: 
+      path: ~/.local/bin/poetry
+    register: poetry_check
+
+  - name: Install Poetry
+    shell: | 
+      curl -sSL https://install.python-poetry.org | python3 -
+    args:
+      creates: ~/.local/bin/poetry
+    when: not poetry_check.stat.exists
+
+  - name: Ensure Poetry is in PATH
+    lineinfile:
+      path: ~/.bashrc
+      line: export PATH=$PATH:/home/$USER/.local/bin
+    when: not poetry_check.stat.exists
+
+  - name: Confirm if Poetry exists
+    debug:
+      msg: "Poetry is already installed"
+    when: poetry_check.stat.exists
+
+- name: Ensure User is in Libvirt Group
+  hosts: all
+  vars:
+    user_name: "{{ansible_user_id}}"
+  tasks: 
+
+   - name: Check if user is in libvirt group
+     command: getent group libvirt
+     register: libvirt_group
+
+   - name: Add user to libvirt group
+     user:
+       name: "{{ user_name }}"
+       groups: libvirt
+       append: yes
+     when:  user_name not in libvirt_group.stdout
+     become: true
+
+   - name: Restart libvirt system
+     systemd:
+       name: libvirtd
+       state: restarted
+       enabled: yes
+     when: user_name not in libvirt_group.stdout
+     become: true
+
+   - name: Confirm libvirt user is in the group
+     debug:
+       msg: "{{ user_name }} is in the libvirt user group"
+     when: user_name in libvirt_group.stdout
+
+
+      
+
+    
