@@ -1,16 +1,72 @@
 ---
+- name: Check if all are installed and get confirmation if user would like to proceed. 
+  hosts: all
+  tasks:
+  - name: Check if LibVirt is installed
+    ansible.builtin.stat:
+      path: /usr/bin/virsh
+    register: libvrt_check
 
-- name: Install Pre-Requisites 
+  - name: Check if OVS is installed
+    ansible.builtin.stat:
+      path: /usr/local/bin/ovs-vsctl
+    register: ovs_check
+
+  - name: Check if OVN is installed
+    ansible.builtin.stat:
+      path: /usr/local/bin/ovn-nbctl
+    register: ovn_check
+
+  - name: Check if Docker is installed
+    ansible.builtin.stat:
+      path: /usr/bin/docker
+    register: docker_check
+
+  - name: Check if sdkmanager is installed
+    stat:
+      path: /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager
+    register: sdkmanager_check
+
+  - name: Check if Rust is installed
+    ansible.builtin.stat:
+      path: ~/.cargo/bin/rustc
+    register: rust_check
+
+  - name: Check if PyEnv is installed
+    ansible.builtin.stat: 
+      path: ~/.pyenv/bin/pyenv
+    register: pyenv_check
+
+  - name: Check if Poetry is installed
+    ansible.builtin.stat: 
+      path: ~/.local/bin/poetry
+    register: poetry_check
+
+  - name: Which packages are installed
+    ansible.builtin.debug:
+      msg:
+      - "LibVirt Installed: '{{ libvrt_check.stat.exists }}'"
+      - "OVS Installed: '{{ ovs_check.stat.exists }}'"
+      - "OVN Installed: '{{ ovn_check.stat.exists }}'"
+      - "Docker Installed: '{{ docker_check.stat.exists }}'"
+      - "Android SDK Installed: '{{ sdkmanager_check.stat.exists }}'"
+      - "Rust Installed: '{{ rust_check.stat.exists }}'"
+      - "PyEnv Installed: '{{ pyenv_check.stat.exists }}'"
+      - "Poetry Installed: '{{ poetry_check.stat.exists }}'"
+
+
+
+
+- name: Install Pre-Requisites and Libvirt
   hosts: all
   become: true
+  vars_prompt:
+    - name: "install_prereq"
+      prompt: "Would you like to install the libvrt package? (Yes/No)"
+      private: no
   tasks:
 
-
-  - name: Update Repositories
-    apt: 
-      update_cache: yes
-
-  - name: Install Prerequisites via Aptitude
+  - name: Install via Aptitude
     apt:
       name: 
       - libvirt-dev 
@@ -42,9 +98,20 @@
       - genisoimage
       - virt-manager
       state: latest
+      update_cache: yes
+    when: install_prereq | bool
+
+  - name: Confirm LibVirt is installed
+    ansible.builtin.debug: 
+      msg: "LibVirt is already installed"
+    when: install_prereq | bool and libvrt_check.stat.exists
 
 - name: Install OVN and OVS
   hosts: all
+  vars_prompt:
+    - name: "install_ovn"
+      prompt: "Would you like to install the OVN and OVS packages? (Yes/No)"
+      private: no
   tasks:
 
   - name: Check if OVS is installed
@@ -63,7 +130,7 @@
       repo: "https://github.com/ovn-org/ovn.git"
       dest: "/tmp/ovn"
       version: "v24.03.1"
-    when: not ovs_check.stat.exists or not ovn_check.stat.exists
+    when: not ovs_check.stat.exists or not ovn_check.stat.exists and install_ovn | bool
 
   - name: Compile and Install OVN and OVS
     shell: |
@@ -80,15 +147,19 @@
       make
       sudo make install
     become: yes
-    when: not ovs_check.stat.exists or not ovn_check.stat.exists
+    when: not ovs_check.stat.exists or not ovn_check.stat.exists and install_ovn | bool
 
   - name: Report if OVS And OVN are installed
     debug:
       msg: "OVS and OVN already exist on this machine"
-    when: ovs_check.stat.exists and ovn_check.stat.exists
+    when: ovs_check.stat.exists and ovn_check.stat.exists and install_ovn | bool
 
 - name: Install Docker
   hosts: all
+  vars_prompt:
+    - name: "install_docker"
+      prompt: "Would you like to install the Docker packages? (Yes/No)"
+      private: no
   tasks:
 
   - name: Gather installed package facts
@@ -104,6 +175,7 @@
         - gnupg
       state: present
     become: yes
+    when: "'docker-ce' not in ansible_facts.packages and install_docker | bool"
 
   - name: Create /etc/apt/keyrings directory
     file:
@@ -111,31 +183,32 @@
       state: directory
       mode: '0755'
     become: yes
+    when: "'docker-ce' not in ansible_facts.packages and install_docker | bool"
 
   - name: Add Docker's official GPG key
     ansible.builtin.command: |
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages"
+    when: "'docker-ce' not in ansible_facts.packages and install_docker | bool"
 
   - name: Set permissions for Docker's GPG key
     file:
       path: /etc/apt/keyrings/docker.gpg
       mode: '0644'
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages"
+    when: "'docker-ce' not in ansible_facts.packages  and install_docker | bool"
 
   - name: Add Docker APT repository
     ansible.builtin.command: |
       echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages"
+    when: "'docker-ce' not in ansible_facts.packages  and install_docker | bool"
 
   - name: Update APT package index
     apt:
       update_cache: yes
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages"
+    when: "'docker-ce' not in ansible_facts.packages  and install_docker | bool"
 
   - name: Install Docker packages
     apt:
@@ -148,11 +221,25 @@
         - docker-compose
       state: present
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages"
+    when: "'docker-ce' not in ansible_facts.packages  and install_docker | bool"
+
+  - name: Confirm Docker is installed
+    ansible.builtin.debug: 
+      msg: "Docker is already installed"
+    when: "'docker-ce' in ansible_facts.packages  and install_docker | bool"
 
 - name: Install Android SDK
   hosts: all
+  vars_prompt:
+    - name: "install_sdk"
+      prompt: "Would you like to install the Android SDK packages? (Yes/No)"
+      private: no
   tasks:
+
+  - name: Check if sdkmanager is installed
+    stat:
+      path: /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager
+    register: sdkmanager_check
 
   - name: Ensure necessary packages are installed
     apt:
@@ -163,11 +250,7 @@
         - wget
       state: present
     become: yes
-
-  - name: Check if sdkmanager is installed
-    stat:
-      path: /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager
-    register: sdkmanager_check
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
   - name: Create Android SDK directory
     file:
@@ -175,7 +258,7 @@
       state: directory
       mode: '0755'
     become: yes
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
   - name: Change ownership of Android SDK directory
     file:
@@ -184,30 +267,30 @@
       owner: "{{ ansible_user_id }}"
       recurse: yes
     become: yes
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
   - name: Download Android SDK Command-Line Tools
     get_url:
       url: https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
       dest: /opt/android-sdk/cmdline-tools/tools.zip
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
   - name: Unzip Android SDK Command-Line Tools
     unarchive:
       src: /opt/android-sdk/cmdline-tools/tools.zip
       dest: /opt/android-sdk/cmdline-tools/
       remote_src: yes
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
   - name: Rename cmdline-tools directory to latest
     command: mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
   - name: Remove the downloaded zip file
     file:
       path: /opt/android-sdk/cmdline-tools/tools.zip
       state: absent
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
   - name: Add Android SDK to PATH and set environment variables
     lineinfile:
@@ -218,21 +301,21 @@
         export ANDROID_SDK_ROOT=/opt/android-sdk/
       create: yes
       state: present
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
   - name: Source .bashrc to update PATH
     shell: source ~/.bashrc
     args:
       executable: /bin/bash
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
   - name: Accept Android SDK licenses
     shell: yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
   - name: Install Android SDK components
     shell: echo y | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --install "emulator" "platform-tools"
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
   - name: Create platforms directory
     file:
@@ -240,11 +323,19 @@
       state: directory
       mode: '0755'
     become: yes
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and install_sdk | bool
 
+  - name: Confirm Android SDK is installed
+    ansible.builtin.debug: 
+      msg: "Android SDK is already installed"
+    when: install_sdk | bool and sdkmanager_check.stat.exists
 
 - name: Ensure Rust is installed
   hosts: all
+  vars_prompt:
+    - name: "install_rust"
+      prompt: "Would you like to install the Rust packages? (Yes/No)"
+      private: no
   tasks:
   - name: Check if Rust is installed
     ansible.builtin.stat:
@@ -256,7 +347,7 @@
       curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     args:
       creates: ~/.cargo/bin/rustc  
-    when: not rust_check.stat.exists 
+    when: not rust_check.stat.exists and install_rust | bool
 
   - name: Check if rust is in PATH
     lineinfile: 
@@ -266,10 +357,14 @@
   - name: Rust is installed
     debug:
       msg: "Rust has already been installed"
-    when: rust_check.stat.exists
+    when: rust_check.stat.exists and install_rust | bool
 
 - name: Ensure PyEnv is Installed and run it
   hosts: all
+  vars_prompt:
+    - name: "install_pyenv"
+      prompt: "Would you like to install the PyEnv and Python 3.10.5 packages? (Yes/No)"
+      private: no
   tasks:
     
   - name: Check if PyEnv is installed
@@ -282,7 +377,7 @@
       curl https://pyenv.run | bash
     args:
       creates: ~/.pyenv/bin/pyenv
-    when: not pyenv_check.stat.exists
+    when: not pyenv_check.stat.exists and install_pyenv | bool
 
   - name: Ensure PyEnv is in PATH
     blockinfile:
@@ -291,20 +386,26 @@
         export PYENV_ROOT="$HOME/.pyenv"
         command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
         eval "$(pyenv init -)"
-    when: not pyenv_check.stat.exists
+    when: not pyenv_check.stat.exists and install_pyenv | bool
 
   - name: Install Python 3.10.5 using PyEnv
     shell: |
      ~/.pyenv/bin/pyenv install 3.10.5
     args:
       creates: ~/.pyenv/shims/python3.10
+    when: install_pyenv | bool and install_pyenv | bool
  
   - name: Confirm if PyEnv exists
     debug:
       msg: "PyEnv exists, we recommend you ensure Python3.10.5 is installed and both PyEnv and Python are in the PATH"
+    when: pyenv_check.stat.exists and install_pyenv | bool
 
 - name: Ensure Poetry is installed
   hosts: all
+  vars_prompt:
+    - name: "install_poetry"
+      prompt: "Would you like to install the Poetry packages and use it to install Python 3.10.5 dependencies? (Yes/No)"
+      private: no
   tasks:
 
   - name: Check if Poetry is installed
@@ -317,21 +418,25 @@
       curl -sSL https://install.python-poetry.org | python3 -
     args:
       creates: ~/.local/bin/poetry
-    when: not poetry_check.stat.exists
+    when: not poetry_check.stat.exists and install_poetry | bool
 
   - name: Ensure Poetry is in PATH
     lineinfile:
       path: ~/.bashrc
       line: export PATH=$PATH:/home/$USER/.local/bin
-    when: not poetry_check.stat.exists
+    when: not poetry_check.stat.exists and install_poetry | bool
 
   - name: Confirm if Poetry exists
     debug:
       msg: "Poetry is already installed"
-    when: poetry_check.stat.exists
+    when: poetry_check.stat.exists and install_poetry | bool
 
 - name: Ensure User is in Libvirt Group
   hosts: all
+  vars_prompt:
+    - name: "configure_libvrt"
+      prompt: "Would you like to automatically configure your LibVirt Installation? (Yes/No)"
+      private: no
   vars:
     user_name: "{{ansible_user_id}}"
   tasks: 
@@ -345,7 +450,7 @@
        name: "{{ user_name }}"
        groups: libvirt
        append: yes
-     when:  user_name not in libvirt_group.stdout
+     when:  user_name not in libvirt_group.stdout and configure_libvrt | bool
      become: true
 
    - name: Restart libvirt system
@@ -353,15 +458,10 @@
        name: libvirtd
        state: restarted
        enabled: yes
-     when: user_name not in libvirt_group.stdout
+     when: user_name not in libvirt_group.stdout and configure_libvrt | bool
      become: true
 
    - name: Confirm libvirt user is in the group
      debug:
        msg: "{{ user_name }} is in the libvirt user group"
-     when: user_name in libvirt_group.stdout
-
-
-      
-
-    
+     when: user_name in libvirt_group.stdout and configure_libvrt | bool
