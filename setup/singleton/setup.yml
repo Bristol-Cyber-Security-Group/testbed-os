@@ -404,7 +404,7 @@
   hosts: all
   vars_prompt:
     - name: "install_poetry"
-      prompt: "Would you like to install the Poetry packages and use it to install Python 3.10.5 dependencies? (Yes/No)"
+      prompt: "Would you like to install the Poetry packages? (Yes/No)"
       private: no
   tasks:
 
@@ -465,3 +465,29 @@
      debug:
        msg: "{{ user_name }} is in the libvirt user group"
      when: user_name in libvirt_group.stdout and configure_libvrt | bool
+
+- name: Confirm Completion of Pre-Requisites
+  hosts: all
+  tasks:
+   - name: Announcement
+     debug:
+       msg: "All pre-requisites for the set up process should now be installed. Unexpected errors in the steps ahead can be attributed to missing installations and/or dependencies not being listed in PATH"
+
+
+- name: Check if all dependencies and Testbed binaries are installed.
+  hosts: all
+  tasks:
+
+  - name: Check if Poetry has installed its dependencies
+    shell: |
+      poetry check
+    args:
+      chdir: "../.."
+    register: poetry_check_install
+    ignore_errors: yes
+
+  - name: Which packages are installed
+    ansible.builtin.debug:
+      msg:
+      - "Poetry Packages Installed: '{{ poetry_check_install.rc == 0 }}'"
+      - "OVS Installed: '{{ ovs_check.stat.exists }}'"
