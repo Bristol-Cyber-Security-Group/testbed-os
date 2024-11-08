@@ -1,60 +1,5 @@
----
-- name: Check if all are installed and get confirmation if user would like to proceed. 
-  hosts: all
-  tasks:
-  - name: Check if LibVirt is installed
-    ansible.builtin.stat:
-      path: /usr/bin/virsh
-    register: libvrt_check
-
-  - name: Check if OVS is installed
-    ansible.builtin.stat:
-      path: /usr/local/bin/ovs-vsctl
-    register: ovs_check
-
-  - name: Check if OVN is installed
-    ansible.builtin.stat:
-      path: /usr/local/bin/ovn-nbctl
-    register: ovn_check
-
-  - name: Check if Docker is installed
-    ansible.builtin.stat:
-      path: /usr/bin/docker
-    register: docker_check
-
-  - name: Check if sdkmanager is installed
-    stat:
-      path: /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager
-    register: sdkmanager_check
-
-  - name: Check if Rust is installed
-    ansible.builtin.stat:
-      path: ~/.cargo/bin/rustc
-    register: rust_check
-
-  - name: Check if PyEnv is installed
-    ansible.builtin.stat: 
-      path: ~/.pyenv/bin/pyenv
-    register: pyenv_check
-
-  - name: Check if Poetry is installed
-    ansible.builtin.stat: 
-      path: ~/.local/bin/poetry
-    register: poetry_check
-
-  - name: Which packages are installed
-    ansible.builtin.debug:
-      msg:
-      - "LibVirt Installed: '{{ libvrt_check.stat.exists }}'"
-      - "OVS Installed: '{{ ovs_check.stat.exists }}'"
-      - "OVN Installed: '{{ ovn_check.stat.exists }}'"
-      - "Docker Installed: '{{ docker_check.stat.exists }}'"
-      - "Android SDK Installed: '{{ sdkmanager_check.stat.exists }}'"
-      - "Rust Installed: '{{ rust_check.stat.exists }}'"
-      - "PyEnv Installed: '{{ pyenv_check.stat.exists }}'"
-      - "Poetry Installed: '{{ poetry_check.stat.exists }}'"
-
-
+- name: Check Status
+  import_playbook: ../common/1.status.yml
 
 
 - name: Install Pre-Requisites and Libvirt
@@ -505,131 +450,7 @@
       msg: "{{ user_name }} is in the libvirt user group"
     when: configure_libvrt_bool and user_name in libvirt_group.stdout
 
-- name: Confirm Completion of Pre-Requisites
-  hosts: all
-  tasks:
-   - name: Announcement
-     debug:
-       msg: "All pre-requisites for the set up process should now be installed. Unexpected errors in the steps ahead can be attributed to missing installations and/or dependencies not being listed in PATH"
 
-
-- name: Check if all dependencies and Testbed binaries are installed.
-  hosts: all
-  tasks:
-
-  - name: Check if Poetry has installed its dependencies
-    shell: |
-      poetry check
-    args:
-      chdir: "../.."
-    register: poetry_check_install
-    ignore_errors: yes
-
-  - name: Check Docs are present
-    ansible.builtin.stat:
-      path: /var/lib/testbedos/assets/documentation/
-    register: sphinx_docs
-
-  - name: Check Textual User Interface is installed
-    ansible.builtin.stat:
-      path: ~/.local/share/kvm-ui-tui
-    register: tui_check
-
-  - name: Check if KVM-Compose CLI is Installed
-    ansible.builtin.stat:
-      path: /usr/local/bin/kvm-compose
-    register: kvm_check
-
-  - name: Check if Testbed-OS server is Installed
-    ansible.builtin.stat:
-      path: /usr/local/bin/testbedos-server
-    register: server_check
-
-  - name: Check if Privacy Tools are Installed
-    ansible.builtin.stat:
-      path: /var/lib/testbedos/tools/frida_tools_venv
-    register: privacy_tools_check
-
-  - name: Check if host file is present
-    ansible.builtin.stat:
-      path: /var/lib/testbedos/config/host.json
-    register: hostfile_check
-
-  - name: Read the actual host file content
-    ansible.builtin.slurp:
-      path: /var/lib/testbedos/config/host.json
-    register: actual_hostfile
-    when: hostfile_check.stat.exists
-
-  - name: Debug ansible_default_ipv4
-    debug:
-      var: ansible_default_ipv4
-
-  - name: Debug ansible_all_ipv4_addresses
-    debug:
-      var: ansible_all_ipv4_addresses
-
-  - name: Debug ansible_interfaces
-    debug:
-      var: ansible_interfaces
-
-  - name: Check if ansible_default_ipv4 is available
-    set_fact:
-      default_ipv4_available: "{{ ansible_default_ipv4 is defined and ansible_default_ipv4.interface is defined }}"
-
-  - name: Debug main interface
-    debug:
-      var: main_interface
-
-  - name: Define expected host file content
-    set_fact:
-      expected_hostfile: |
-        {
-          "ip": "10.50.0.1",
-          "user": "{{ ansible_user_id }}",
-          "identity_file": "/home/{{ ansible_user_id }}/.ssh/id_ed25519",
-          "testbed_nic": "eth0",
-          "main_interface": "{{ ansible_default_ipv4.interface  | default('eth0')}}",
-          "is_main_host": true,
-          "ovn": {
-            "chassis_name": "main",
-            "bridge": "br-int",
-            "encap_type": "geneve",
-            "encap_ip": "10.50.0.1",
-            "main_ovn_remote": "unix:/usr/local/var/run/ovn/ovnsb_db.sock",
-            "client_ovn_remote": null,
-            "bridge_mappings": [
-              [
-                "public",
-                "br-ex",
-                "172.16.1.1/24"
-              ]
-            ]
-          }
-        }
-    when: default_ipv4_available
-
-  - name: Convert expected host file content to JSON string
-    set_fact:
-      expected_hostfile_json: "{{ expected_hostfile | to_json }}"
-    when: default_ipv4_available
-
-  - name: Compare host file content with expected content
-    ansible.builtin.debug:
-      msg: "Host file content matches expected content"
-    when: default_ipv4_available and hostfile_check.stat.exists and (actual_hostfile.content | b64decode | from_json == expected_hostfile_json | from_json)
-
-  - name: Which packages are installed
-    ansible.builtin.debug:
-      msg:
-      - "Internet is Available: '{{ default_ipv4_available }}'"
-      - "Poetry Packages Installed: '{{ poetry_check_install.rc == 0 }}'"
-      - "Documentation is Built: '{{ sphinx_docs.stat.exists }}'"
-      - "TUI Installed: '{{ tui_check.stat.exists }}'"
-      - "KVM-Compose Installed: '{{ kvm_check.stat.exists }}'"
-      - "Testbed-OS Server Installed: '{{ server_check.stat.exists }}'"
-      - "Privacy Tools Installed: '{{ privacy_tools_check.stat.exists }}'"
-      - "Hostfile has been configured: '{{ hostfile_check.stat.exists and (actual_hostfile.content | b64decode | from_json == expected_hostfile_json | from_json) }}'"
 
 - name: Use Poetry to install Dependencies
   hosts: all
@@ -912,3 +733,17 @@
     debug:
       msg: "Internet connection has not been established"
     when: not default_ipv4_available
+
+
+- name: Check Status
+  import_playbook: ../common/1.status.yml
+
+- name: Confirm Completion of Installation
+  hosts: all
+  tasks:
+   - name: Announcement
+     debug:
+       msg:
+        - "Installation Complete."
+        - "Unexpected errors can usually be attributed to missing installations and/or dependencies not being listed in PATH"
+        - "For further information consult online documentation: https://testbedos.org/"
