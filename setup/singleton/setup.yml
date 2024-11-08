@@ -114,17 +114,21 @@
       private: no
   tasks:
 
+  - name: Convert install_ovn to boolean
+    set_fact:
+      install_ovn_bool: "{{ (install_ovn | lower) in ['yes', 'y', 'true'] }}"
+
   - name: Check if OVS is installed
     ansible.builtin.stat:
       path: /usr/local/bin/ovs-vsctl
     register: ovs_check
-    when: install_ovn | bool
+    when: install_ovn_bool
 
   - name: Check if OVN is installed
     ansible.builtin.stat:
       path: /usr/local/bin/ovn-nbctl
     register: ovn_check
-    when: install_ovn | bool
+    when: install_ovn_bool
 
 
   - name: Clone OVN from GitHub
@@ -132,7 +136,7 @@
       repo: "https://github.com/ovn-org/ovn.git"
       dest: "/tmp/ovn"
       version: "v24.03.1"
-    when: not ovs_check.stat.exists or not ovn_check.stat.exists and install_ovn | bool
+    when: install_ovn_bool and (not ovs_check.stat.exists or not ovn_check.stat.exists)
 
   - name: Compile and Install OVN and OVS
     shell: |
@@ -149,12 +153,12 @@
       make
       sudo make install
     become: yes
-    when: not ovs_check.stat.exists or not ovn_check.stat.exists and install_ovn | bool
+    when: install_ovn_bool and (not ovs_check.stat.exists or not ovn_check.stat.exists)
 
   - name: Report if OVS And OVN are installed
     debug:
       msg: "OVS and OVN already exist on this machine"
-    when: ovs_check.stat.exists and ovn_check.stat.exists and install_ovn | bool
+    when: install_ovn_bool and ovs_check.stat.exists and ovn_check.stat.exists
 
 - name: Install Docker
   hosts: all
@@ -164,11 +168,15 @@
       private: no
   tasks:
 
+  - name: Convert install_docker to boolean
+    set_fact:
+      install_docker_bool: "{{ (install_docker | lower) in ['yes', 'y', 'true'] }}"
+
   - name: Gather installed package facts
     package_facts:
       manager: apt
     become: yes
-    when: install_docker | bool
+    when: install_docker_bool
 
   - name: Ensure necessary packages are installed
     apt:
@@ -178,7 +186,7 @@
         - gnupg
       state: present
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages and install_docker | bool"
+    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
   - name: Create /etc/apt/keyrings directory
     file:
@@ -186,32 +194,32 @@
       state: directory
       mode: '0755'
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages and install_docker | bool"
+    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
   - name: Add Docker's official GPG key
     ansible.builtin.command: |
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages and install_docker | bool"
+    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
   - name: Set permissions for Docker's GPG key
     file:
       path: /etc/apt/keyrings/docker.gpg
       mode: '0644'
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages  and install_docker | bool"
+    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
   - name: Add Docker APT repository
     ansible.builtin.command: |
       echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages  and install_docker | bool"
+    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
   - name: Update APT package index
     apt:
       update_cache: yes
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages  and install_docker | bool"
+    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
   - name: Install Docker packages
     apt:
@@ -224,12 +232,12 @@
         - docker-compose
       state: present
     become: yes
-    when: "'docker-ce' not in ansible_facts.packages  and install_docker | bool"
+    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
   - name: Confirm Docker is installed
     ansible.builtin.debug: 
       msg: "Docker is already installed"
-    when: "'docker-ce' in ansible_facts.packages  and install_docker | bool"
+    when: " install_docker_bool and 'docker-ce' in ansible_facts.packages "
 
 - name: Install Android SDK
   hosts: all
@@ -239,11 +247,15 @@
       private: no
   tasks:
 
+  - name: Convert install_sdk to boolean
+    set_fact:
+      install_sdk_bool: "{{ (install_sdk | lower) in ['yes', 'y', 'true'] }}"
+
   - name: Check if sdkmanager is installed
     stat:
       path: /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager
     register: sdkmanager_check
-    when: install_sdk | bool
+    when: install_sdk_bool
 
   - name: Ensure necessary packages are installed
     apt:
@@ -254,7 +266,7 @@
         - wget
       state: present
     become: yes
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Create Android SDK directory
     file:
@@ -262,7 +274,7 @@
       state: directory
       mode: '0755'
     become: yes
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Change ownership of Android SDK directory
     file:
@@ -271,30 +283,30 @@
       owner: "{{ ansible_user_id }}"
       recurse: yes
     become: yes
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Download Android SDK Command-Line Tools
     get_url:
       url: https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
       dest: /opt/android-sdk/cmdline-tools/tools.zip
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Unzip Android SDK Command-Line Tools
     unarchive:
       src: /opt/android-sdk/cmdline-tools/tools.zip
       dest: /opt/android-sdk/cmdline-tools/
       remote_src: yes
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Rename cmdline-tools directory to latest
     command: mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Remove the downloaded zip file
     file:
       path: /opt/android-sdk/cmdline-tools/tools.zip
       state: absent
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Add Android SDK to PATH and set environment variables
     lineinfile:
@@ -305,21 +317,21 @@
         export ANDROID_SDK_ROOT=/opt/android-sdk/
       create: yes
       state: present
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Source .bashrc to update PATH
     shell: source ~/.bashrc
     args:
       executable: /bin/bash
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Accept Android SDK licenses
     shell: yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Install Android SDK components
     shell: echo y | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --install "emulator" "platform-tools"
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Create platforms directory
     file:
@@ -327,12 +339,12 @@
       state: directory
       mode: '0755'
     become: yes
-    when: not sdkmanager_check.stat.exists and install_sdk | bool
+    when: install_sdk_bool and not sdkmanager_check.stat.exists
 
   - name: Confirm Android SDK is installed
     ansible.builtin.debug: 
       msg: "Android SDK is already installed"
-    when: install_sdk | bool and sdkmanager_check.stat.exists
+    when: install_sdk_bool and sdkmanager_check.stat.exists
 
 - name: Ensure Rust is installed
   hosts: all
@@ -341,28 +353,34 @@
       prompt: "Would you like to install the Rust packages? (Yes/No)"
       private: no
   tasks:
+
+  - name: Convert install_rust to boolean
+    set_fact:
+      install_rust_bool: "{{ (install_rust | lower) in ['yes', 'y', 'true'] }}"
+
   - name: Check if Rust is installed
     ansible.builtin.stat:
        path: ~/.cargo/bin/rustc
     register: rust_check
-    when: install_rust | bool
+    when: install_rust_bool
 
   - name: Install Rust using RustUp
     shell: |
       curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     args:
       creates: ~/.cargo/bin/rustc  
-    when: not rust_check.stat.exists and install_rust | bool
+    when: install_rust_bool and not rust_check.stat.exists
 
   - name: Check if rust is in PATH
     lineinfile: 
       path: ~/.bashrc
       line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+    when: install_rust_bool and not rust_check.stat.exists
 
   - name: Rust is installed
     debug:
       msg: "Rust has already been installed"
-    when: rust_check.stat.exists and install_rust | bool
+    when: install_rust_bool and rust_check.stat.exists
 
 - name: Ensure PyEnv is Installed and run it
   hosts: all
@@ -371,19 +389,23 @@
       prompt: "Would you like to install the PyEnv and Python 3.10.5 packages? (Yes/No)"
       private: no
   tasks:
-    
+
+  - name: Convert install_pyenv to boolean
+    set_fact:
+      install_pyenv_bool: "{{ (install_pyenv | lower) in ['yes', 'y', 'true'] }}"
+
   - name: Check if PyEnv is installed
     ansible.builtin.stat: 
       path: ~/.pyenv/bin/pyenv
     register: pyenv_check
-    when: install_pyenv | bool
+    when: install_pyenv_bool
   
   - name: Install PyEnv
     shell: |
       curl https://pyenv.run | bash
     args:
       creates: ~/.pyenv/bin/pyenv
-    when: not pyenv_check.stat.exists and install_pyenv | bool
+    when: install_pyenv_bool and not pyenv_check.stat.exists
 
   - name: Ensure PyEnv is in PATH
     blockinfile:
@@ -392,19 +414,19 @@
         export PYENV_ROOT="$HOME/.pyenv"
         command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
         eval "$(pyenv init -)"
-    when: not pyenv_check.stat.exists and install_pyenv | bool
+    when: install_pyenv_bool and not pyenv_check.stat.exists
 
   - name: Install Python 3.10.5 using PyEnv
     shell: |
      ~/.pyenv/bin/pyenv install 3.10.5
     args:
       creates: ~/.pyenv/shims/python3.10
-    when: install_pyenv | bool and install_pyenv | bool
+    when: install_pyenv_bool and pyenv_check.stat.exists
  
   - name: Confirm if PyEnv exists
     debug:
       msg: "PyEnv exists, we recommend you ensure Python3.10.5 is installed and both PyEnv and Python are in the PATH"
-    when: pyenv_check.stat.exists and install_pyenv | bool
+    when: install_pyenv_bool and pyenv_check.stat.exists
 
 - name: Ensure Poetry is installed
   hosts: all
@@ -414,29 +436,33 @@
       private: no
   tasks:
 
+  - name: Convert install_poetry to boolean
+    set_fact:
+      install_poetry_bool: "{{ (install_poetry | lower) in ['yes', 'y', 'true'] }}"
+
   - name: Check if Poetry is installed
     ansible.builtin.stat: 
       path: ~/.local/bin/poetry
     register: poetry_check
-    when: install_poetry | bool
+    when: install_poetry_bool
 
   - name: Install Poetry
     shell: | 
       curl -sSL https://install.python-poetry.org | python3 -
     args:
       creates: ~/.local/bin/poetry
-    when: not poetry_check.stat.exists and install_poetry | bool
+    when: install_poetry_bool and not poetry_check.stat.exists
 
   - name: Ensure Poetry is in PATH
     lineinfile:
       path: ~/.bashrc
       line: export PATH=$PATH:/home/$USER/.local/bin
-    when: not poetry_check.stat.exists and install_poetry | bool
+    when: install_poetry_bool and not poetry_check.stat.exists
 
   - name: Confirm if Poetry exists
     debug:
       msg: "Poetry is already installed"
-    when: poetry_check.stat.exists and install_poetry | bool
+    when: install_poetry_bool and poetry_check.stat.exists
 
 - name: Ensure User is in Libvirt Group
   hosts: all
@@ -448,31 +474,36 @@
     user_name: "{{ansible_user_id}}"
   tasks: 
 
-   - name: Check if user is in libvirt group
-     command: getent group libvirt
-     register: libvirt_group
-     when: configure_libvrt | bool
 
-   - name: Add user to libvirt group
-     user:
-       name: "{{ user_name }}"
-       groups: libvirt
-       append: yes
-     when:  user_name not in libvirt_group.stdout and configure_libvrt | bool
-     become: true
+  - name: Convert configure_libvrt to boolean
+    set_fact:
+      configure_libvrt_bool: "{{ (configure_libvrt | lower) in ['yes', 'y', 'true'] }}"
 
-   - name: Restart libvirt system
-     systemd:
-       name: libvirtd
-       state: restarted
-       enabled: yes
-     when: user_name not in libvirt_group.stdout and configure_libvrt | bool
-     become: true
+  - name: Check if user is in libvirt group
+    command: getent group libvirt
+    register: libvirt_group
+    when: configure_libvrt_bool
 
-   - name: Confirm libvirt user is in the group
-     debug:
-       msg: "{{ user_name }} is in the libvirt user group"
-     when: user_name in libvirt_group.stdout and configure_libvrt | bool
+  - name: Add user to libvirt group
+    user:
+      name: "{{ user_name }}"
+      groups: libvirt
+      append: yes
+    when:  configure_libvrt_bool and user_name not in libvirt_group.stdout
+    become: true
+
+  - name: Restart libvirt system
+    systemd:
+      name: libvirtd
+      state: restarted
+      enabled: yes
+    when: configure_libvrt_bool and user_name not in libvirt_group.stdout
+    become: true
+
+  - name: Confirm libvirt user is in the group
+    debug:
+      msg: "{{ user_name }} is in the libvirt user group"
+    when: configure_libvrt_bool and user_name in libvirt_group.stdout
 
 - name: Confirm Completion of Pre-Requisites
   hosts: all
@@ -494,12 +525,6 @@
     register: poetry_check_install
     ignore_errors: yes
 
-  - name: Install Rust using RustUp
-    shell: |
-      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    args:
-      creates: ~/.cargo/bin/rustc  
-    when: not rust_check.stat.exists and install_rust | bool
   - name: Check Docs are present
     ansible.builtin.stat:
       path: /var/lib/testbedos/assets/documentation/
@@ -536,6 +561,26 @@
     register: actual_hostfile
     when: hostfile_check.stat.exists
 
+  - name: Debug ansible_default_ipv4
+    debug:
+      var: ansible_default_ipv4
+
+  - name: Debug ansible_all_ipv4_addresses
+    debug:
+      var: ansible_all_ipv4_addresses
+
+  - name: Debug ansible_interfaces
+    debug:
+      var: ansible_interfaces
+
+  - name: Check if ansible_default_ipv4 is available
+    set_fact:
+      default_ipv4_available: "{{ ansible_default_ipv4 is defined and ansible_default_ipv4.interface is defined }}"
+
+  - name: Debug main interface
+    debug:
+      var: main_interface
+
   - name: Define expected host file content
     set_fact:
       expected_hostfile: |
@@ -544,7 +589,7 @@
           "user": "{{ ansible_user_id }}",
           "identity_file": "/home/{{ ansible_user_id }}/.ssh/id_ed25519",
           "testbed_nic": "eth0",
-          "main_interface": "{{ ansible_default_ipv4.interface }}",
+          "main_interface": "{{ ansible_default_ipv4.interface  | default('eth0')}}",
           "is_main_host": true,
           "ovn": {
             "chassis_name": "main",
@@ -562,19 +607,22 @@
             ]
           }
         }
+    when: default_ipv4_available
 
   - name: Convert expected host file content to JSON string
     set_fact:
       expected_hostfile_json: "{{ expected_hostfile | to_json }}"
+    when: default_ipv4_available
 
   - name: Compare host file content with expected content
     ansible.builtin.debug:
       msg: "Host file content matches expected content"
-    when: hostfile_check.stat.exists and (actual_hostfile.content | b64decode | from_json == expected_hostfile_json | from_json)
+    when: default_ipv4_available and hostfile_check.stat.exists and (actual_hostfile.content | b64decode | from_json == expected_hostfile_json | from_json)
 
   - name: Which packages are installed
     ansible.builtin.debug:
       msg:
+      - "Internet is Available: '{{ default_ipv4_available }}'"
       - "Poetry Packages Installed: '{{ poetry_check_install.rc == 0 }}'"
       - "Documentation is Built: '{{ sphinx_docs.stat.exists }}'"
       - "TUI Installed: '{{ tui_check.stat.exists }}'"
@@ -584,12 +632,16 @@
       - "Hostfile has been configured: '{{ hostfile_check.stat.exists and (actual_hostfile.content | b64decode | from_json == expected_hostfile_json | from_json) }}'"
 
 - name: Use Poetry to install Dependencies
-hosts: all
-vars_prompt:
-  - name: "install_poetry_packages"
-    prompt: "Would you like to use Poetry to install all Testbed-OS pre-requisite packages? (Yes/No)"
-    private: no
-tasks:
+  hosts: all
+  vars_prompt:
+    - name: "install_poetry_packages"
+      prompt: "Would you like to use Poetry to install all Testbed-OS pre-requisite packages? (Yes/No)"
+      private: no
+  tasks:
+
+  - name: Convert install_poetry_packages to boolean
+    set_fact:
+      install_poetry_packages_bool: "{{ (install_poetry_packages | lower) in ['yes', 'y', 'true'] }}"
 
   - name: Check if Poetry has installed its dependencies
     shell: |
@@ -598,7 +650,7 @@ tasks:
       chdir: "../.."
     register: poetry_check_install
     ignore_errors: yes
-    when: install_poetry_packages | bool
+    when: install_poetry_packages_bool
 
   - name: Run Poetry Package Install
     shell: |
@@ -606,25 +658,30 @@ tasks:
       poetry install || exit
     args:
       chdir: "../.."  
-    when: not poetry_check_install.stat.exists and install_poetry_packages | bool
+    when: install_poetry_packages_bool and not poetry_check_install.rc == 0
 
   - name: Confirm if Poetry has been installed
     ansible.builtin.debug:
       msg: "Poetry Dependencies have already been installed"
-    when: poetry_check_install.stat.exists and install_poetry_packages | bool
+    when: install_poetry_packages_bool and poetry_check_install.rc == 0
 
 - name: Install Build Documentation
-hosts: all
-vars_prompt:
-  - name: "build_docs"
-    prompt: "Would you like to build documentation? (Yes/No)"
-    private: no
-tasks:
+  hosts: all
+  vars_prompt:
+    - name: "build_docs"
+      prompt: "Would you like to build documentation? (Yes/No)"
+      private: no
+  tasks:
+
+  - name: Convert build_docs_packages to boolean
+    set_fact:
+      build_docs_bool: "{{ (build_docs | lower) in ['yes', 'y', 'true'] }}"
+
   - name: Check Docs are present
     ansible.builtin.stat:
       path: /var/lib/testbedos/assets/documentation/
     register: sphinx_docs
-    when: build_docs | bool
+    when: build_docs_bool
 
   - name: Build Docs if they are not present
     shell: |
@@ -637,26 +694,30 @@ tasks:
     args:
       chdir: "../.." 
       creates: /var/lib/testbedos/assets/documentation/
-    when: not sphinx_docs.stat.exists and build_docs | bool
+    when: build_docs_bool and not sphinx_docs.stat.exists
 
   - name: Confirm if the Docs has been built
     ansible.builtin.debug:
       msg: "Documentation has already been built"
-    when: sphinx_docs.stat.exists and build_docs | bool
+    when: build_docs_bool and sphinx_docs.stat.exists
 
 - name: Install TUI
-hosts: all
-vars_prompt:
-  - name: "install_tui"
-    prompt: "Would you like to install the TUI packages? (Yes/No)"
-    private: no
-tasks:
+  hosts: all
+  vars_prompt:
+    - name: "install_tui"
+      prompt: "Would you like to install the TUI packages? (Yes/No)"
+      private: no
+  tasks:
+
+  - name: Convert install_tui to boolean
+    set_fact:
+      install_tui_bool: "{{ (install_tui | lower) in ['yes', 'y', 'true'] }}"
 
   - name: Check Textual User Interface is installed
     ansible.builtin.stat:
       path: ~/.local/share/kvm-ui-tui
     register: tui_check
-    when: install_tui | bool
+    when: install_tui_bool
 
   - name: Install TUI if not already installed
     shell: |
@@ -664,26 +725,31 @@ tasks:
     args:
       chdir: "../../util/tui/" 
       creates: ~/.local/share/kvm-ui-tui 
-    when: not tui_check.stat.exists and install_tui | bool
+    become: yes
+    when: install_tui_bool and not tui_check.stat.exists
 
   - name: Confirm if Textual User Interface has been installed
     ansible.builtin.debug:
       msg: "Textual User Interface has already been installed"
-    when: tui_check.stat.exists and install_tui | bool
+    when: install_tui_bool and not tui_check.stat.exists
 
 - name: Install KVM-Compose
-hosts: all
-vars_prompt:
-  - name: "install_kvm"
-    prompt: "Would you like to install the KVM-Compose packages? (Yes/No)"
-    private: no
-tasks:
+  hosts: all
+  vars_prompt:
+    - name: "install_kvm"
+      prompt: "Would you like to install the KVM-Compose packages? (Yes/No)"
+      private: no
+  tasks:
+
+  - name: Convert install_kvm to boolean
+    set_fact:
+      install_kvm_bool: "{{ (install_kvm | lower) in ['yes', 'y', 'true'] }}"
 
   - name: Check if KVM-Compose CLI is Installed
     ansible.builtin.stat:
       path: /usr/local/bin/kvm-compose
     register: kvm_check
-    when: install_kvm | bool
+    when: install_kvm_bool
 
   - name: Install KVM-Compose CLI if not already installed
     shell: |
@@ -691,26 +757,31 @@ tasks:
     args:
       chdir: "../../kvm-compose/kvm-compose-cli/" 
       creates: /usr/local/bin/kvm-compose 
-    when: not kvm_check.stat.exists and install_kvm | bool
+    become: yes
+    when: install_kvm_bool and not kvm_check.stat.exists
 
   - name: Confirm if Textual User Interface has been installed
     ansible.builtin.debug:
       msg: "KCM-Compose CLI has already been installed"
-    when: kvm_check.stat.exists and install_kvm | bool
+    when: install_kvm_bool and kvm_check.stat.exists
 
 - name: Install Testbed-OS Server 
-hosts: all
-vars_prompt:
-  - name: "install_server"
-    prompt: "Would you like to install the Testbed-OS packages? (Yes/No)"
-    private: no
-tasks:
+  hosts: all
+  vars_prompt:
+    - name: "install_server"
+      prompt: "Would you like to install the Testbed-OS packages? (Yes/No)"
+      private: no
+  tasks:
+
+  - name: Convert install_server to boolean
+    set_fact:
+      install_server_bool: "{{ (install_server | lower) in ['yes', 'y', 'true'] }}"
 
   - name: Check if Testbed-OS server is Installed
     ansible.builtin.stat:
       path: /usr/local/bin/testbedos-server
     register: server_check
-    when: install_server | bool
+    when: install_server_bool
 
   - name: Install Testbed-OS server if not already installed
     shell: |
@@ -718,59 +789,79 @@ tasks:
     args:
       chdir: "../../kvm-compose/testbedos-server/" 
       creates: /usr/local/bin/kvm-compose 
-    when: not server_check.stat.exists and install_server | bool
+    become: yes
+    when: install_server_bool and not server_check.stat.exists
 
   - name: Confirm if Textual User Interface has been installed
     ansible.builtin.debug:
       msg: "TestBed-OS Server has already been installed"
-    when: server_check.stat.exists and install_server | bool
+    when: install_server_bool and server_check.stat.exists
 
 - name: Install Privacy Tools
-hosts: all
-vars_prompt:
-  - name: "install_privacy_tools"
-    prompt: "Would you like to install the Privacy Tools packages? (Yes/No)"
-    private: no
-tasks:
+  hosts: all
+  vars_prompt:
+    - name: "install_privacy_tools"
+      prompt: "Would you like to install the Privacy Tools packages? (Yes/No)"
+      private: no
+  tasks:
+
+  - name: Convert install_privacy_tools to boolean
+    set_fact:
+      install_privacy_tools_bool: "{{ (install_privacy_tools | lower) in ['yes', 'y', 'true'] }}"
 
   - name: Check if Privacy Tools are Installed
     ansible.builtin.stat:
       path: /var/lib/testbedos/tools/frida_tools_venv
     register: privacy_tools_check
-    when: install_privacy_tools | bool
+    when: install_privacy_tools_bool
 
-  - name: Install PRrivacy Tools if not already installed
+  - name: Install Privacy Tools if not already installed
     shell: |
       ./setup.sh
     args:
       chdir: "../../util/privacy_tools/" 
       creates: /var/lib/testbedos/tools/frida_tools_venv
-    when: not privacy_tools_check.stat.exists and install_privacy_tools | bool
+    become: yes
+    when: install_privacy_tools_bool and not privacy_tools_check.stat.exists
 
   - name: Confirm if Textual User Interface has been installed
     ansible.builtin.debug:
       msg: "Privacy Tools have already been installed"
-    when: privacy_tools_check.stat.exists and install_privacy_tools | bool
+    when: install_privacy_tools_bool and privacy_tools_check.stat.exists
 
 - name: Configure Host File
-hosts: all
-vars_prompt:
-  - name: "configure_host_file"
-    prompt: "Would you like to configure your Testbed-OS installation automatically? (Yes/No)"
-    private: no
-tasks:
+  hosts: all
+  vars_prompt:
+    - name: "configure_host_file"
+      prompt: "Would you like to configure your Testbed-OS installation automatically? (Yes/No)"
+      private: no
+  tasks:
+
+  - name: Convert configure_host_file to boolean
+    set_fact:
+      configure_host_file_bool: "{{ (configure_host_file | lower) in ['yes', 'y', 'true'] }}"
+
+  - name: Check if ansible_default_ipv4 is available
+    set_fact:
+      default_ipv4_available: "{{ ansible_default_ipv4 is defined and ansible_default_ipv4.interface is defined }}"
+    when: configure_host_file_bool
+
+  - name: Debug default_ipv4_available
+    debug:
+      var: default_ipv4_available
+    when: configure_host_file_bool
 
   - name: Check if host file is present
     ansible.builtin.stat:
       path: /var/lib/testbedos/config/host.json
     register: hostfile_check
-    when: configure_host_file | bool
+    when: configure_host_file_bool
 
   - name: Read the actual host file content
     ansible.builtin.slurp:
       path: /var/lib/testbedos/config/host.json
     register: actual_hostfile
-    when: hostfile_check.stat.exists and configure_host_file | bool
+    when: configure_host_file_bool and default_ipv4_available and hostfile_check.stat.exists
 
   - name: Define expected host file content
     set_fact:
@@ -780,7 +871,7 @@ tasks:
           "user": "{{ ansible_user_id }}",
           "identity_file": "/home/{{ ansible_user_id }}/.ssh/id_ed25519",
           "testbed_nic": "eth0",
-          "main_interface": "{{ ansible_default_ipv4.interface }}",
+          "main_interface": "{{ ansible_default_ipv4.interface | default('eth0') }}",
           "is_main_host": true,
           "ovn": {
             "chassis_name": "main",
@@ -798,20 +889,26 @@ tasks:
             ]
           }
         }
-    when: hostfile_check.stat.exists and configure_host_file | bool
+    when: configure_host_file_bool and default_ipv4_available and hostfile_check.stat.exists
 
   - name: Convert expected host file content to JSON string
     set_fact:
       expected_hostfile_json: "{{ expected_hostfile | to_json }}"
-    when: hostfile_check.stat.exists and configure_host_file | bool
+    when: configure_host_file_bool and default_ipv4_available and hostfile_check.stat.exists
 
   - name: Create or update host file with expected content
     ansible.builtin.copy:
       content: "{{ expected_hostfile_json }}"
       dest: /var/lib/testbedos/config/host.json
-    when: not hostfile_check.stat.exists and not (actual_hostfile.content | b64decode | from_json == expected_hostfile_json | from_json)  and (configure_host_file | bool)
+    become: yes
+    when: configure_host_file_bool and default_ipv4_available and (not hostfile_check.stat.exists or not (actual_hostfile.content | b64decode | from_json == expected_hostfile_json | from_json))
 
   - name: Compare host file content with expected content
     ansible.builtin.debug:
       msg: "Host file exists and its content matches expected content"
-    when: hostfile_check.stat.exists and (actual_hostfile.content | b64decode | from_json == expected_hostfile_json | from_json)  and (configure_host_file | bool)
+    when: configure_host_file_bool and default_ipv4_available and hostfile_check.stat.exists and (actual_hostfile.content | b64decode | from_json == expected_hostfile_json | from_json)
+
+  - name: Internet unavailable
+    debug:
+      msg: "Internet connection has not been established"
+    when: not default_ipv4_available
