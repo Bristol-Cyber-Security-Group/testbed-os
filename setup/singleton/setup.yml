@@ -11,6 +11,11 @@
       private: no
   tasks:
 
+  - name: Convert install_prereq to boolean
+    set_fact:
+      install_prereq_bool: "{{ (install_prereq | lower) in ['yes', 'y', 'true'] }}"
+
+
   - name: Install via Aptitude
     apt:
       name: 
@@ -44,12 +49,12 @@
       - virt-manager
       state: latest
       update_cache: yes
-    when: install_prereq | bool
+    when: install_prereq_bool
 
   - name: Confirm LibVirt is installed
     ansible.builtin.debug: 
       msg: "LibVirt is already installed"
-    when: install_prereq | bool and libvrt_check.stat.exists
+    when: install_prereq_bool and libvrt_check.stat.exists
 
 - name: Install OVN and OVS
   hosts: all
@@ -123,66 +128,39 @@
     become: yes
     when: install_docker_bool
 
-  - name: Ensure necessary packages are installed
-    apt:
-      name:
-        - ca-certificates
-        - curl
-      state: latest
-    become: yes
-    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
+  - name: Install Docker using shell script
+    shell: |
+      #!/bin/bash
+      set -e
 
-  - name: Create /etc/apt/keyrings directory
-    file:
-      path: /etc/apt/keyrings
-      state: directory
-      mode: '0755'
-    become: yes
-    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
+      # Update the apt package index and install packages to allow apt to use a repository over HTTPS
+      apt-get update
+      apt-get install -y ca-certificates curl gnupg
 
-  - name: Download Docker's official GPG key
-    ansible.builtin.get_url:
-      url: https://download.docker.com/linux/ubuntu/gpg
-      dest: /etc/apt/keyrings/docker.asc
-    become: yes
-    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
+      # Add Docker’s official GPG key
+      install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      chmod a+r /etc/apt/keyrings/docker.gpg
 
-  - name: Set permissions for Docker's GPG key
-    file:
-      path: /etc/apt/keyrings/docker.asc
-      mode: '0644'
-    become: yes
-    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
+      # Use the following command to set up the repository
+      echo \
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+        $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-  - name: Add Docker APT repository
-    ansible.builtin.command: |
-      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-    become: yes
-    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
+      # Update the apt package index again
+      apt-get update
 
-  - name: Update APT package index
-    apt:
-      update_cache: yes
-    become: yes
-    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
+      # Install Docker Engine, containerd, and Docker Compose
+      apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-  - name: Install Docker packages
-    apt:
-      name:
-        - docker-ce
-        - docker-ce-cli
-        - containerd.io
-        - docker-buildx-plugin
-        - docker-compose-plugin
-        - docker-compose
-      state: present
     become: yes
-    when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
+    when: "install_docker_bool and 'docker-ce' not in ansible_facts.packages"
 
   - name: Confirm Docker is installed
-    ansible.builtin.debug: 
+    ansible.builtin.debug:
       msg: "Docker is already installed"
-    when: " install_docker_bool and 'docker-ce' in ansible_facts.packages "
+    when: "install_docker_bool and 'docker-ce' in ansible_facts.packages"
+
 
 
 - name: Install Android SDK
@@ -345,7 +323,7 @@
       path: ~/.pyenv/bin/pyenv
     register: pyenv_check
     when: install_pyenv_bool
-  
+
   - name: Install PyEnv
     shell: |
       curl https://pyenv.run | bash
@@ -362,17 +340,23 @@
         eval "$(pyenv init -)"
     when: install_pyenv_bool and not pyenv_check.stat.exists
 
+  - name: Check if Python 3.10.5 is installed via PyEnv
+    shell: |
+      ~/.pyenv/bin/pyenv versions --bare
+    register: pyenv_versions
+    changed_when: false
+    when: install_pyenv_bool and pyenv_check.stat.exists
+
   - name: Install Python 3.10.5 using PyEnv
     shell: |
       ~/.pyenv/bin/pyenv install 3.10.5
-    args:
-      creates: ~/.pyenv/shims/python3.10
-    when: install_pyenv_bool and pyenv_check.stat.exists
- 
-  - name: Confirm if PyEnv exists
+    when: install_pyenv_bool and pyenv_check.stat.exists and '3.10.5' not in pyenv_versions.stdout
+
+  - name: Confirm Python 3.10.5 installation and Pyenv installation
     debug:
-      msg: "PyEnv exists, we recommend you ensure Python3.10.5 is installed and both PyEnv and Python are in the PATH"
-    when: install_pyenv_bool and pyenv_check.stat.exists
+      msg: "Python 3.10.5 has already been installed installed via PyEnv"
+    when: install_pyenv_bool and pyenv_check.stat.exists and '3.10.5' in pyenv_versions.stdout
+
 
 - name: Ensure Poetry is installed
   hosts: all
@@ -467,6 +451,10 @@
 
   - name: Check if Poetry has installed its dependencies
     shell: |
+      export PYENV_ROOT="$HOME/.pyenv"
+      export PATH="$PYENV_ROOT/bin:$HOME/.local/bin:$PATH"
+      eval "$(pyenv init --path)"
+      eval "$(pyenv init -)"
       poetry run which sphinx-build
     args:
       chdir: "../.."
@@ -476,17 +464,23 @@
 
   - name: Run Poetry Package Install
     shell: |
-      source ~/.bashrc
-      poetry env use 3.10.5 || exit
-      poetry install || exit
+      . ~/.bashrc
+      export PYENV_ROOT="$HOME/.pyenv"
+      export PATH="$PYENV_ROOT/bin:$HOME/.local/bin:$PATH"
+      eval "$(pyenv init --path)"
+      eval "$(pyenv init -)"
+      pyenv global 3.10.5
+      poetry env use 3.10.5
+      poetry install
     args:
-      chdir: "../.."  
+      chdir: "../.."
     when: install_poetry_packages_bool and not poetry_check_install.rc == 0
 
   - name: Confirm if Poetry has been installed
     ansible.builtin.debug:
       msg: "Poetry Dependencies have already been installed"
     when: install_poetry_packages_bool and poetry_check_install.rc == 0
+
 
 - name: Build Documentation
   hosts: all
@@ -554,12 +548,6 @@
     register: tui_check
     when: install_tui_bool
 
-  - name: Delete pre-existing TUI directory if it exists
-    ansible.builtin.file:
-      path: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui"
-      state: absent
-    when: install_tui_bool and tui_check.stat.exists
-
   - name: Create TUI directory
     ansible.builtin.file:
       path: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui"
@@ -580,6 +568,10 @@
 
   - name: Get the location of python from the poetry venv
     shell: |
+      export PYENV_ROOT="$HOME/.pyenv"
+      export PATH="$PYENV_ROOT/bin:$HOME/.local/bin:$PATH"
+      eval "$(pyenv init --path)"
+      eval "$(pyenv init -)"
       poetry run which python
     register: poetry_venv_path
     environment:
@@ -670,7 +662,7 @@
       creates: /usr/local/bin/testbedos-server
       executable: /bin/bash
     environment:
-      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin:{{ lookup('env', 'HOME') }}/.cargo/bin"
     become: yes
     when: install_server_bool and not server_check.stat.exists
 
@@ -817,6 +809,7 @@
      debug:
        msg:
         - "Installation Complete."
+        - "This script shold have configured Testbed-OS to work in Singleton mode"
         - "Unexpected errors can usually be attributed to missing installations and/or dependencies not being listed in PATH"
+        - "To start the Testbed-OS Server using - sudo testbedos-server main"
         - "For further information consult online documentation: https://testbedos.org/"
-        - "Start the Testbed-OS Server using - sudo testbedos-server main"

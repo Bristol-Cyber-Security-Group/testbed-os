@@ -44,7 +44,11 @@
 
   - name: Check if Poetry has installed its dependencies
     shell: |
-      poetry check
+      export PYENV_ROOT="$HOME/.pyenv"
+      export PATH="$PYENV_ROOT/bin:$HOME/.local/bin:$PATH"
+      eval "$(pyenv init --path)"
+      eval "$(pyenv init -)"
+      poetry run which sphinx-build
     args:
       chdir: "../.."
     register: poetry_check_install
