@@ -318,6 +318,18 @@
     set_fact:
       install_pyenv_bool: "{{ (install_pyenv | lower) in ['yes', 'y', 'true'] }}"
 
+- name: Ensure PyEnv and Python 3.10.5 are Installed
+  hosts: all
+  vars_prompt:
+    - name: "install_pyenv"
+      prompt: "Would you like to install PyEnv and Python 3.10.5? (Yes/No)"
+      private: no
+  tasks:
+
+  - name: Convert install_pyenv to boolean
+    set_fact:
+      install_pyenv_bool: "{{ (install_pyenv | lower) in ['yes', 'y', 'true'] }}"
+
   - name: Check if PyEnv is installed
     ansible.builtin.stat: 
       path: ~/.pyenv/bin/pyenv
@@ -337,6 +349,7 @@
       block: |
         export PYENV_ROOT="$HOME/.pyenv"
         command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init --path)"
         eval "$(pyenv init -)"
     when: install_pyenv_bool and not pyenv_check.stat.exists
 
@@ -345,17 +358,18 @@
       ~/.pyenv/bin/pyenv versions --bare
     register: pyenv_versions
     changed_when: false
-    when: install_pyenv_bool and pyenv_check.stat.exists
+    when: install_pyenv_bool
 
   - name: Install Python 3.10.5 using PyEnv
     shell: |
       ~/.pyenv/bin/pyenv install 3.10.5
-    when: install_pyenv_bool and pyenv_check.stat.exists and '3.10.5' not in pyenv_versions.stdout
+    when: install_pyenv_bool and '3.10.5' not in pyenv_versions.stdout
 
-  - name: Confirm Python 3.10.5 installation and Pyenv installation
+  - name: Confirm Python 3.10.5 installation
     debug:
-      msg: "Python 3.10.5 has already been installed installed via PyEnv"
-    when: install_pyenv_bool and pyenv_check.stat.exists and '3.10.5' in pyenv_versions.stdout
+      msg: "Python 3.10.5 has already been installed via PyEnv"
+    when: install_pyenv_bool and '3.10.5' in pyenv_versions.stdout
+
 
 
 - name: Ensure Poetry is installed
@@ -809,7 +823,7 @@
      debug:
        msg:
         - "Installation Complete."
-        - "This script shold have configured Testbed-OS to work in Singleton mode"
+        - "This script should have configured Testbed-OS to work in Singleton mode"
         - "Unexpected errors can usually be attributed to missing installations and/or dependencies not being listed in PATH"
         - "To start the Testbed-OS Server using - sudo testbedos-server main"
         - "For further information consult online documentation: https://testbedos.org/"
