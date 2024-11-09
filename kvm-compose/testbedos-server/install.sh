@@ -7,7 +7,7 @@ sudo mkdir -p /var/lib/testbedos/server/
 sudo mkdir -p /var/lib/testbedos/deployments/
 sudo mkdir -p /var/lib/testbedos/keys/
 sudo mkdir -p /var/lib/testbedos/tools/
-
+rustup default stable
 cargo build --release
 
 # place the mode.json in place if there is not one already there
@@ -35,5 +35,5 @@ sudo cp ../kvm-compose/assets/id_ed25519_testbed_insecure_key.pub /var/lib/testb
 sudo cp -r assets/ /var/lib/testbedos/
 
 # copy documentation into the server assets folder for development when running in debug
-rm -rf assets/documentation/
-cp -r ../../build/html/ assets/documentation/
+# rm -rf assets/documentation/
+# cp -r ../../build/html/ assets/documentation/

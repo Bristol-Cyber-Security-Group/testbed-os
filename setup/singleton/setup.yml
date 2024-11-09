@@ -128,8 +128,7 @@
       name:
         - ca-certificates
         - curl
-        - gnupg
-      state: present
+      state: latest
     become: yes
     when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
@@ -141,22 +140,23 @@
     become: yes
     when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
-  - name: Add Docker's official GPG key
-    ansible.builtin.command: |
-      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  - name: Download Docker's official GPG key
+    ansible.builtin.get_url:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      dest: /etc/apt/keyrings/docker.asc
     become: yes
     when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
   - name: Set permissions for Docker's GPG key
     file:
-      path: /etc/apt/keyrings/docker.gpg
+      path: /etc/apt/keyrings/docker.asc
       mode: '0644'
     become: yes
     when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
   - name: Add Docker APT repository
     ansible.builtin.command: |
-      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     become: yes
     when: " install_docker_bool and 'docker-ce' not in ansible_facts.packages "
 
@@ -183,6 +183,7 @@
     ansible.builtin.debug: 
       msg: "Docker is already installed"
     when: " install_docker_bool and 'docker-ce' in ansible_facts.packages "
+
 
 - name: Install Android SDK
   hosts: all
@@ -363,7 +364,7 @@
 
   - name: Install Python 3.10.5 using PyEnv
     shell: |
-     ~/.pyenv/bin/pyenv install 3.10.5
+      ~/.pyenv/bin/pyenv install 3.10.5
     args:
       creates: ~/.pyenv/shims/python3.10
     when: install_pyenv_bool and pyenv_check.stat.exists
@@ -466,7 +467,7 @@
 
   - name: Check if Poetry has installed its dependencies
     shell: |
-      poetry check
+      poetry run which sphinx-build
     args:
       chdir: "../.."
     register: poetry_check_install
@@ -475,6 +476,7 @@
 
   - name: Run Poetry Package Install
     shell: |
+      source ~/.bashrc
       poetry env use 3.10.5 || exit
       poetry install || exit
     args:
@@ -486,7 +488,7 @@
       msg: "Poetry Dependencies have already been installed"
     when: install_poetry_packages_bool and poetry_check_install.rc == 0
 
-- name: Install Build Documentation
+- name: Build Documentation
   hosts: all
   vars_prompt:
     - name: "build_docs"
@@ -500,21 +502,33 @@
 
   - name: Check Docs are present
     ansible.builtin.stat:
-      path: /var/lib/testbedos/assets/documentation/
+      path: /var/lib/testbedos/assets/documentation/html/
     register: sphinx_docs
     when: build_docs_bool
 
+  - name: Ensure /var/lib/testbedos/assets directory exists
+    file:
+      path: /var/lib/testbedos/assets
+      state: directory
+      mode: '0755'
+    become: yes
+    when: build_docs_bool and not sphinx_docs.stat.exists
+
   - name: Build Docs if they are not present
     shell: |
+      . ~/.bashrc
       rm -rf build/*
       poetry run sphinx-build -M man docs build
       poetry run sphinx-build -M html docs build
       sudo rm -rf /var/lib/testbedos/assets/documentation/
       sudo mkdir /var/lib/testbedos/assets/documentation/
       sudo cp -r build/html/ /var/lib/testbedos/assets/documentation/
+      rm -rf build/*
     args:
-      chdir: "../.." 
-      creates: /var/lib/testbedos/assets/documentation/
+      chdir: "../.."
+      executable: /bin/bash
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
     when: build_docs_bool and not sphinx_docs.stat.exists
 
   - name: Confirm if the Docs has been built
@@ -536,23 +550,57 @@
 
   - name: Check Textual User Interface is installed
     ansible.builtin.stat:
-      path: ~/.local/share/kvm-ui-tui
+      path: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui"
     register: tui_check
     when: install_tui_bool
 
-  - name: Install TUI if not already installed
-    shell: |
-      ./install.sh
-    args:
-      chdir: "../../util/tui/" 
-      creates: ~/.local/share/kvm-ui-tui 
+  - name: Delete pre-existing TUI directory if it exists
+    ansible.builtin.file:
+      path: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui"
+      state: absent
+    when: install_tui_bool and tui_check.stat.exists
+
+  - name: Create TUI directory
+    ansible.builtin.file:
+      path: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui"
+      state: directory
+      mode: '0755'
+    when: install_tui_bool and not tui_check.stat.exists
+
+  - name: Copy TUI.py to TUI directory
+    copy:
+      src: "{{ playbook_dir }}/../../util/tui/TUI.py"
+      dest: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui/TUI.py"
+    when: install_tui_bool and not tui_check.stat.exists
+
+  - name: Create symlink to kvm-ui-tui script
+    ansible.builtin.command: ln -sf "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui/TUI.py" "/usr/local/bin/kvm-ui-tui"
     become: yes
+    when: install_tui_bool and not tui_check.stat.exists
+
+  - name: Get the location of python from the poetry venv
+    shell: |
+      poetry run which python
+    register: poetry_venv_path
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+    args:
+      chdir: "../../util/tui/"
+    when: install_tui_bool and not tui_check.stat.exists
+
+  - name: Update the shebang in the kvm-ui-tui script
+    ansible.builtin.replace:
+      path: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui/TUI.py"
+      regexp: '^#!/usr/bin/env python'
+      replace: "#!{{ poetry_venv_path.stdout }}"
     when: install_tui_bool and not tui_check.stat.exists
 
   - name: Confirm if Textual User Interface has been installed
     ansible.builtin.debug:
       msg: "Textual User Interface has already been installed"
-    when: install_tui_bool and not tui_check.stat.exists
+    when: install_tui_bool and tui_check.stat.exists
+
+
 
 - name: Install KVM-Compose
   hosts: all
@@ -572,21 +620,31 @@
     register: kvm_check
     when: install_kvm_bool
 
+  - name: Set default Rust toolchain to stable
+    shell: |
+      rustup default stable
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.cargo/bin"
+    when: install_kvm_bool and not kvm_check.stat.exists
+
   - name: Install KVM-Compose CLI if not already installed
     shell: |
       ./install.sh
     args:
-      chdir: "../../kvm-compose/kvm-compose-cli/" 
-      creates: /usr/local/bin/kvm-compose 
+      chdir: "../../kvm-compose/kvm-compose-cli/"
+      creates: /usr/local/bin/kvm-compose
+      executable: /bin/bash
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin:{{ lookup('env', 'HOME') }}/.cargo/bin"
     become: yes
     when: install_kvm_bool and not kvm_check.stat.exists
 
-  - name: Confirm if Textual User Interface has been installed
+  - name: Confirm if KVM-Compose CLI has been installed
     ansible.builtin.debug:
-      msg: "KCM-Compose CLI has already been installed"
+      msg: "KVM-Compose CLI has already been installed"
     when: install_kvm_bool and kvm_check.stat.exists
 
-- name: Install Testbed-OS Server 
+- name: Install Testbed-OS Server
   hosts: all
   vars_prompt:
     - name: "install_server"
@@ -608,15 +666,26 @@
     shell: |
       ./install.sh
     args:
-      chdir: "../../kvm-compose/testbedos-server/" 
-      creates: /usr/local/bin/kvm-compose 
+      chdir: "../../kvm-compose/testbedos-server/"
+      creates: /usr/local/bin/testbedos-server
+      executable: /bin/bash
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
     become: yes
     when: install_server_bool and not server_check.stat.exists
 
-  - name: Confirm if Textual User Interface has been installed
-    ansible.builtin.debug:
-      msg: "TestBed-OS Server has already been installed"
+  - name: Clean Up the Build Directory
+    ansible.builtin.file:
+      path: "../../build"
+      state: absent
     when: install_server_bool and server_check.stat.exists
+
+
+  - name: Confirm if Testbed-OS Server has been installed
+    ansible.builtin.debug:
+      msg: "Testbed-OS Server has already been installed"
+    when: install_server_bool and server_check.stat.exists
+
 
 - name: Install Privacy Tools
   hosts: all
@@ -640,12 +709,15 @@
     shell: |
       ./setup.sh
     args:
-      chdir: "../../util/privacy_tools/" 
+      chdir: "../../util/privacy_tools/"
       creates: /var/lib/testbedos/tools/frida_tools_venv
+      executable: /bin/bash
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
     become: yes
     when: install_privacy_tools_bool and not privacy_tools_check.stat.exists
 
-  - name: Confirm if Textual User Interface has been installed
+  - name: Confirm if Privacy Tools have been installed
     ansible.builtin.debug:
       msg: "Privacy Tools have already been installed"
     when: install_privacy_tools_bool and privacy_tools_check.stat.exists
@@ -747,3 +819,4 @@
         - "Installation Complete."
         - "Unexpected errors can usually be attributed to missing installations and/or dependencies not being listed in PATH"
         - "For further information consult online documentation: https://testbedos.org/"
+        - "Start the Testbed-OS Server using - sudo testbedos-server main"
