@@ -100,6 +100,12 @@ libvirt_up_elapsed=$(test_up "bench_libvirt")
 sleep 1
 libvirt_down_elapsed=$(test_down "bench_libvirt")
 
+# libvirt 3 vm example
+echo "Running Libvirt 3 VM example ..."
+libvirt3_up_elapsed=$(test_up "bench_three_libvirt")
+sleep 1
+libvirt3_down_elapsed=$(test_down "bench_three_libvirt")
+
 # Clones example
 echo "Running Clones example ..."
 clones_up_elapsed=$(test_up "bench_clones")
@@ -171,10 +177,10 @@ wait $testbed_server_pid 2>/dev/null
 cd "$project_dir/../results/$results_folder_name"
 
 echo "saving up and down timing results into up.csv and down.csv, these are in milliseconds"
-echo "avd,docker,libvirt,clones" > up.csv
-echo "$avd_up_elapsed,$docker_up_elapsed,$libvirt_up_elapsed,$clones_up_elapsed," >> up.csv
-echo "avd,docker,libvirt,clones" > down.csv
-echo "$avd_down_elapsed,$docker_down_elapsed,$libvirt_down_elapsed,$clones_down_elapsed," >> down.csv
+echo "avd,docker,libvirt,libvirt3,clones" > up.csv
+echo "$avd_up_elapsed,$docker_up_elapsed,$libvirt_up_elapsed,$libvirt3_up_elapsed,$clones_up_elapsed," >> up.csv
+echo "avd,docker,libvirt,libvirt3,clones" > down.csv
+echo "$avd_down_elapsed,$docker_down_elapsed,$libvirt_down_elapsed,$libvirt3_down_elapsed,$clones_down_elapsed," >> down.csv
 
 echo "benchmark results json files have been saved, the filename represents the test"
 
