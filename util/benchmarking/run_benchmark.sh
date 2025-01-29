@@ -13,7 +13,7 @@
 
 # store the testbed-os folder so we can easily move between examples without having
 # to work out relative paths between tests
-cd ../..
+cd deployments
 project_dir=$(pwd)
 
 # we need to launch the testbed server, run it in the background then stop it a the end of the script
@@ -21,21 +21,21 @@ project_dir=$(pwd)
 echo "starting the testbed server in the background"
 cd /var/lib/testbedos/
 sudo testbedos-server > /dev/null 2>&1 &
-# give the server a second to start up
-sleep 3
 testbed_server_pid=$!
+# give the server a second to start up before running commands
+sleep 3
 
 # move back to the project folder
 cd $project_dir
 
 clear_deployment () {
   kvm-compose clear-artefacts > /dev/null 2>&1
-  rm *-state.json
+  rm *-state.json > /dev/null 2>&1
 }
 
 # args - 1:project name
 test_up () {
-  cd $project_dir/examples/$1
+  cd $project_dir/$1
   clear_deployment
 
   start=$(date +%s%N)
@@ -47,12 +47,15 @@ test_up () {
 
 # args - 1:project name
 test_down () {
-  cd $project_dir/examples/$1
+  cd $project_dir/$1
 
   start=$(date +%s%N)
   kvm-compose down > /dev/null 2>&1
   end=$(date +%s%N)
   up_elapsed=$(( (end - start) / 1000000 ))
+
+  clear_deployment
+
   echo "$up_elapsed"
 }
 
@@ -62,21 +65,27 @@ echo "Measuring example deploy times"
 
 # AVD example
 echo "Running AVD example ..."
-avd_up_elapsed=$(test_up "avd")
+avd_up_elapsed=$(test_up "bench_avd")
 sleep 1
-avd_down_elapsed=$(test_down "avd")
+avd_down_elapsed=$(test_down "bench_avd")
 
 # Docker example
 echo "Running Docker example ..."
-docker_up_elapsed=$(test_up "docker")
+docker_up_elapsed=$(test_up "bench_docker")
 sleep 1
-docker_down_elapsed=$(test_down "docker")
+docker_down_elapsed=$(test_down "bench_docker")
 
-# OVN example
-echo "Running OVN example ..."
-ovn_up_elapsed=$(test_up "ovn")
+# Libvirt example
+echo "Running Libvirt example ..."
+libvirt_up_elapsed=$(test_up "bench_libvirt")
 sleep 1
-ovn_down_elapsed=$(test_down "ovn")
+libvirt_down_elapsed=$(test_down "bench_libvirt")
+
+# Clones example
+echo "Running Clones example ..."
+clones_up_elapsed=$(test_up "bench_clones")
+sleep 1
+clones_down_elapsed=$(test_down "bench_clones")
 
 
 # print timings
@@ -85,8 +94,10 @@ echo "time for AVD example to deploy: $avd_up_elapsed ms"
 echo "time for AVD example to destroy: $avd_down_elapsed ms"
 echo "time for Docker example to deploy: $docker_up_elapsed ms"
 echo "time for Docker example to destroy: $docker_down_elapsed ms"
-echo "time for OVN example to deploy: $ovn_up_elapsed ms"
-echo "time for OVN example to destroy: $ovn_down_elapsed ms"
+echo "time for Libvirt example to deploy: $libvirt_up_elapsed ms"
+echo "time for Libvirt example to destroy: $libvirt_down_elapsed ms"
+echo "time for Clones example to deploy: $clones_up_elapsed ms"
+echo "time for Clones example to destroy: $clones_down_elapsed ms"
 
 # finally stop the testbed server
 echo "stopping the testbed server"
