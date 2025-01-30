@@ -122,8 +122,9 @@ echo "Measuring example CPU/IO/Network stress test times"
 echo "Starting Libvirt one VM example ..."
 
 cd "$project_dir/bench_libvirt"
+clear_deployment
 kvm-compose up > /dev/null 2>&1
-sleep 20
+sleep 30
 
 ssh -i $ssh_key_loc nocloud@172.16.1.10 $ssh_opts 'curl -sL https://yabs.sh | bash -s -- -w bench.json -j -s "-"'
 ssh -i $ssh_key_loc nocloud@172.16.1.10 $ssh_opts 'cat bench.json' > $results_folder/one_vm_bench.json
@@ -136,6 +137,7 @@ cd ..
 echo "Starting Libvirt three VM example ..."
 
 cd "$project_dir/bench_three_libvirt"
+clear_deployment
 kvm-compose up > /dev/null 2>&1
 sleep 30
 
@@ -169,11 +171,6 @@ kvm-compose down > /dev/null 2>&1
 # done with tests
 echo "benchmark suite finished, wrapping up ..."
 
-# finally stop the testbed server
-echo "stopping the testbed server"
-kill $testbed_server_pid
-wait $testbed_server_pid 2>/dev/null
-
 # save results
 cd "$project_dir/../results/$results_folder_name"
 
@@ -184,6 +181,11 @@ echo "avd,docker,libvirt,libvirt3,clones" > down.csv
 echo "$avd_down_elapsed,$docker_down_elapsed,$libvirt_down_elapsed,$libvirt3_down_elapsed,$clones_down_elapsed," >> down.csv
 
 echo "benchmark results json files have been saved, the filename represents the test"
+
+# finally stop the testbed server
+echo "stopping the testbed server"
+kill $testbed_server_pid
+wait $testbed_server_pid 2>/dev/null
 
 # give time of full suite
 bench_end=$(date +%s%N)
