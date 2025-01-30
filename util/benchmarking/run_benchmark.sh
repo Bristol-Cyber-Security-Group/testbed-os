@@ -164,6 +164,7 @@ until ssh -i $ssh_key_loc nocloud@172.16.1.13 -o BatchMode=yes -o StrictHostKeyC
 done
 ssh -i $ssh_key_loc nocloud@172.16.1.13 $ssh_opts 'cat bench.json' > $results_folder/three_vm3_bench.json
 
+kvm-compose down > /dev/null 2>&1
 
 # done with tests
 echo "benchmark suite finished, wrapping up ..."
