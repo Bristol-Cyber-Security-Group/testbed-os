@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use anyhow::Context;
+use anyhow::{bail, Context};
 use reqwest::Client;
 use tokio::sync::RwLock;
 use kvm_compose_lib::orchestration::run_subprocess_command_allow_fail;
@@ -51,8 +51,17 @@ pub async fn configure_testbed_host(
         Some(main) => main,
     };
 
+    // get the main interface, if there is none in the config, then use the interface with default
+    // route
+    let main_interface = if host_config.main_interface.is_some() {
+        host_config.main_interface.as_ref().unwrap()
+    } else {
+        host_config.main_interface = Some(get_default_interface().await?);
+        host_config.main_interface.as_ref().unwrap()
+    };
+
     // configure any OVN related settings and make sure ovn and ovs are up, before other services
-    configure_host_ovn(&host_config.ovn, &host_config.main_interface, is_main, &host_config).await?;
+    configure_host_ovn(&host_config.ovn, &main_interface, is_main, &host_config).await?;
 
     // make sure libvirt, docker are up
     ensure_services_up().await?;
@@ -110,33 +119,30 @@ pub async fn manage_cluster(
     db_config: &Arc<RwLock<Box<dyn TestbedConfigProvider + Sync + Send>>>,
 ) -> anyhow::Result<()> {
     tracing::info!("running checks on TestbedClusterConfig");
+    
+    // the cluster config should not be kept between starts of the testbed server, as the host.json
+    // config might have been updated while offline so we need to update it - but also the chassis 
+    // name could have changed meanwhile, so best to create a fresh one.
+    // this does have implications on any guests or network components that have already been 
+    // created and are already up, which will essentially be "lost", will need to manage the clean
+    // up separately TODO once we have more detailed resource tracking in a database with accounts
+    tracing::info!("re-building TestbedClusterConfig for this session");
 
-    let cluster_config = db_config
+    let mut kvm_compose_config = HashMap::new();
+    let host_config = db_config
         .read()
         .await
-        .get_cluster_config()
-        .await;
-    let mut cluster_config = match cluster_config {
-        Ok(ok) => {
-            tracing::info!("TestbedClusterConfig found, continuing");
-            ok
-        }
-        Err(_) => {
-            tracing::info!("TestbedClusterConfig not found, creating one");
-            // does not exist, create one
-            let mut host_config = HashMap::new();
-            host_config.insert("main".into(), db_config.read().await.get_host_config().await?);
-            let mut new_config = TestbedClusterConfig {
-                testbed_host_ssh_config: host_config,
-                ssh_public_key_location: "".to_string(),
-                ssh_private_key_location: "".to_string(),
-            };
-            TestbedClusterConfig::insert_default_values(&mut new_config);
-            // save new config to disk
-            db_config.write().await.set_cluster_config(new_config.clone()).await?;
-            new_config
-        }
+        .get_host_config()
+        .await?;
+    kvm_compose_config.insert(host_config.ovn.chassis_name.clone(), host_config);
+    let mut cluster_config = TestbedClusterConfig {
+        testbed_host_ssh_config: kvm_compose_config,
+        ssh_public_key_location: "".to_string(),
+        ssh_private_key_location: "".to_string(),
     };
+    TestbedClusterConfig::insert_default_values(&mut cluster_config);
+    // save new config to disk
+    db_config.write().await.set_cluster_config(cluster_config.clone()).await?;
 
     match cluster_operation {
         ClusterOperation::Init => {
@@ -249,4 +255,27 @@ async fn ensure_services_up(
     ).await?;
 
     Ok(())
+}
+
+/// Check using 'ip route' to get the default interface that is used for an internet connection
+/// for the host.
+async fn get_default_interface() -> anyhow::Result<String> {
+    // get resulting string from command, will be something like
+    // default via 10.150.16.250 dev eno8403 proto static metric 100
+    let output = run_subprocess_command_allow_fail(
+        "sudo",
+        vec!["ip", "route", "show", "default"],
+        false,
+        None,
+    ).await?;
+    println!("@@@@@ {:?}", output);
+
+    // check if the command retrieved the right sort of result
+    let split_output = output.split(" ").collect::<Vec<&str>>();
+    println!("@@@@@ {:?}", split_output);
+    if split_output.len() > 5 && split_output[3].eq("dev") {
+        println!("@@@@@ {:?}", split_output[4].trim().to_string());
+        return Ok(split_output[4].trim().to_string());
+    }
+    bail!("No default interface found")
 }
