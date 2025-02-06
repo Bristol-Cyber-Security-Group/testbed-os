@@ -268,13 +268,10 @@ async fn get_default_interface() -> anyhow::Result<String> {
         false,
         None,
     ).await?;
-    println!("@@@@@ {:?}", output);
 
     // check if the command retrieved the right sort of result
     let split_output = output.split(" ").collect::<Vec<&str>>();
-    println!("@@@@@ {:?}", split_output);
     if split_output.len() > 5 && split_output[3].eq("dev") {
-        println!("@@@@@ {:?}", split_output[4].trim().to_string());
         return Ok(split_output[4].trim().to_string());
     }
     bail!("No default interface found")
