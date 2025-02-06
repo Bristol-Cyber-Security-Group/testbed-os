@@ -1,0 +1,4 @@
+[testbedos]
+localhost
+[testbedos:vars]
+ansible_connection=local
