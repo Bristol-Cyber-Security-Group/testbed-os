@@ -313,8 +313,25 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                 // dont fail if the guest already exists
                 let expected_err = "already exists with uuid".to_string();
                 return if !err.to_string().trim().contains(&expected_err) {
-                    // error in joining blocking thread
-                    Err(err)
+                    // error in joining blocking thread, starting VM failed
+
+                    // we shall check if this was due to the vm image being in a home folder and the
+                    // qemu.conf settings were not permissive enough
+                    if err.to_string().contains("Cannot access storage file") && err.to_string().contains("Permission denied") {
+                        // likely that this is in a home folder
+                        let new_err = format!("\
+                        {:?}\n\n\nWARNING:\nThe virtual machine image you are using is likely in a \
+                        home folder due to where you have placed your testbed project folder (where \
+                        you are running kvm-compose right now) \
+                        and libvirt has not been configured to allow this. You will need to edit the \
+                        /etc/libvirt/qemu.conf to set the user or group QEMU will run as. \
+                        \nAlternatively, move your deployment folder outside of your home folder to \
+                        avoid this problem.
+                        ", err.to_string());
+                        Err(anyhow!(new_err))
+                    } else {
+                        Err(err)
+                    }
                 } else {
                     tracing::warn!("tried to start guest {} but is already running, continuing...", &machine_config.guest_type.name);
                     Ok(())
