@@ -325,6 +325,8 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                         you are running kvm-compose right now) \
                         and libvirt has not been configured to allow this. You will need to edit the \
                         /etc/libvirt/qemu.conf to set the user or group QEMU will run as. \
+                        Please see the 'Configure Libvirt User Permissions' in the installation \
+                        documentation for the testbed for more information. \
                         \nAlternatively, move your deployment folder outside of your home folder to \
                         avoid this problem.
                         ", err.to_string());
