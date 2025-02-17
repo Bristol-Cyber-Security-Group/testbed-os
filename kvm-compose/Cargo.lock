@@ -412,6 +412,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
+name = "comma"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55b672471b4e9f9e95499ea597ff64941a309b2cdbffcc46f2cc5e2d971fd335"
+
+[[package]]
 name = "compact_str"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1158,9 +1164,10 @@ dependencies = [
  "glob",
  "kvm-compose-schemas",
  "lazy_static",
- "nix",
+ "nix 0.28.0",
  "rand",
  "reqwest",
+ "rexpect",
  "rust-embed",
  "serde",
  "serde_json",
@@ -1169,6 +1176,8 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "tracing",
+ "virt",
+ "xmlparser",
 ]
 
 [[package]]
@@ -1180,7 +1189,7 @@ dependencies = [
  "crossterm",
  "kvm-compose",
  "kvm-compose-schemas",
- "nix",
+ "nix 0.28.0",
  "ratatui",
  "reqwest",
  "tokio",
@@ -1196,7 +1205,7 @@ dependencies = [
  "chrono",
  "clap",
  "futures",
- "nix",
+ "nix 0.28.0",
  "reqwest",
  "serde",
  "serde_json",
@@ -1344,6 +1353,17 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "nix"
+version = "0.27.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2eb04e9c688eff1c89d72b407f168cf79bb9e867a9d3323ed6c01519eb9cc053"
+dependencies = [
+ "bitflags 2.5.0",
+ "cfg-if",
+ "libc",
 ]
 
 [[package]]
@@ -1873,6 +1893,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rexpect"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c020234fb542618dc3e3d43724e9d93f87e1db74040a76a8c4e830220fb9b20d"
+dependencies = [
+ "comma",
+ "nix 0.27.1",
+ "regex",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "rust-embed"
 version = "8.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2345,7 +2378,7 @@ dependencies = [
  "http 1.1.0",
  "kvm-compose",
  "kvm-compose-schemas",
- "nix",
+ "nix 0.28.0",
  "regex",
  "reqwest",
  "serde",
@@ -3204,6 +3237,12 @@ dependencies = [
  "cfg-if",
  "windows-sys 0.48.0",
 ]
+
+[[package]]
+name = "xmlparser"
+version = "0.13.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66fee0b777b0f5ac1c69bb06d361268faafa61cd4682ae064a171c16c433e9e4"
 
 [[package]]
 name = "yaml-rust"

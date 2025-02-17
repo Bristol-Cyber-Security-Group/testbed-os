@@ -30,3 +30,6 @@ rand = "0.8.5"
 async-trait = { workspace = true }
 glob = "0.3.1"
 nix = { workspace = true }
+rexpect = "0.6.0"
+virt = { workspace = true }
+xmlparser = "0.13.6"

@@ -4,53 +4,20 @@ use std::process::Output;
 use anyhow::{bail, Context};
 use std::path::Path;
 use tokio::sync::mpsc::Sender;
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::orchestration::api::{OrchestrationLogger};
 use crate::orchestration::OrchestrationCommon;
-use crate::orchestration::ssh::SSHClient;
 use crate::state::StateTestbedGuest;
 
 pub async fn shell_command(
-    command: &Vec<String>,
+    command: Vec<&str>,
     guest_data: &StateTestbedGuest,
+    guest_name_with_project: &String,
     common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
-    let cmd: Vec<&str> = command.iter()
-        .map(|arg| arg.as_str())
-        .collect();
-    if cmd.len() == 0 {
-        bail!("No command was given");
-    }
-    // assuming we can access the guest through the network
-    // TODO - if ~ is given as an argument, clap converts it to the hosts home before continuing
-    //  how do we prevent clap from doing this?
-    let res = match guest_data.guest_type.guest_type {
-        GuestType::Libvirt(_) => {
-            SSHClient::run_guest_command(
-                &common,
-                cmd,
-                &guest_data,
-                false,
-            ).await
-        }
-        GuestType::Docker(_) => bail!("shell command (docker exec) not implemented"),
-        GuestType::Android(_) => bail!("shell command (ADB shell) not implemented - see command: kvm-compose exec phone tool adb --help"),
-    };
-    match res {
-        Ok(output) => {
-            tracing::info!("command result:\n{output}");
-            logging_send.send(OrchestrationLogger::info(output)).await?;
-        }
-        Err(err) => {
-            if err.to_string().contains("Permission denied (publickey)") {
-                bail!("Not enough permissions to use the SSH key, you may need to run this command as root");
-            } else {
-                bail!("The command resulted in a non 0 exit code, with error:\n{err:#}");
-            }
-        }
-    }
-    Ok(())
+    let error_str = "shell command (ADB shell) not implemented - see command: kvm-compose exec phone tool adb --help";
+    logging_send.send(OrchestrationLogger::error(error_str.to_string())).await?;
+    bail!(error_str)
 }
 
 pub async fn adb_command(
