@@ -207,6 +207,7 @@ async fn run(
                     Some(Ok(maybe_cancel_token)) = receiver.next() => process_potential_cancel_token(maybe_cancel_token, loop_sender_cancel.clone()).await
                 };
 
+                // TODO if this result is an Err, then websocket isn't closed?
                 let close_connection_bool = close_connection_bool_result
                     .context("determining if the orchestration loop should continue")?;
 
