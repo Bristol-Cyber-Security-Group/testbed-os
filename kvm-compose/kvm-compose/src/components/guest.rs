@@ -263,6 +263,9 @@ impl TestbedComponent for LibvirtGuest {
                 if libivrt_config.username.is_none() {
                     libivrt_config.username = Some("nocloud".to_string());
                 }
+                if libivrt_config.password.is_none() {
+                    libivrt_config.password = Some("password".to_string());
+                }
 
                 libivrt_config.hostname = format!("{}-{}", context.project_name, guest_name);
                 libivrt_config.ssh_address = format!(
