@@ -1,6 +1,7 @@
+use anyhow::bail;
 use tokio::sync::mpsc::Sender;
 use crate::orchestration::api::OrchestrationLogger;
-use crate::orchestration::OrchestrationCommon;
+use crate::orchestration::{run_subprocess_command, OrchestrationCommon};
 use crate::state::StateTestbedGuest;
 
 pub async fn shell_command(
@@ -10,5 +11,28 @@ pub async fn shell_command(
     common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
-    unimplemented!()
+
+    // join the user command to the docker exec command
+    let mut docker_cmd = vec!["docker", "exec", guest_name_with_project];
+    for cmd in command {
+        docker_cmd.push(cmd);
+    }
+    // run the command
+    let cmd_res = run_subprocess_command(
+        "sudo",
+        docker_cmd,
+        false,
+        None,
+    ).await;
+    
+    match cmd_res {
+        Ok(ok) => {
+            logging_send.send(OrchestrationLogger::info(format!("Command output:\n{ok}"))).await?;
+        }
+        Err(err) => {
+            bail!(err);
+        }
+    }
+
+    Ok(())
 }
