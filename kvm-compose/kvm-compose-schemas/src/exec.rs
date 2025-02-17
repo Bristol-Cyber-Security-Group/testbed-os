@@ -15,6 +15,8 @@ impl ExecCmd {
     pub fn name(&self) -> String {
         match self.command_type {
             ExecCmdType::ShellCommand(_) => "Shell Command".to_string(),
+            ExecCmdType::Push(_) => "Push file or folder".to_string(),
+            ExecCmdType::Pull(_) => "Pull file or folder".to_string(),
             ExecCmdType::Tool(_) => "Tool".to_string(),
             ExecCmdType::UserScript(_) => "User Script".to_string(),
         }
@@ -26,6 +28,10 @@ impl ExecCmd {
 #[serde(rename_all = "snake_case")]
 pub enum ExecCmdType {
     ShellCommand(ExecCmdShellCommand),
+    /// Push a file or folder to a guest
+    Push(ExecCmdFileTransfer),
+    /// Pull a file or folder from a guest
+    Pull(ExecCmdFileTransfer),
     Tool(ExecCmdTool),
     UserScript(ExecCmdUserScript),
 }
@@ -36,6 +42,18 @@ pub enum ExecCmdType {
 pub struct ExecCmdShellCommand {
     #[clap(trailing_var_arg=true, index = 1)]
     pub command: Vec<String>,
+}
+
+/// Represents the options for the push and pull file transfer sub-commands
+#[derive(Parser, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub struct ExecCmdFileTransfer {
+    #[clap(short, long, help = "Location of file or folder to move")]
+    pub source_path: String,
+    #[clap(short, long, help = "Location to move file or folder to")]
+    pub target_path: String,
+    #[clap(short, long, help = "Recursively apply the transfer command to all files, if a folder is specified as the source")]
+    pub recursive: bool,
 }
 
 /// A tool that will be run against the guest. This will be a tool that is included with the testbed

@@ -90,7 +90,7 @@ pub async fn run_guest_exec_cmd(
             }
 
             // TODO - if ~ is given as an argument, clap converts it to the hosts home before continuing
-            //  how do we prevent clap from doing this?
+            //  how do we prevent clap from doing this? or is it the shell doing this before clap sees it
             match &guest_data.guest_type.guest_type {
                 GuestType::Libvirt(_) => {
                     libvirt::shell_command(cmd, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?;
@@ -101,6 +101,20 @@ pub async fn run_guest_exec_cmd(
                 GuestType::Android(_) => {
                     android::shell_command(cmd, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?;
                 }
+            }
+        }
+        ExecCmdType::Push(transfer) => {
+            tracing::info!("pushing {} to guest {guest_name}", &transfer.source_path);
+            match &guest_data.guest_type.guest_type {
+                GuestType::Libvirt(_) => libvirt::push(transfer, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?,
+                _ => bail!("unsupported guest type"),
+            }
+        }
+        ExecCmdType::Pull(transfer) => {
+            tracing::info!("pushing {} from guest {guest_name}", &transfer.source_path);
+            match &guest_data.guest_type.guest_type {
+                GuestType::Libvirt(_) => libvirt::pull(transfer, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?,
+                _ => bail!("unsupported guest type"),
             }
         }
         ExecCmdType::Tool(tool) => {
@@ -147,6 +161,20 @@ fn check_command_on_guest_type(
 ) -> anyhow::Result<()> {
     match exec_cmd {
         ExecCmdType::ShellCommand(_) => {}
+        ExecCmdType::Push(_) => {
+            match guest_data.guest_type.guest_type {
+                GuestType::Libvirt(_) => {}
+                GuestType::Android(_) => bail!("please use ADB commands for Android instead"),
+                _ => bail!("Push command only compatible with Libvirt guests"),
+            }
+        }
+        ExecCmdType::Pull(_) => {
+            match guest_data.guest_type.guest_type {
+                GuestType::Libvirt(_) => {}
+                GuestType::Android(_) => bail!("please use ADB commands for Android instead"),
+                _ => bail!("Pull command only compatible with Libvirt guests"),
+            }
+        }
         ExecCmdType::Tool(tool) => {
             match tool.tool {
                 TestbedTools::ADB(_) => {

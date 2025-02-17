@@ -9,6 +9,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{mpsc, Mutex};
 use virt::connect::Connect;
+use kvm_compose_schemas::exec::ExecCmdFileTransfer;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::orchestration::api::OrchestrationLogger;
 use crate::orchestration::OrchestrationCommon;
@@ -203,4 +204,26 @@ fn determine_pty_state(
         SHELL => Ok(PtyState::ShellOpen(start.add(&end))),
         _ => bail!("the tty state could not be determined"),
     }
+}
+
+pub async fn push(
+    transfer: &ExecCmdFileTransfer,
+    guest_data: &StateTestbedGuest,
+    guest_name_with_project: &String,
+    common: &OrchestrationCommon,
+    logging_send: &Sender<OrchestrationLogger>,
+) -> anyhow::Result<()> {
+    logging_send.send(OrchestrationLogger::info(format!("debug: {transfer:?}"))).await?;
+    bail!("unimplemented")
+}
+
+pub async fn pull(
+    transfer: &ExecCmdFileTransfer,
+    guest_data: &StateTestbedGuest,
+    guest_name_with_project: &String,
+    common: &OrchestrationCommon,
+    logging_send: &Sender<OrchestrationLogger>,
+) -> anyhow::Result<()> {
+    logging_send.send(OrchestrationLogger::info(format!("debug: {transfer:?}"))).await?;
+    bail!("unimplemented")
 }
