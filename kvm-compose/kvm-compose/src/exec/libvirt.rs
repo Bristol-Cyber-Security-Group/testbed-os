@@ -54,18 +54,21 @@ pub async fn shell_command(
 
     let virsh_cmd = format!("virsh console {}", guest_name_with_project);
 
-    // TODO - if username is not provided in the yaml, ask user
-    // TODO - if password is not provided in the yaml, ask user
+    // retrieve credentials for the guest
     let libvirt_guest = match &guest_data.guest_type.guest_type {
         GuestType::Libvirt(libvirt) => libvirt,
         _ => unreachable!(),
     };
-    if libvirt_guest.username.is_none() {
-        // TODO
-    }
-    if libvirt_guest.password.is_none() {
-        // TODO
-    }
+    let username = if libvirt_guest.username.is_some() {
+        libvirt_guest.username.as_ref().unwrap().clone()
+    } else {
+        bail!("guest has not been supplied a username in definition")
+    };
+    let password = if libvirt_guest.password.is_some() {
+        libvirt_guest.password.as_ref().unwrap().clone()
+    } else {
+        bail!("guest has not been supplied a password in definition")
+    };
 
     // set up a channel to send logging from the command running
     let (cmd_log_sender, mut cmd_log_receiver) = mpsc::channel(16);
@@ -105,12 +108,12 @@ pub async fn shell_command(
                         continue;
                     }
                     cmd_log_sender.blocking_send("PTY at login prompt, sending username".to_string())?;
-                    pty.send_line("nocloud")?;
+                    pty.send_line(&username)?;
                 }
                 PtyState::LoginPassword(_) => {
                     // cmd_log_sender.blocking_send(format!("debug: {}", prompt_state))?;
                     cmd_log_sender.blocking_send("PTY at login prompt, sending password".to_string())?;
-                    pty.send_line("password")?;
+                    pty.send_line(&password)?;
                 }
                 PtyState::ShellOpen(_) => {
                     // cmd_log_sender.blocking_send(format!("debug: {}", prompt_state))?;
@@ -200,38 +203,4 @@ fn determine_pty_state(
         SHELL => Ok(PtyState::ShellOpen(start.add(&end))),
         _ => bail!("the tty state could not be determined"),
     }
-}
-
-/// Get the path of the PTY from virsh
-async fn get_guest_pty(
-    guest_name_with_project: &String,
-) -> anyhow::Result<String> {
-    let conn = Connect::open(Some("qemu:///system"))
-        .context("connecting to libvirt to get guest metrics")?;
-    let domain = virt::domain::Domain::lookup_by_name(&conn, guest_name_with_project)
-        .context("getting domain from libvirt connection")?;
-    let xml = domain.get_xml_desc(0)?;
-
-    let mut pty_path = "".to_string();
-    let mut tokenizer = xmlparser::Tokenizer::from(xml.as_str());
-
-    while let Some(token) = tokenizer.next() {
-        match token {
-            Ok(xmlparser::Token::Attribute { local, value, .. }) if local == "path" => {
-                // we check if this element has the key path, but double check it in case there will
-                // be other elements with same key - we expect there to be some /dev/ path
-                if value.contains("/dev/pts") {
-                    pty_path = value.to_string();
-                    break;
-                }
-                continue;
-            }
-            _ => continue,
-        }
-    }
-    if pty_path.len() == 0 {
-        bail!("could not find pty pipe in libvirt domain");
-    }
-
-    Ok(pty_path)
 }
