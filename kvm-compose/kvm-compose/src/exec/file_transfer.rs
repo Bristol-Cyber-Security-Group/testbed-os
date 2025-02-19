@@ -1,5 +1,7 @@
+use std::path::PathBuf;
 use anyhow::{bail, Context};
 use tempfile::NamedTempFile;
+use tokio::fs::ReadDir;
 use tokio::sync::mpsc::Sender;
 use virt::connect::Connect;
 use kvm_compose_schemas::exec::ExecCmdFileTransfer;
@@ -33,8 +35,17 @@ pub async fn prepare_file_transfer_push(
 
     // if the path is a folder, need to recursively copy this into the iso
     if transfer.source_path.is_dir() {
-        // TODO - will the genisoimage preserve the folder structure?
-        bail!("not yet implemented pushing folders");
+
+        let directories = tokio::fs::read_dir(transfer.source_path.as_path()).await?;
+        let all_file_paths = traverse_folders(directories).await?;
+
+        serialisation::genisoimage_orchestration(
+            &temp_iso_location.path(),
+            all_file_paths,
+            common
+        )
+            .await
+            .context("Could not create file push iso")?;
     } else {
         // place the single file into an ISO at the location of the temp file
         serialisation::genisoimage_orchestration(
@@ -211,4 +222,27 @@ pub async fn unmount_and_detach_cdrom_from_guest(
         .context("Detaching CD ROM device from guest")?;
 
     Ok(())
+}
+
+/// Get all files in the folder, if there are nested folders then recursively call self to collect
+/// all the files in each folder until the end.
+async fn traverse_folders(
+    mut directories: ReadDir,
+) -> anyhow::Result<Vec<PathBuf>> {
+    let mut paths = Vec::new();
+
+    while let Some(entry) = directories.next_entry().await? {
+        let path = entry.path();
+
+        // recurse into nested folder if necessary
+        if path.is_dir() {
+            let directories = tokio::fs::read_dir(path).await?;
+            let nested_folder = Box::pin(traverse_folders(directories)).await?;
+            paths.extend(nested_folder);
+        } else {
+            paths.push(path.to_owned());
+        }
+    }
+
+    Ok(paths)
 }

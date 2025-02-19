@@ -1,6 +1,5 @@
 mod setup_config;
 
-use std::fs;
 use anyhow::{anyhow, bail, Context};
 use clap::Parser;
 use tracing_subscriber::prelude::*;
@@ -10,7 +9,6 @@ use kvm_compose_schemas::cli_models::{Opts, SubCommand};
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt_image_download::OnlineCloudImage;
 use reqwest::Client;
 use kvm_compose_schemas::canonicalise_paths::cli_canonicalise_all_paths;
-use kvm_compose_schemas::exec::ExecCmdType;
 use crate::setup_config::setup_config;
 
 
