@@ -161,8 +161,8 @@ pub async fn shell_command(
         Ok::<(String, Option<String>), Error>((res, exit_code_string))
     });
 
-    let mut command_exit_code = None;
-    let mut command_output = String::new();
+    let command_exit_code;
+    let command_output;
 
     // loop to check if the command run has finished or not, but also check to see if there are log
     // messages to print before exiting - the pty will close itself as it has a timeout
