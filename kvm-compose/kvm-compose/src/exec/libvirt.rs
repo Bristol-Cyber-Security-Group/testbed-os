@@ -1,15 +1,10 @@
-use std::num::ParseIntError;
-use std::ops::{Add, Deref, DerefMut};
-use std::process::Command;
+use std::ops::{Add};
 use anyhow::{bail, Context, Error};
-use rexpect::process::{signal, PtyProcess};
+use rexpect::process::{signal};
 use rexpect::ReadUntil;
 use rexpect::session::PtySession;
-use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::{mpsc, Mutex};
-use virt::connect::Connect;
+use tokio::sync::mpsc::{Sender};
+use tokio::sync::{mpsc};
 use kvm_compose_schemas::exec::ExecCmdFileTransfer;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::exec::file_transfer::*;
@@ -39,15 +34,15 @@ const SHELL: &str = ":~$";
 #[derive(Debug)]
 enum PtyState {
     LoginUser(String),
-    LoginPassword(String),
-    ShellOpen(String),
+    LoginPassword,
+    ShellOpen,
 }
 
 pub async fn shell_command(
     command: Vec<&str>,
     guest_data: &StateTestbedGuest,
     guest_name_with_project: &String,
-    common: &OrchestrationCommon,
+    _common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<(String, i32)> {
 
@@ -121,12 +116,12 @@ pub async fn shell_command(
                     cmd_log_sender.blocking_send("PTY at login prompt, sending username".to_string())?;
                     pty.send_line(&username)?;
                 }
-                PtyState::LoginPassword(_) => {
+                PtyState::LoginPassword => {
                     // cmd_log_sender.blocking_send(format!("debug: {}", prompt_state))?;
                     cmd_log_sender.blocking_send("PTY at login prompt, sending password".to_string())?;
                     pty.send_line(&password)?;
                 }
-                PtyState::ShellOpen(_) => {
+                PtyState::ShellOpen => {
                     // cmd_log_sender.blocking_send(format!("debug: {}", prompt_state))?;
                     cmd_log_sender.blocking_send("PTY logged in with shell open".to_string())?;
                     break;
@@ -265,8 +260,8 @@ fn determine_pty_state(
     let end_str = end.as_str();
     match end_str {
         LOGIN_USER => Ok(PtyState::LoginUser(start.add(&end))),
-        LOGIN_PASSWORD => Ok(PtyState::LoginPassword(start.add(&end))),
-        SHELL => Ok(PtyState::ShellOpen(start.add(&end))),
+        LOGIN_PASSWORD => Ok(PtyState::LoginPassword),
+        SHELL => Ok(PtyState::ShellOpen),
         _ => bail!("the tty state could not be determined"),
     }
 }
@@ -283,7 +278,7 @@ pub async fn push(
     // create the temporary iso with the file or folder, then proceed to mount the iso as a CD ROM,
     // move the file into the guest, then unmount the CD ROM, then delete the temporary iso
     let temp_iso = prepare_file_transfer_push(transfer, common, logging_send).await?;
-    attach_cdrom_to_guest(guest_name_with_project, &temp_iso, common, logging_send).await?;
+    attach_cdrom_to_guest(guest_name_with_project, &temp_iso, logging_send).await?;
     mount_cdrom_in_guest(guest_name_with_project, guest_data, common, logging_send).await?;
     move_pushed_file(transfer, guest_name_with_project, guest_data, common, logging_send).await?;
     unmount_and_detach_cdrom_from_guest(guest_name_with_project, guest_data, common, logging_send).await?;
@@ -297,9 +292,9 @@ pub async fn push(
 /// This command will work out how to pull a file or folder from a guest
 pub async fn pull(
     transfer: &ExecCmdFileTransfer,
-    guest_data: &StateTestbedGuest,
-    guest_name_with_project: &String,
-    common: &OrchestrationCommon,
+    _guest_data: &StateTestbedGuest,
+    _guest_name_with_project: &String,
+    _common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
     logging_send.send(OrchestrationLogger::info(format!("debug: {transfer:?}"))).await?;

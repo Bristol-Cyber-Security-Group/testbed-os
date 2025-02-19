@@ -1,6 +1,3 @@
-use std::env::temp_dir;
-use std::io::Read;
-use std::path::{Path, PathBuf};
 use anyhow::{bail, Context};
 use tempfile::NamedTempFile;
 use tokio::sync::mpsc::Sender;
@@ -58,7 +55,7 @@ pub async fn prepare_file_transfer_push(
 pub async fn attach_cdrom_to_guest(
     guest_name_with_project: &String,
     temp_iso: &NamedTempFile,
-    common: &OrchestrationCommon,
+    // common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
     logging_send.send(OrchestrationLogger::info("Attaching CD ROM to guest".to_string())).await?;

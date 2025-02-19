@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 use anyhow::{bail, Context, Error};
 use futures_util::stream::{SplitSink, SplitStream};
-use futures_util::{SinkExt, Stream, StreamExt};
+use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, Mutex};
 use tokio::sync::mpsc::{Sender};

@@ -9,10 +9,10 @@ use crate::orchestration::OrchestrationCommon;
 use crate::state::StateTestbedGuest;
 
 pub async fn shell_command(
-    command: Vec<&str>,
-    guest_data: &StateTestbedGuest,
-    guest_name_with_project: &String,
-    common: &OrchestrationCommon,
+    _command: Vec<&str>,
+    _guest_data: &StateTestbedGuest,
+    _guest_name_with_project: &String,
+    _common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
     let error_str = "shell command (ADB shell) not implemented - see command: kvm-compose exec phone tool adb --help";
