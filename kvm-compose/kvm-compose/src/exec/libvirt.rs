@@ -139,7 +139,7 @@ pub async fn shell_command(
 
         // grab the command exit code, but prepend a space to not save it in the history
         cmd_log_sender.blocking_send("Getting command exit code".to_string())?;
-        pty.send_line("echo $?")?;
+        pty.send_line(" echo $?")?;
         let exit_code_res = pty.exp_string(&shell_user_host_string)?;
         // the exit code will include the new terminal line below, so we need to trim that
         let mut exit_code_lines = exit_code_res.lines();
