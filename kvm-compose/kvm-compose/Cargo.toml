@@ -33,3 +33,4 @@ nix = { workspace = true }
 rexpect = "0.6.0"
 virt = { workspace = true }
 xmlparser = "0.13.6"
+tempfile = "3.17.1"

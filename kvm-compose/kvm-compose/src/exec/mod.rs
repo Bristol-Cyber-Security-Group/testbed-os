@@ -1,6 +1,7 @@
 pub mod android;
 mod docker;
 mod libvirt;
+mod file_transfer;
 
 use anyhow::{bail, Context};
 use tokio::sync::mpsc::Sender;
@@ -104,14 +105,14 @@ pub async fn run_guest_exec_cmd(
             }
         }
         ExecCmdType::Push(transfer) => {
-            tracing::info!("pushing {} to guest {guest_name}", &transfer.source_path);
+            tracing::info!("pushing {:?} to guest {guest_name}", &transfer.source_path);
             match &guest_data.guest_type.guest_type {
                 GuestType::Libvirt(_) => libvirt::push(transfer, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?,
                 _ => bail!("unsupported guest type"),
             }
         }
         ExecCmdType::Pull(transfer) => {
-            tracing::info!("pushing {} from guest {guest_name}", &transfer.source_path);
+            tracing::info!("pushing {:?} from guest {guest_name}", &transfer.source_path);
             match &guest_data.guest_type.guest_type {
                 GuestType::Libvirt(_) => libvirt::pull(transfer, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?,
                 _ => bail!("unsupported guest type"),

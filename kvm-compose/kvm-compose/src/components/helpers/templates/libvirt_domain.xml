@@ -53,12 +53,20 @@
         </interface>
         {% endif %}
 
+        <!-- serial port for guest control via pseudo terminal -->
         <serial type='pty'>
             <target port='0'/>
         </serial>
         <console type='pty'>
             <target type='serial' port='0'/>
         </console>
+
+        <!-- SCSI controller for hot plugging CD ROMs to push files into guest -->
+        <controller type="scsi" index="0" model="virtio-scsi">
+            <alias name="scsi0"/>
+            <address type="pci" domain="0x0000" bus="0x05" slot="0x00" function="0x0"/>
+        </controller>
+
     </devices>
     <sysinfo type="smbios">
         <system>

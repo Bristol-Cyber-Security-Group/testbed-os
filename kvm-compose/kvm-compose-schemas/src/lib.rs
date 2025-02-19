@@ -5,5 +5,6 @@ pub mod settings;
 pub mod exec;
 pub mod gui_models;
 pub mod handlers;
+pub mod canonicalise_paths;
 
 pub const TESTBED_SETTINGS_FOLDER: &str = "/var/lib/testbedos/";

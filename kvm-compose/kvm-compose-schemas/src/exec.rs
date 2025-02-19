@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 
@@ -48,12 +49,10 @@ pub struct ExecCmdShellCommand {
 #[derive(Parser, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct ExecCmdFileTransfer {
-    #[clap(short, long, help = "Location of file or folder to move")]
-    pub source_path: String,
-    #[clap(short, long, help = "Location to move file or folder to")]
-    pub target_path: String,
-    #[clap(short, long, help = "Recursively apply the transfer command to all files, if a folder is specified as the source")]
-    pub recursive: bool,
+    #[clap(short, long, value_parser, help = "Location of file or folder to push on host")]
+    pub source_path: PathBuf,
+    #[clap(short, long, value_parser, help = "Location to push file or folder to on guest")]
+    pub target_path: PathBuf,
 }
 
 /// A tool that will be run against the guest. This will be a tool that is included with the testbed
