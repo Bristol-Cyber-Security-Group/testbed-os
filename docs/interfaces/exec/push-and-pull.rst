@@ -14,6 +14,13 @@ For Android, please see the ADB tooling which has built in file pushing support.
 File pushing is based off using an emulated CD ROM, that is temporarily attached containing the file or folder from the host.
 Once mounted in the guest, the file or folder is pushed into the user specified target location.
 
+To be able to push to the guest, the testbed will need credentials to a user on the guest.
+For cloud-init libvirt guests, these have default credentials for the `nocloud` user.
+If this is your own virtual machine, you will need to supply credentials in the yaml file.
+Additionally, consider the permissions needed for the target locations in addition to the permissions available to the user.
+The file pushing commands do not run as root, so attempting to push a file into a location the user doesn't have permission for wont work.
+There is also currently no mechanism to defer back to the user to ask for a password during the command running.
+
 If you are using the CLI for more detailed command usage, please use `kvm-compose exec push --help`.
 
 Architecture
