@@ -94,7 +94,7 @@ pub async fn run_guest_exec_cmd(
             //  how do we prevent clap from doing this? or is it the shell doing this before clap sees it
             match &guest_data.guest_type.guest_type {
                 GuestType::Libvirt(_) => {
-                    libvirt::shell_command(cmd, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?;
+                    libvirt::shell_command(cmd, command.timeout, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?;
                 }
                 GuestType::Docker(_) => {
                     docker::shell_command(cmd, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?;

@@ -41,6 +41,7 @@ enum PtyState {
 
 pub async fn shell_command(
     command: Vec<&str>,
+    timeout: u64,
     guest_data: &StateTestbedGuest,
     guest_name_with_project: &String,
     _common: &OrchestrationCommon,
@@ -83,7 +84,7 @@ pub async fn shell_command(
     let tty = tokio::task::spawn_blocking(move || {
         // spawn the pty in the expect session
         // TODO - CLI configurable timeout?
-        let mut pty = rexpect::spawn(&virsh_cmd, Some(5_000))
+        let mut pty = rexpect::spawn(&virsh_cmd, Some(timeout))
             .context("rexpect error")?;
 
         // we need to know if virsh will let us open the pty or there is already a connection to it

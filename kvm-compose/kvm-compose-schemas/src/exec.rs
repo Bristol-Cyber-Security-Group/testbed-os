@@ -41,6 +41,8 @@ pub enum ExecCmdType {
 #[derive(Parser, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct ExecCmdShellCommand {
+    #[clap(short, long, default_value="5000", help = "Timeout in milliseconds, defaults to 5s")]
+    pub timeout: u64,
     #[clap(trailing_var_arg=true, index = 1)]
     pub command: Vec<String>,
 }

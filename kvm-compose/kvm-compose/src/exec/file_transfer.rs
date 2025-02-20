@@ -105,6 +105,7 @@ pub async fn mount_cdrom_in_guest(
     // given the steps above, first get the dev
     let (dev, exit_code) = shell_command(
         vec!["readlink", "-f", "/dev/disk/by-id/*scsi0-0-0-2"],
+        5_000,
         guest_data,
         guest_name_with_project,
         common,
@@ -120,6 +121,7 @@ pub async fn mount_cdrom_in_guest(
     // create the mount point before we mount the iso, make sure not to error if it exists
     let _ = shell_command(
         vec!["sudo", "mkdir", "-p", "/mnt/filepush"],
+        5_000,
         guest_data,
         guest_name_with_project,
         common,
@@ -129,6 +131,7 @@ pub async fn mount_cdrom_in_guest(
     // then mount the dev to an intermediate location
     let (output, exit_code) = shell_command(
         vec!["sudo", "mount", "-o", "ro", &dev, "/mnt/filepush"],
+        5_000,
         guest_data,
         guest_name_with_project,
         common,
@@ -158,6 +161,7 @@ pub async fn move_pushed_file(
     // in case the target destination doesn't exist
     let _ = shell_command(
         vec!["mkdir", "-p", &transfer.target_path.display().to_string()],
+        5_000,
         guest_data,
         guest_name_with_project,
         common,
@@ -168,6 +172,7 @@ pub async fn move_pushed_file(
     // the target location
     let (output, exit_code) = shell_command(
         vec!["cp", "-r", "/mnt/filepush/.", &transfer.target_path.display().to_string()],
+        5_000,
         guest_data,
         guest_name_with_project,
         common,
@@ -194,6 +199,7 @@ pub async fn unmount_and_detach_cdrom_from_guest(
     // first unmount
     let (output, exit_code) = shell_command(
         vec!["sudo", "umount", "/mnt/filepush"],
+        5_000,
         guest_data,
         guest_name_with_project,
         common,
