@@ -35,7 +35,8 @@ const SHELL: &str = ":~$";
 enum PtyState {
     LoginUser(String),
     LoginPassword,
-    ShellOpen,
+    SudoPassword,
+    ShellOpen(String),
 }
 
 pub async fn shell_command(
@@ -98,44 +99,14 @@ pub async fn shell_command(
         // we send a new line command to dismiss the virsh escape character message
         pty.send_line("")?;
 
-        // now we need to check which state the PTY is in, due to possible previous interaction
-        // ... we loop until we have reached the shell open state, allowing us to run the command
-        loop {
-            let pty_state = determine_pty_state(&mut pty)
-                .context("getting state of pty")?;
-            match pty_state {
-                PtyState::LoginUser(prompt_state) => {
-                    // cmd_log_sender.blocking_send(format!("debug: {}", prompt_state))?;
-                    if prompt_state.contains("Last login:") {
-                        // some shells give you a last login, which causes it to match with the
-                        // login check, so if this is the case then check again as the next expect
-                        // check will then read the rest of the text and match with shell open
-                        cmd_log_sender.blocking_send("Hit last login".to_string())?;
-                        continue;
-                    }
-                    cmd_log_sender.blocking_send("PTY at login prompt, sending username".to_string())?;
-                    pty.send_line(&username)?;
-                }
-                PtyState::LoginPassword => {
-                    // cmd_log_sender.blocking_send(format!("debug: {}", prompt_state))?;
-                    cmd_log_sender.blocking_send("PTY at login prompt, sending password".to_string())?;
-                    pty.send_line(&password)?;
-                }
-                PtyState::ShellOpen => {
-                    // cmd_log_sender.blocking_send(format!("debug: {}", prompt_state))?;
-                    cmd_log_sender.blocking_send("PTY logged in with shell open".to_string())?;
-                    break;
-                }
-            }
-        }
+        pty_state_loop(&mut pty, &username, &password, &shell_user_host_string, &cmd_log_sender)?;
 
         // the shell is open, we can finally run the command
         cmd_log_sender.blocking_send(format!("Running command ({usr_cmd}) on guest"))?;
         pty.send_line(&usr_cmd)?;
 
-        // collect the command result output and send to user once it has finished
-        let res = pty.exp_string(&shell_user_host_string)?;
-        //cmd_log_sender.blocking_send(format!("Command output:\n{}", res))?;
+        // check if there was a password prompt, otherwise get result
+        let res = pty_state_loop(&mut pty, &username, &password, &shell_user_host_string, &cmd_log_sender)?;
 
         // grab the command exit code, but prepend a space to not save it in the history
         cmd_log_sender.blocking_send("Getting command exit code".to_string())?;
@@ -245,23 +216,86 @@ fn determine_initial_pty_state(
     }
 }
 
+/// Loop through the possible known states for the terminal to get past any credential prompts, so 
+/// that we can eventually reach the ready state to send commands. 
+fn pty_state_loop(
+    mut pty: &mut PtySession,
+    username: &String,
+    password: &String,
+    after_command: &String,
+    cmd_log_sender: &Sender<String>,
+) -> anyhow::Result<String> {
+    // now we need to check which state the PTY is in, due to possible previous interaction
+    // ... we loop until we have reached the shell open state, allowing us to run the command
+    loop {
+        let pty_state = determine_pty_state(&mut pty, username, after_command)
+            .context("getting state of pty")?;
+        match pty_state {
+            PtyState::LoginUser(prompt_state) => {
+                // cmd_log_sender.blocking_send(format!("debug: {}", prompt_state))?;
+                if prompt_state.contains("Last login:") {
+                    // some shells give you a last login, which causes it to match with the
+                    // login check, so if this is the case then check again as the next expect
+                    // check will then read the rest of the text and match with shell open
+                    cmd_log_sender.blocking_send("Hit last login".to_string())?;
+                    continue;
+                }
+                cmd_log_sender.blocking_send("PTY at login prompt, sending username".to_string())?;
+                pty.send_line(&username)?;
+            }
+            PtyState::LoginPassword => {
+                // cmd_log_sender.blocking_send(format!("debug: {}", prompt_state))?;
+                cmd_log_sender.blocking_send("PTY at login prompt, sending password".to_string())?;
+                pty.send_line(&password)?;
+            }
+            PtyState::ShellOpen(output) => {
+                // cmd_log_sender.blocking_send(format!("debug: {}", prompt_state))?;
+                cmd_log_sender.blocking_send("PTY shell prompt ready for input".to_string())?;
+                return Ok(output);
+            }
+            PtyState::SudoPassword => {
+                // TODO - sudo password
+                // currently don't support taking a sudo password from the user, for now send
+                // the password for the current user in case that will work, otherwise send the
+                // user password until the attempt fails
+                cmd_log_sender.blocking_send("PTY requesting a password".to_string())?;
+                pty.send_line(&password)?;
+            }
+        }
+    }
+}
+
 /// Depending on the initial state of the pty, we need to run different commands. This will either
 /// mean that we are either in the login prompt for the tty or already logged in due to a previous
 /// command on the guest.
 fn determine_pty_state(
-    pty: &mut PtySession
+    pty: &mut PtySession,
+    username: &String,
+    after_command: &String,
 ) -> anyhow::Result<PtyState> {
+    // set up the password test prompt
+    let pass_prompt = format!("password for {username}:");
     // start: text before the 'until' match, end: is the matched string
     let (start, end) = pty.exp_any(vec![
         ReadUntil::String(LOGIN_USER.to_string()),
         ReadUntil::String(LOGIN_PASSWORD.to_string()),
-        ReadUntil::String(SHELL.to_string()),
+        // ReadUntil::String(SHELL.to_string()),
+        ReadUntil::String(after_command.clone()),
+        ReadUntil::String(pass_prompt.clone()),
     ])?;
+
     let end_str = end.as_str();
+    // separate match for strings only known at runtime
+    if end_str.eq(pass_prompt.as_str()) {
+        return Ok(PtyState::SudoPassword);
+    }
+    if end_str.eq(after_command) {
+        return Ok(PtyState::ShellOpen(start));
+    }
     match end_str {
         LOGIN_USER => Ok(PtyState::LoginUser(start.add(&end))),
         LOGIN_PASSWORD => Ok(PtyState::LoginPassword),
-        SHELL => Ok(PtyState::ShellOpen),
+        // SHELL => Ok(PtyState::ShellOpen(start)),
         _ => bail!("the tty state could not be determined"),
     }
 }

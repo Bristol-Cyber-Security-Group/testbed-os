@@ -1,7 +1,5 @@
-use std::path::PathBuf;
 use anyhow::{bail, Context};
 use tempfile::NamedTempFile;
-use tokio::fs::ReadDir;
 use tokio::sync::mpsc::Sender;
 use virt::connect::Connect;
 use kvm_compose_schemas::exec::ExecCmdFileTransfer;
