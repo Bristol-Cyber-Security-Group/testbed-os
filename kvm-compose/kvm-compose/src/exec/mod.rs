@@ -144,13 +144,6 @@ pub async fn run_guest_exec_cmd(
                 }
             }
         }
-        ExecCmdType::UserScript(user_script) => {
-            if user_script.run_on_main_testbed {
-                tracing::info!("run on main flag enabled");
-            }
-            tracing::info!("running user script {:?} on guest {guest_name_with_project}", user_script.script);
-            bail!("unimplemented");
-        }
     }
     Ok(())
 }
@@ -210,7 +203,6 @@ fn check_command_on_guest_type(
                 }
             }
         }
-        ExecCmdType::UserScript(_) => {}
     }
     Ok(())
 }

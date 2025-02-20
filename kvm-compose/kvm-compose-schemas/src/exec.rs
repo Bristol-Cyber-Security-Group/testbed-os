@@ -19,7 +19,6 @@ impl ExecCmd {
             ExecCmdType::Push(_) => "Push file or folder".to_string(),
             ExecCmdType::Pull(_) => "Pull file or folder".to_string(),
             ExecCmdType::Tool(_) => "Tool".to_string(),
-            ExecCmdType::UserScript(_) => "User Script".to_string(),
         }
     }
 }
@@ -34,7 +33,6 @@ pub enum ExecCmdType {
     /// Pull a file or folder from a guest
     Pull(ExecCmdFileTransfer),
     Tool(ExecCmdTool),
-    UserScript(ExecCmdUserScript),
 }
 
 /// A command that will be run inside the guest's shell, if the guest type permits.

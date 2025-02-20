@@ -54,12 +54,6 @@ pub fn cli_canonicalise_all_paths(
                         TestbedTools::TLSIntercept(_) => {}
                     }
                 }
-                ExecCmdType::UserScript(uscript) => {
-                    if uscript.run_on_main_testbed {
-                        // TODO the argument is currently set up in a way we can't differentiate
-                        //  between the script and any given arguments, should update
-                    }
-                }
             }
         }
     }
