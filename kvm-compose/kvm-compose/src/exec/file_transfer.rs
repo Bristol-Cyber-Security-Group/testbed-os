@@ -172,6 +172,15 @@ pub async fn move_pushed_file(
 ) -> anyhow::Result<()> {
     logging_send.send(OrchestrationLogger::info("Moving file or folder into desired location".to_string())).await?;
 
+    // in case the target destination doesn't exist
+    let _ = shell_command(
+        vec!["mkdir", "-p", &transfer.target_path.display().to_string()],
+        guest_data,
+        guest_name_with_project,
+        common,
+        logging_send,
+    ).await?;
+
     // use the destination provided by the user to move the file or folder from the mounted ISO to
     // the target location
     let (output, exit_code) = shell_command(
