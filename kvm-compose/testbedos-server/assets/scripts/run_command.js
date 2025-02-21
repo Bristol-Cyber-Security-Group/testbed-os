@@ -959,7 +959,8 @@ function formatServerResponseMessages(terminal, text, last_command) {
                 }
                 break;
             case "Log" in json_message:
-                console.error("Should not be parsing the 'Log' message here");
+                //console.error("Should not be parsing the 'Log' message here");
+                // Logs are parsed later on and pushed to the output window
                 break;
             default:
                 console.error("The json message from the server did not match the three variants in OrchestrationProtocolResponse");
