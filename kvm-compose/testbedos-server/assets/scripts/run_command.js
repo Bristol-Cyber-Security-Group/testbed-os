@@ -117,12 +117,13 @@ $(document).ready(function() {
         } else {
             const options = {
                 'shell_command': [
-                    {label: 'Command', type: 'text', id: 'command'}
+                    {label: 'Command', type: 'text', id: 'command'},
+                    {label: 'Timeout (ms)', type: 'number', id: 'timeout'},
                 ],
-                'user_script': [
-                    {label: 'Script', type: 'text', id: 'script'},
-                    {label: 'Run on main', type: 'checkbox', id:'run_on_master'}
-                ]
+                'push': [
+                    {label: 'Source Path (host)', type: 'text', id: 'source_path'},
+                    {label: 'Target Path (guest)', type: 'text', id: 'target_path'},
+                ],
             };
             generateInputs(options[selectedCommand] || [], '#execDynamicButtons', false);
 
@@ -145,7 +146,10 @@ $(document).ready(function() {
             } else if (option.type == 'text') {
                 const textRow = createTextInput(option, inputFieldId);
                 $(dynamicButtonsId).append(textRow);
-            }else if (option.type == 'guest') {
+            } else if (option.type == 'number') {
+                const textRow = createNumberInput(option, inputFieldId, 5000);
+                $(dynamicButtonsId).append(textRow);
+            } else if (option.type == 'guest') {
                 const checkboxDiv = addDeviceDropDown();
                 $(dynamicButtonsId).append(checkboxDiv);
             }
@@ -186,7 +190,7 @@ $(document).ready(function() {
         $.get(server_url + '/api/deployments/' + project_name + '/state?pretty=true', function(statejson) {
             const guests = statejson.testbed_guests;
             const guestNames = Object.keys(guests).map(key => guests[key].name);
-            console.log(guestNames);
+            //console.log(guestNames);
 
             guestNames.forEach(function(guest) {
                 selectInput.append($('<option>', { text: guest }));
@@ -235,6 +239,30 @@ $(document).ready(function() {
             value: ''
         });
     
+        textLabelCol.append(textLabelElement);
+        textInputCol.append(textInput);
+        return textRow.append(textLabelCol).append(textInputCol);
+    }
+
+    function createNumberInput(option, inputFieldId, default_val) {
+        const textRow = $('<div></div>', {class: 'row'});
+        const textLabelCol = $('<div></div>', {class: 'col-auto'});
+        const textInputCol = $('<div></div>', {class: 'col'});
+
+        const textLabel = `Argument: ${option.label}  `;
+        const textLabelElement = $('<label></label>', {
+            for: inputFieldId,
+            text: textLabel,
+            class: 'form-label'
+        });
+        const textInput = $('<input>', {
+            type: 'number',
+            min: 0,
+            class: 'form-control form-control-sm',
+            id: inputFieldId,
+            value: default_val,
+        });
+
         textLabelCol.append(textLabelElement);
         textInputCol.append(textInput);
         return textRow.append(textLabelCol).append(textInputCol);
@@ -708,18 +736,26 @@ function get_button_command_json(button_id, selectedOption, selectedToolOption, 
         // console.log('exec');
         // everything in this sub_command is snake case, rather than pascal case like the other commands or outer part
 
-        let dynamicInputs = {}; 
-        
+        let dynamicInputs = {};
+
         // Check if there are text inputs or checkboxes within the execDynamicButtons container
         $('#execDynamicButtons input').each(function() {
             let inputType = $(this).attr('type');
             let inputValue = $(this).val().trim().replace(/\s+/g, ' '); // Remove whitespace from start and end of command string
             let inputId = $(this).attr('id');
-            
+
             if(inputType === 'checkbox') {
                 dynamicInputs[inputId] = $(this).is(':checked');
             } else if(inputType === 'text') {
-                dynamicInputs[inputId] = [inputValue];
+                // shell command must be a list of strings
+                if (selectedOption == 'shell_command') {
+                    dynamicInputs[inputId] = [inputValue];
+                } else {
+                    // everything else should be just one string
+                    dynamicInputs[inputId] = inputValue;
+                }
+            } else if(inputType === 'number') {
+                dynamicInputs[inputId] = parseInt(inputValue);
             }
             
         });
