@@ -49,6 +49,10 @@ pub async fn shell_command(
 ) -> anyhow::Result<(String, i32)> {
 
     logging_send.send(OrchestrationLogger::info(format!("Logging into guest {} pty", guest_name_with_project))).await?;
+    
+    // TODO - here we should determine 
+    //  1) what OS the guest is (this can be done with virt-inspector from guestfs-tools)
+    //  2) if the guest has qemu-guest-agent, otherwise fall back on serial console port with credentials
 
     let usr_cmd = command.join(" ");
 
