@@ -1,0 +1,33 @@
+---
+- name: Install KVM-Compose
+  hosts: all
+  tasks:
+
+  - name: Check if KVM-Compose CLI is Installed
+    ansible.builtin.stat:
+      path: /usr/local/bin/kvm-compose
+    register: kvm_check
+
+  - name: Set default Rust toolchain to stable
+    shell: |
+      rustup default stable
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.cargo/bin"
+    when:  not kvm_check.stat.exists
+
+  - name: Install KVM-Compose CLI if not already installed
+    shell: |
+      ./install.sh
+    args:
+      chdir: "../../kvm-compose/kvm-compose-cli/"
+      creates: /usr/local/bin/kvm-compose
+      executable: /bin/bash
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin:{{ lookup('env', 'HOME') }}/.cargo/bin"
+    become: yes
+    when:  not kvm_check.stat.exists
+
+  - name: Confirm if KVM-Compose CLI has been installed
+    ansible.builtin.debug:
+      msg: "KVM-Compose CLI has already been installed"
+    when:  kvm_check.stat.exists

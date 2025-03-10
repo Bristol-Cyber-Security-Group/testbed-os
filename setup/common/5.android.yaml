@@ -1,0 +1,97 @@
+- name: Install Android SDK
+  hosts: all
+  tasks:
+
+  - name: Check if sdkmanager is installed
+    stat:
+      path: /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager
+    register: sdkmanager_check
+
+  - name: Ensure necessary packages are installed
+    apt:
+      name:
+        - openjdk-17-jdk
+        - android-tools-adb
+        - unzip
+        - wget
+      state: present
+    become: yes
+    when: not sdkmanager_check.stat.exists
+
+  - name: Create Android SDK directory
+    file:
+      path: /opt/android-sdk/cmdline-tools/
+      state: directory
+      mode: '0755'
+    become: yes
+    when: not sdkmanager_check.stat.exists
+
+  - name: Change ownership of Android SDK directory
+    file:
+      path: /opt/android-sdk/
+      state: directory
+      owner: "{{ ansible_user_id }}"
+      recurse: yes
+    become: yes
+    when: not sdkmanager_check.stat.exists
+
+  - name: Download Android SDK Command-Line Tools
+    get_url:
+      url: https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+      dest: /opt/android-sdk/cmdline-tools/tools.zip
+    when: not sdkmanager_check.stat.exists
+
+  - name: Unzip Android SDK Command-Line Tools
+    unarchive:
+      src: /opt/android-sdk/cmdline-tools/tools.zip
+      dest: /opt/android-sdk/cmdline-tools/
+      remote_src: yes
+    when: not sdkmanager_check.stat.exists
+
+  - name: Rename cmdline-tools directory to latest
+    command: mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest
+    when: not sdkmanager_check.stat.exists
+
+  - name: Remove the downloaded zip file
+    file:
+      path: /opt/android-sdk/cmdline-tools/tools.zip
+      state: absent
+    when: not sdkmanager_check.stat.exists
+
+  - name: Add Android SDK to PATH and set environment variables
+    lineinfile:
+      path: ~/.bashrc
+      line: |
+        export PATH=$PATH:/opt/android-sdk/cmdline-tools/latest/bin
+        export ANDROID_HOME=/opt/android-sdk/
+        export ANDROID_SDK_ROOT=/opt/android-sdk/
+      create: yes
+      state: present
+    when: not sdkmanager_check.stat.exists
+
+  - name: Source .bashrc to update PATH
+    shell: source ~/.bashrc
+    args:
+      executable: /bin/bash
+    when: not sdkmanager_check.stat.exists
+
+  - name: Accept Android SDK licenses
+    shell: yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+    when: not sdkmanager_check.stat.exists
+
+  - name: Install Android SDK components
+    shell: echo y | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --install "emulator" "platform-tools"
+    when: not sdkmanager_check.stat.exists
+
+  - name: Create platforms directory
+    file:
+      path: /opt/android-sdk/platforms
+      state: directory
+      mode: '0755'
+    become: yes
+    when: not sdkmanager_check.stat.exists
+
+  - name: Confirm Android SDK is installed
+    ansible.builtin.debug: 
+      msg: "Android SDK is already installed"
+    when: sdkmanager_check.stat.exists

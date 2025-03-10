@@ -1,0 +1,42 @@
+---
+- name: Install OVN and OVS
+  hosts: all
+  tasks:
+  - name: Check if OVS is installed
+    ansible.builtin.stat:
+      path: /usr/local/bin/ovs-vsctl
+    register: ovs_check
+
+  - name: Check if OVN is installed
+    ansible.builtin.stat:
+      path: /usr/local/bin/ovn-nbctl
+    register: ovn_check
+
+  - name: Clone OVN from GitHub
+    git:
+      repo: "https://github.com/ovn-org/ovn.git"
+      dest: "/tmp/ovn"
+      version: "v24.03.1"
+    when: (not ovs_check.stat.exists or not ovn_check.stat.exists)
+
+  - name: Compile and Install OVN and OVS
+    shell: |
+      cd /tmp/ovn
+      git submodule update --init
+      ./boot.sh
+      cd ovs
+      ./boot.sh
+      ./configure
+      make
+      sudo make install
+      cd ..
+      ./configure
+      make
+      sudo make install
+    become: yes
+    when: (not ovs_check.stat.exists or not ovn_check.stat.exists)
+
+  - name: Report if OVS And OVN are installed
+    debug:
+      msg: "OVS and OVN already exist on this machine"
+    when: ovs_check.stat.exists and ovn_check.stat.exists

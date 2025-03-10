@@ -1,0 +1,43 @@
+---
+- name: Install Pre-Requisites and Libvirt
+  hosts: all
+  become: true
+  tasks:
+  - name: Install via Aptitude
+    apt:
+      name: 
+      - libvirt-dev 
+      - libssl-dev 
+      - gcc 
+      - make 
+      - zlib1g 
+      - zlib1g-dev
+      - libssl-dev
+      - libbz2-dev
+      - libsqlite3-dev 
+      - libffi-dev 
+      - libncurses5 
+      - libncurses5-dev
+      - libncursesw5
+      - libreadline-dev 
+      - lzma 
+      - liblzma-dev 
+      - libbz2-dev 
+      - libtool 
+      - autoconf
+      - git 
+      - pip 
+      - python3.10-venv
+      - qemu-kvm 
+      - libvirt-daemon-system 
+      - libvirt-clients
+      - libnss-libvirt
+      - genisoimage
+      - virt-manager
+      state: latest
+      update_cache: yes
+
+  - name: Confirm LibVirt is installed
+    ansible.builtin.debug: 
+      msg: "LibVirt is already installed"
+    when: libvrt_check.stat.exists

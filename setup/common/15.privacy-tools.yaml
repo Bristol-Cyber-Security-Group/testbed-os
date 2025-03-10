@@ -1,0 +1,25 @@
+---
+- name: Install Privacy Tools
+  hosts: all
+  tasks:
+  - name: Check if Privacy Tools are Installed
+    ansible.builtin.stat:
+      path: /var/lib/testbedos/tools/frida_tools_venv
+    register: privacy_tools_check
+
+  - name: Install Privacy Tools if not already installed
+    shell: |
+      ./setup.sh
+    args:
+      chdir: "../../util/privacy_tools/"
+      creates: /var/lib/testbedos/tools/frida_tools_venv
+      executable: /bin/bash
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+    become: yes
+    when:  not privacy_tools_check.stat.exists
+
+  - name: Confirm if Privacy Tools have been installed
+    ansible.builtin.debug:
+      msg: "Privacy Tools have already been installed"
+    when:  privacy_tools_check.stat.exists
