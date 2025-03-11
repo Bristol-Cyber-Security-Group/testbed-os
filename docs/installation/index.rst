@@ -5,6 +5,26 @@ Testbed OS Installation
 There are various dependencies needed to be installed with some based configuration needed to get the testbed ready to deploy test cases.
 This installation guide will outline each component needed.
 
+
+Quick Start
+-----------
+It is important to note that the current itteration of the Testbed OS is dependent on Ubunutu 22.04 for its installation with administrative permissions.
+Additionally, Ansible 2.10 is used, as fundamental utilities such as git for version control management.
+
+To carry out the quick ansible install:
+
+.. code-block:: shell
+
+    cd testbed-os/setup/singleton
+    ansible-playbook --ask-become-pass setup.yml
+
+
+This will deploy the Testbed OS in singleton mode for use on your local machine.
+
+
+Manual Installation
+-----------
+
 The following dependency install has been packaged together into the ``pre-req-setup.sh`` script in the root of the repo designed for ubuntu/debian based distros.
 The script will check if the software is already installed and if the version is correct.
 Note that this script will try to edit your bash profile such as ``~/.bashrc``, please check the script and comment out anything you do not want to be executed.
