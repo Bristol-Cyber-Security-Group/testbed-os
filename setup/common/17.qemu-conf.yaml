@@ -10,10 +10,6 @@
       path: /etc/libvirt/qemu.conf
     register: qemu_present
 
-  - name: Debug vars 1
-    ansible.builtin.debug:
-      msg: "Qemu Present Variable = {{ qemu_present }}"
-
   - name: Read qemu.conf content
     become: true
     ansible.builtin.slurp:
@@ -21,10 +17,6 @@
     register: qemu_content
     when: qemu_present.stat.exists
 
-  - name: Debug vars galore
-    ansible.builtin.debug:
-      msg: "Qemu contents is {{ qemu_content.content | b64decode }}"
-  
   - name: Check if qemu.conf contains the desired user configuration
     set_fact:
      user_contains_desired: "{{ qemu_content.content | b64decode |  regex_search('user = \"' + user_name + '\"') is not none}}"
@@ -34,12 +26,7 @@
     set_fact:
       group_contains_desired: "{{ qemu_content.content | b64decode | regex_search('group = \"' + user_group + '\"') is not none}}"
     when: qemu_present.stat.exists
-
-  - name: Debug vars 2
-    ansible.builtin.debug:
-      msg: "Qemu Present is {{ qemu_present.stat.exists }}, user contains desired is {{ user_contains_desired }}, group contains desired is : {{ group_contains_desired }}"
-
-
+    
   - name: Replace block of text in qemu.conf
     become: true
     ansible.builtin.blockinfile:

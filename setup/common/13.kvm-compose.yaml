@@ -1,6 +1,8 @@
 ---
 - name: Install KVM-Compose
   hosts: all
+  vars: 
+    user_name: "{{ ansible_user_id }}"
   tasks:
 
   - name: Check if KVM-Compose CLI is Installed
@@ -17,7 +19,10 @@
 
   - name: Install KVM-Compose CLI if not already installed
     shell: |
-      ./install.sh
+      rustup default stable
+      cargo build --release
+      sudo cp ../target/release/kvm-compose /usr/local/bin/kvm-compose
+      sudo chown root /usr/local/bin/kvm-compose
     args:
       chdir: "../../kvm-compose/kvm-compose-cli/"
       creates: /usr/local/bin/kvm-compose
@@ -26,6 +31,13 @@
       PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin:{{ lookup('env', 'HOME') }}/.cargo/bin"
     become: yes
     when:  not kvm_check.stat.exists
+
+  - name: Ensure the owner is not root for the target folder
+    ansible.builtin.file:
+      path: ../../kvm-compose/target
+      state: directory
+      owner: "{{ user_name }}"
+    when: not kvm_check.stat.exists
 
   - name: Confirm if KVM-Compose CLI has been installed
     ansible.builtin.debug:
