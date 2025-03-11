@@ -82,6 +82,10 @@
   import_playbook: ../common/16.host-file.yaml
   when: install_bool
 
+- name: Configure qemu.conf
+  import_playbook: ../common/17.qemu-conf.yaml
+  when: install_bool
+
 - name: Check Status
   import_playbook: ../common/1.status.yaml
 

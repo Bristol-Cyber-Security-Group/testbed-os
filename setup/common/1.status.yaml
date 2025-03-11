@@ -1,6 +1,9 @@
 ---
 - name: Check what is installed
   hosts: all
+  vars:
+    user_name: "{{ ansible_user_id }}"
+    user_group: "libvirt"
   tasks:
   - name: Check if LibVirt is installed
     ansible.builtin.stat:
@@ -148,6 +151,30 @@
       msg: "Host file content matches expected content"
     when: default_ipv4_available and hostfile_check.stat.exists and (actual_hostfile.content | b64decode | from_json == expected_hostfile_json | from_json)
 
+  - name: Check if qemu.conf is present
+    ansible.builtin.stat:
+      path: /etc/libvirt/qemu.conf
+    register: qemu_present
+
+  - name: Read qemu.conf content
+    become: true
+    ansible.builtin.slurp:
+      src: /etc/libvirt/qemu.conf
+    register: qemu_content
+    when: qemu_present.stat.exists
+
+  - name: Check if qemu.conf contains the desired user configuration
+    set_fact:
+     user_contains_desired: "{{ qemu_content.content | b64decode |  regex_search('user = \"' + user_name + '\"') is not none}}"
+    when: qemu_present.stat.exists
+
+  - name: Check if qemu.conf contains the desired group configuration
+    set_fact:
+      group_contains_desired: "{{ qemu_content.content | b64decode | regex_search('group = \"' + user_group + '\"') is not none}}"
+    when: qemu_present.stat.exists
+
+
+
   - name: Status
     ansible.builtin.debug:
       msg:
@@ -169,3 +196,4 @@
         - "| Testbed-OS Server Installed   | {{ server_check.stat.exists }} |"
         - "| Privacy Tools Installed       | {{ privacy_tools_check.stat.exists }} |"
         - "| Hostfile has been configured  | {{ hostfile_check.stat.exists and (actual_hostfile.content | b64decode | from_json == expected_hostfile_json | from_json) }} |"
+        - "| Qemu has been configured      | {{ qemu_present.stat.exists and user_contains_desired and group_contains_desired}} |"
