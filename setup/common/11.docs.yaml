@@ -28,6 +28,7 @@
     args:
       chdir: "../.."
       executable: /bin/bash
+      creates: /var/lib/testbedos/assets/documentation/html/index.html
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
     when:  not sphinx_docs.stat.exists
