@@ -1,7 +1,6 @@
 - name: Check Status
   import_playbook: ../common/1.status.yaml
-
-
+  
 - name: Check Consent
   hosts: all
   become: true
@@ -15,13 +14,6 @@
     set_fact:
       install_bool: "{{ (install_pre | lower) in ['yes', 'y', 'true'] }}"
     
-# - name: Verify Consent
-#   hosts: all
-#   become: true
-#   tasks: 
-#   - name: Visual Confirmation
-#     debug:
-#       msg: "The recieved input shows {{ install_bool }}"
 - name: Install Pre-Requisites
   import_playbook: ../common/2.prereq.yaml
   when: install_bool

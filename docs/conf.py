@@ -85,5 +85,6 @@ man_pages = [
     ("networking/index", "kvm-compose-networking", "Documentation on the networking architecture for the testbed", "BCSG", "1"),
     ("resource-monitoring/index", "resource-monitoring", "Documentation on the resource monitoring for the testbed", "BCSG", "1"),
     ("test-harness/index", "test-harness", "Documentation on the test harness test suite for the testbed", "BCSG", "1"),
+    ("benchmarking/index", "benchmarking", "Documentation on the benchmarking suite for the testbed", "BCSG", "1"),
     ("examples/index", "examples", "Examples on how to use the testbed and create test cases", "BCSG", "1"),
 ]

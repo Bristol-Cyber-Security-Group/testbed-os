@@ -37,6 +37,7 @@ To get started with your first test case, see the |examples| topic which will wa
     networking/index
     resource-monitoring/index
     test-harness/index
+    benchmarking/index
     examples/index
 
 .. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`
