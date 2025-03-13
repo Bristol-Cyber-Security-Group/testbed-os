@@ -38,7 +38,7 @@ pub struct SshConfig {
     /// this is the local interface that can see the other testbed hosts in the cluster
     pub testbed_nic: String,
     /// this is the main interface with internet connectivity to allow guests to access the internet
-    pub main_interface: String,
+    pub main_interface: Option<String>,
     /// must be set to Some(true) if this is the main tetsbed, otherwise will be regarded as a client host
     // TODO - with cluster management, we can default this value based on the mode.json
     pub is_main_host: Option<bool>,

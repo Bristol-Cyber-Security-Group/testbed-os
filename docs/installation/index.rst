@@ -8,8 +8,13 @@ This installation guide will outline each component needed.
 
 Quick Start
 -----------
-It is important to note that the current itteration of the Testbed OS is dependent on Ubunutu 22.04 for its installation with administrative permissions.
-Additionally, Ansible 2.10 is used, as fundamental utilities such as git for version control management.
+
+We have packaged the installation into an ansible playbook.
+You can install ansible for your system via your package manager i.e. for ubuntu `sudo apt install ansible`.
+The ansible install will create a default set of configuration for you to get started.
+This should suffice for general usage of the testbed.
+If you are going to place your testbed project files inside your home directory please see the section below `Configure Libvirt User Permissions`.
+For more advanced usage of the testbed, for example using it in a cluster mode, you will need to further configure the `host.json` so please see |kvm-compose-config| if that is the case.
 
 To carry out the quick ansible install:
 
@@ -18,20 +23,9 @@ To carry out the quick ansible install:
     cd testbed-os/setup/singleton
     ansible-playbook --ask-become-pass setup.yml
 
-
 This will deploy the Testbed OS in singleton mode for use on your local machine.
 
-
-Manual Installation
------------
-
-The following dependency install has been packaged together into the ``pre-req-setup.sh`` script in the root of the repo designed for ubuntu/debian based distros.
-The script will check if the software is already installed and if the version is correct.
-Note that this script will try to edit your bash profile such as ``~/.bashrc``, please check the script and comment out anything you do not want to be executed.
-This script is used in the projects test suite (see test-harness folder in the root of the repo), so will be working on a fresh ubuntu install.
-
-You can either follow the instructions in this document, or run ``./pre-req-setup.sh`` script in the root of the repo automate the pre-requisite dependencies installation.
-Note that the script will ask you to confirm what it will install after it has run checks.
+The following sections will explain the kinds of things that are being installed and configured, as if you were manually installing the testbed.
 
 Host Dependencies
 -----------------

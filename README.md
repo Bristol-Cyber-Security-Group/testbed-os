@@ -39,24 +39,18 @@ We look to publish the compiled HTML version in GitHub pages soon.
 This testbed was built for linux based systems, if you are on windows you will have to run this in a virtual machine.
 Preferably Ubuntu, which is the target platform.
 
-There are more detailed installation instructions in the documentation in the `docs` folder, the source can be read before it is compiled by the `setup.sh` script.
-Various dependencies are required to be installed for the testbed to work before executing the `setup.sh` script.
+There are more detailed installation instructions in the documentation in the `docs` folder under installation.
+Our installation method is via an ansible playbook.
+The installation will install various dependencies in addition to adding a few lines into your `~/.bashrc` to add `cargo`, `poetry`, and `pyenv` to your PATH environment variable.
 
-There is the `pre-req-setup.sh` file that installed the various dependencies needed to run the `setup.sh` script.
-However, note that pre-requisite script has been designed for a fresh Ubuntu install for the test-harness, so it makes assumptions on where configuration files may go.
-Before running it, have a look first to see if you are happy with the changes it will make, otherwise follow the installation documentation. 
-
-Run the `setup.sh` script in this folder (without sudo), which will compile and install the various dependencies, build the source code (plus documentation) and place the binaries and scripts into the user path.
-You may be asked for the administrator password.
-
-Note that on a successful installation, the testbed daemon will be running in the background.
+The testbed can be run as a daemon in the background, this is disabled by default but can be enabled with `sudo systemctl enable testbedos-server.service`.
 If you wish to develop the testbed server you will need to turn off the daemon with `sudo systemctl stop testbedos-server.service`.
 
-Before starting, you will need to configure the testbed server settings, please see the `testbed-config` documentation for support and examples.
+The ansible playbook will give you a basic configuration with default settings which should be enough to get started with the testbed.
+For more advanced usage, you will need to further configure the testbed server settings, please see the `testbed-config` documentation for support and examples.
 
-To see the GUI, visit `http://localhost:3355/gui`.
+To see the GUI when the testbed is running, visit `http://localhost:3355/gui`.
 
-To uninstall, use the `tear-down.sh` script, which requires sudo privileges.
 
 ## Running the Testbed
 

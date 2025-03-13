@@ -13,6 +13,7 @@ pub enum OnlineCloudImage {
     Ubuntu_18_04,
     Ubuntu_20_04,
     Ubuntu_22_04,
+    Ubuntu_24_04,
     Cirros_0_6_2,
 }
 
@@ -21,13 +22,16 @@ impl OnlineCloudImage {
     fn get_url(&self) -> &str {
         match &self {
             OnlineCloudImage::Ubuntu_18_04 => {
-                "https://cloud-images.ubuntu.com/bionic/20230607/bionic-server-cloudimg-amd64.img"
+                "https://cloud-images.ubuntu.com/bionic/current/bionic-server-cloudimg-amd64.img"
             }
             OnlineCloudImage::Ubuntu_20_04 => {
-                "https://cloud-images.ubuntu.com/focal/20240430/focal-server-cloudimg-amd64.img"
+                "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
             }
             OnlineCloudImage::Ubuntu_22_04 => {
-                "https://cloud-images.ubuntu.com/jammy/20240426/jammy-server-cloudimg-amd64.img"
+                "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+            }
+            OnlineCloudImage::Ubuntu_24_04 => {
+                "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
             }
             OnlineCloudImage::Cirros_0_6_2 => {
                 "https://download.cirros-cloud.net/0.6.2/cirros-0.6.2-x86_64-disk.img"
@@ -40,6 +44,7 @@ impl OnlineCloudImage {
             OnlineCloudImage::Ubuntu_18_04 => "ubuntubionic".to_string(),
             OnlineCloudImage::Ubuntu_20_04 => "ubuntufocal".to_string(),
             OnlineCloudImage::Ubuntu_22_04 => "ubuntujammy".to_string(),
+            OnlineCloudImage::Ubuntu_24_04 => "ubuntunoble".to_string(),
             OnlineCloudImage::Cirros_0_6_2 => unimplemented!(),
         }
     }
