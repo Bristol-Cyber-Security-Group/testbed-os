@@ -32,5 +32,5 @@
 
   - name: Confirm if the Docs has been built
     ansible.builtin.debug:
-      msg: "Documentation has already been built"
+      msg: "Documentation has been built"
     when:  sphinx_docs.stat.exists
