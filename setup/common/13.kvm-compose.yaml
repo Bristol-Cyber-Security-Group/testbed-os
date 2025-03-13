@@ -33,6 +33,7 @@
     when:  not kvm_check.stat.exists
 
   - name: Ensure the owner is not root for the target folder
+    become: true
     ansible.builtin.file:
       path: ../../kvm-compose/target
       state: directory
