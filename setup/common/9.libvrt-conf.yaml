@@ -1,0 +1,31 @@
+---
+- name: Ensure User is in Libvirt Group
+  hosts: all
+  vars:
+    user_name: "{{ansible_user_id}}"
+  tasks: 
+
+  - name: Check if user is in libvirt group
+    command: getent group libvirt
+    register: libvirt_group
+
+  - name: Add user to libvirt group
+    user:
+      name: "{{ user_name }}"
+      groups: libvirt
+      append: yes
+    when:   user_name not in libvirt_group.stdout
+    become: true
+
+  - name: Restart libvirt system
+    systemd:
+      name: libvirtd
+      state: restarted
+      enabled: yes
+    when:  user_name not in libvirt_group.stdout
+    become: true
+
+  - name: Confirm libvirt user is in the group
+    debug:
+      msg: "{{ user_name }} is in the libvirt user group"
+    when:  user_name in libvirt_group.stdout

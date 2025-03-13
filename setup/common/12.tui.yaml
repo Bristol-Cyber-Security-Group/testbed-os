@@ -1,0 +1,53 @@
+
+- name: Install TUI
+  hosts: all
+  tasks:
+
+  - name: Check Textual User Interface is installed
+    ansible.builtin.stat:
+      path: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui"
+    register: tui_check
+
+  - name: Create TUI directory
+    ansible.builtin.file:
+      path: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui"
+      state: directory
+      mode: '0755'
+    when:  not tui_check.stat.exists
+
+  - name: Copy TUI.py to TUI directory
+    copy:
+      src: "{{ playbook_dir }}/../../util/tui/TUI.py"
+      dest: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui/TUI.py"
+    when:  not tui_check.stat.exists
+
+  - name: Create symlink to kvm-ui-tui script
+    ansible.builtin.command: ln -sf "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui/TUI.py" "/usr/local/bin/kvm-ui-tui"
+    become: yes
+    when:  not tui_check.stat.exists
+
+  - name: Get the location of python from the poetry venv
+    shell: |
+      export PYENV_ROOT="$HOME/.pyenv"
+      export PATH="$PYENV_ROOT/bin:$HOME/.local/bin:$PATH"
+      eval "$(pyenv init --path)"
+      eval "$(pyenv init -)"
+      poetry run which python
+    register: poetry_venv_path
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+    args:
+      chdir: "../../util/tui/"
+    when:  not tui_check.stat.exists
+
+  - name: Update the shebang in the kvm-ui-tui script
+    ansible.builtin.replace:
+      path: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui/TUI.py"
+      regexp: '^#!/usr/bin/env python'
+      replace: "#!{{ poetry_venv_path.stdout }}"
+    when:  not tui_check.stat.exists
+
+  - name: Confirm if Textual User Interface has been installed
+    ansible.builtin.debug:
+      msg: "Textual User Interface has already been installed"
+    when:  tui_check.stat.exists

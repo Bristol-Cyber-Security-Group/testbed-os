@@ -1,0 +1,36 @@
+---
+- name: Build Documentation
+  hosts: all
+  tasks:
+
+  - name: Ensure /var/lib/testbedos/assets directory exists
+    file:
+      path: /var/lib/testbedos/assets
+      state: directory
+      mode: '0755'
+    become: yes
+
+  - name: Build Docs if they are not present
+    shell: |
+      . ~/.bashrc
+      rm -rf build/*
+      poetry run sphinx-build -M man docs build
+      poetry run sphinx-build -M html docs build
+      sudo rm -rf /var/lib/testbedos/assets/documentation/
+      sudo mkdir /var/lib/testbedos/assets/documentation/
+      sudo cp -r build/html/* /var/lib/testbedos/assets/documentation/
+    args:
+      chdir: "../.."
+      executable: /bin/bash
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+
+  - name: Check Docs are present
+    ansible.builtin.stat:
+      path: /var/lib/testbedos/assets/documentation/
+    register: sphinx_docs
+
+  - name: Confirm if the Docs have been built
+    ansible.builtin.debug:
+      msg: "The Documentation has been built"
+    when:  sphinx_docs.stat.exists

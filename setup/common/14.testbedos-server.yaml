@@ -1,0 +1,32 @@
+---
+- name: Install Testbed-OS Server
+  hosts: all
+  tasks:
+  - name: Check if Testbed-OS server is Installed
+    ansible.builtin.stat:
+      path: /usr/local/bin/testbedos-server
+    register: server_check
+
+  - name: Install Testbed-OS server if not already installed
+    shell: |
+      ./install.sh
+    args:
+      chdir: "../../kvm-compose/testbedos-server/"
+      creates: /usr/local/bin/testbedos-server
+      executable: /bin/bash
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin:{{ lookup('env', 'HOME') }}/.cargo/bin"
+    become: yes
+    when:  not server_check.stat.exists
+
+  - name: Clean Up the Build Directory
+    ansible.builtin.file:
+      path: "../../build"
+      state: absent
+    when:  server_check.stat.exists
+
+
+  - name: Confirm if Testbed-OS Server has been installed
+    ansible.builtin.debug:
+      msg: "Testbed-OS Server has already been installed"
+    when:  server_check.stat.exists

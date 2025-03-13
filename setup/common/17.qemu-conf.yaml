@@ -1,0 +1,50 @@
+- name: Configure Qemu Conf
+  hosts: all
+  vars:
+    user_name: "{{ ansible_user_id }}"
+    user_group: "libvirt"
+  tasks:
+
+  - name: Check if qemu.conf is present
+    ansible.builtin.stat:
+      path: /etc/libvirt/qemu.conf
+    register: qemu_present
+
+  - name: Read qemu.conf content
+    become: true
+    ansible.builtin.slurp:
+      src: /etc/libvirt/qemu.conf
+    register: qemu_content
+    when: qemu_present.stat.exists
+
+  - name: Check if qemu.conf contains the desired user configuration
+    set_fact:
+     user_contains_desired: "{{ qemu_content.content | b64decode |  regex_search('user = \"' + user_name + '\"') is not none}}"
+    when: qemu_present.stat.exists
+
+  - name: Check if qemu.conf contains the desired group configuration
+    set_fact:
+      group_contains_desired: "{{ qemu_content.content | b64decode | regex_search('group = \"' + user_group + '\"') is not none}}"
+    when: qemu_present.stat.exists
+    
+  - name: Replace block of text in qemu.conf
+    become: true
+    ansible.builtin.blockinfile:
+      path: /etc/libvirt/qemu.conf
+      marker: "{mark}"
+      marker_begin: '#       user = "100"    # A user named "100" or a user with uid=100'
+      marker_end: '# Whether libvirt should dynamically change file ownership'
+      block: |-
+        #
+        user = "{{ user_name }}"
+
+        # The group for QEMU processes run by the system instance. It can be
+        # specified in a similar way to user.
+        group = "{{ user_group }}"
+      state: present
+    when: qemu_present.stat.exists and (not user_contains_desired or not group_contains_desired)
+
+  - name: Notify if qemu.conf has already been modified
+    ansible.builtin.debug:
+      msg: "The contents of qemu.conf have already been configured"
+    when: qemu_present.stat.exists and user_contains_desired and group_contains_desired
