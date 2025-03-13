@@ -30,7 +30,7 @@
       path: /var/lib/testbedos/assets/documentation/
     register: sphinx_docs
 
-  - name: Confirm if the Docs has been built
+  - name: Confirm if the Docs have been built
     ansible.builtin.debug:
-      msg: "Documentation has been built"
+      msg: "The Documentation has been built"
     when:  sphinx_docs.stat.exists
