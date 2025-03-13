@@ -19,7 +19,6 @@
       sudo rm -rf /var/lib/testbedos/assets/documentation/
       sudo mkdir /var/lib/testbedos/assets/documentation/
       sudo cp -r build/html/ /var/lib/testbedos/assets/documentation/
-      rm -rf build/*
     args:
       chdir: "../.."
       executable: /bin/bash
