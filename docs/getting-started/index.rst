@@ -9,14 +9,17 @@ Installation
 
 You will need to install the testbed if you have not already done this.
 The testbed git repo contains install scripts.
-Please see the |installation documentation| for more information.
+Please see the |installation documentation| for more information. 
+Ansible is also used for easy configuration and management. 
+Please install it via ``sudo apt install ansible -y``
 
 Configuring the Server
 ----------------------
 
 Once you have installed the testbed, you will need to configure the server.
 This requires you to make sure the ``host.json`` in the testbed folder ``/var/lib/testbedos/config/`` folder is set up correctly.
-Please see the |kvm-compose-config| documentation on how to set this up.
+Please see the |kvm-compose-config| documentation on how to set this up. 
+For quick configuration Ansible will take care of basic configuraiton, but more knowledge is reqiured for more custom and complex use-cases. 
 
 The main testbed server also needs a ``mode.json`` file set to "Main".
 If you used the ``setup.sh`` script, then this will have been placed for you with main as the default.

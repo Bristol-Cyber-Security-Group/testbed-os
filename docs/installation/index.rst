@@ -5,16 +5,25 @@ Testbed OS Installation
 There are various dependencies needed to be installed with some based configuration needed to get the testbed ready to deploy test cases.
 This installation guide will outline each component needed.
 
+
+Quick Start
+-----------
+
 We have packaged the installation into an ansible playbook.
 You can install ansible for your system via your package manager i.e. for ubuntu `sudo apt install ansible`.
-You can then enter the `testbed-os/setup/singleton` folder and execute with `ansible-playbook --ask-become-pass setup.yml`.
-This will check what dependencies are already installed and then install the remaining.
-Once ansible has finished installing the testbed, please make sure to run `source ~/.bashrc`.
-
 The ansible install will create a default set of configuration for you to get started.
 This should suffice for general usage of the testbed.
 If you are going to place your testbed project files inside your home directory please see the section below `Configure Libvirt User Permissions`.
 For more advanced usage of the testbed, for example using it in a cluster mode, you will need to further configure the `host.json` so please see |kvm-compose-config| if that is the case.
+
+To carry out the quick ansible install:
+
+.. code-block:: shell
+
+    cd testbed-os/setup/singleton
+    ansible-playbook --ask-become-pass setup.yml
+
+This will deploy the Testbed OS in singleton mode for use on your local machine.
 
 The following sections will explain the kinds of things that are being installed and configured, as if you were manually installing the testbed.
 

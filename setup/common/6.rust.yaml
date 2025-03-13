@@ -1,0 +1,26 @@
+---
+- name: Ensure Rust is installed
+  hosts: all
+  tasks:
+  - name: Check if Rust is installed
+    ansible.builtin.stat:
+       path: ~/.cargo/bin/rustc
+    register: rust_check
+
+  - name: Install Rust using RustUp
+    shell: |
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    args:
+      creates: ~/.cargo/bin/rustc  
+    when:  not rust_check.stat.exists
+
+  - name: Check if rust is in PATH
+    lineinfile: 
+      path: ~/.bashrc
+      line: 'export PATH="$HOME/.cargo/bin:$PATH"'
+    when:  not rust_check.stat.exists
+
+  - name: Rust is installed
+    debug:
+      msg: "Rust has already been installed"
+    when:  rust_check.stat.exists

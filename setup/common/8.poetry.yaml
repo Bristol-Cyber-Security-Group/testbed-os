@@ -1,0 +1,27 @@
+---
+- name: Ensure Poetry is installed
+  hosts: all
+  tasks:
+
+  - name: Check if Poetry is installed
+    ansible.builtin.stat: 
+      path: ~/.local/bin/poetry
+    register: poetry_check
+
+  - name: Install Poetry
+    shell: | 
+      curl -sSL https://install.python-poetry.org | python3 -
+    args:
+      creates: ~/.local/bin/poetry
+    when:  not poetry_check.stat.exists
+
+  - name: Ensure Poetry is in PATH
+    lineinfile:
+      path: ~/.bashrc
+      line: export PATH=$PATH:/home/$USER/.local/bin
+    when:  not poetry_check.stat.exists
+
+  - name: Confirm if Poetry exists
+    debug:
+      msg: "Poetry is already installed"
+    when:  poetry_check.stat.exists

@@ -1,0 +1,35 @@
+---
+- name: Use Poetry to install Dependencies
+  hosts: all
+  tasks:
+
+  - name: Check if Poetry has installed its dependencies
+    shell: |
+      export PYENV_ROOT="$HOME/.pyenv"
+      export PATH="$PYENV_ROOT/bin:$HOME/.local/bin:$PATH"
+      eval "$(pyenv init --path)"
+      eval "$(pyenv init -)"
+      poetry run which sphinx-build
+    args:
+      chdir: "../.."
+    register: poetry_check_install
+    ignore_errors: yes
+
+  - name: Run Poetry Package Install
+    shell: |
+      . ~/.bashrc
+      export PYENV_ROOT="$HOME/.pyenv"
+      export PATH="$PYENV_ROOT/bin:$HOME/.local/bin:$PATH"
+      eval "$(pyenv init --path)"
+      eval "$(pyenv init -)"
+      pyenv global 3.10.5
+      poetry env use 3.10.5
+      poetry install
+    args:
+      chdir: "../.."
+    when:  not poetry_check_install.rc == 0
+
+  - name: Confirm if Poetry has been installed
+    ansible.builtin.debug:
+      msg: "Poetry Dependencies have already been installed"
+    when:  poetry_check_install.rc == 0
