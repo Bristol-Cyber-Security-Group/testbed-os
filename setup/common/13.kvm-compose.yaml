@@ -37,7 +37,8 @@
       path: ../../kvm-compose/target
       state: directory
       owner: "{{ user_name }}"
-    when: not kvm_check.stat.exists
+      group: "{{ user_name }}"
+      recurse: true
 
   - name: Confirm if KVM-Compose CLI has been installed
     ansible.builtin.debug:
