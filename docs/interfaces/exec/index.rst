@@ -31,5 +31,5 @@ For more information on each possible command in `exec` see:
 
     tool
     shell-command
-    user-script
+    push-and-pull
 

@@ -8,6 +8,7 @@ use kvm_compose_lib::server_web_client::client;
 use kvm_compose_schemas::cli_models::{Opts, SubCommand};
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt_image_download::OnlineCloudImage;
 use reqwest::Client;
+use kvm_compose_schemas::canonicalise_paths::cli_canonicalise_all_paths;
 use crate::setup_config::setup_config;
 
 
@@ -37,7 +38,7 @@ fn log_level(s: &str) -> anyhow::Result<LevelFilter> {
 /// occur in ``parse_config`` which builds the logical testbed, if it is a non-config action.
 pub async fn run_app() -> Result<(), anyhow::Error> {
     // Invoke cli option parsing
-    let opts: Opts = Opts::parse();
+    let mut opts: Opts = Opts::parse();
     let mut e = None;
     // Determine and set log level
     let level = match &opts.verbosity {
@@ -57,6 +58,9 @@ pub async fn run_app() -> Result<(), anyhow::Error> {
         .with(stdout_log.with_filter(level))
         .init();
 
+    // make sure any input paths are canonicalised relative to the cli execution working folder
+    cli_canonicalise_all_paths(&mut opts)?;
+    
     match parse_command(opts).await {
         Ok(_) => {}
         Err(err) => {

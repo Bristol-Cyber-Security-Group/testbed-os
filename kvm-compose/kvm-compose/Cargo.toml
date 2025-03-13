@@ -12,23 +12,14 @@ name = "kvm_compose_lib"
 path = "src/lib.rs"
 
 [dependencies]
-virt = { workspace = true}
 serde = {version = "1.0.152", features = ["derive"]}
 thiserror = "1.0.38"
 anyhow = { workspace = true}
-serde_yaml = "0.8"
-validator = {version = "0.16", features = ["derive"]}
-serde_plain = "1.0.1"
 reqwest = { workspace = true}
-indicatif = "0.17.3"
-tempfile = "3.3.0"
-enum-iterator = "0.6.0"
 serde_json = "1.0.91"
 rust-embed = {version = "8.0.0", features = ["debug-embed"]}
-openssl = { version = "0.10.66" }
 chrono = { workspace = true }
 tracing = { workspace = true}
-tracing-subscriber = { workspace = true}
 futures-util = { workspace = true}
 tokio = { workspace = true}
 tokio-tungstenite = { workspace = true}
@@ -39,3 +30,6 @@ rand = "0.8.5"
 async-trait = { workspace = true }
 glob = "0.3.1"
 nix = { workspace = true }
+rexpect = "0.6.0"
+virt = { workspace = true }
+tempfile = "3.17.1"

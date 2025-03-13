@@ -60,7 +60,7 @@ pub async fn orchestration_action(
     // handle result from `orchestration_result`
     match orchestration_result {
         Ok(_) => {
-            tracing::debug!("websocket closed Ok");
+            tracing::info!("websocket closed Ok");
         }
         Err(err) => {
             tracing::error!("there was a problem in the orchestration, will stop");

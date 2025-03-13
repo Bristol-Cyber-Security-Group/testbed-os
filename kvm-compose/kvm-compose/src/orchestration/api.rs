@@ -119,7 +119,8 @@ pub enum OrchestrationInstruction {
     Exec(ExecCmd),
     /// Instruct the orchestration to cancel
     Cancel,
-    /// Internal use to show that the commands have finished generating
+    /// Internal use to show that the commands have finished generating, does not need to be sent
+    /// to the server
     End,
 }
 

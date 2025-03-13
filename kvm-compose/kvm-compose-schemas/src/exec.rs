@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 
@@ -15,8 +16,9 @@ impl ExecCmd {
     pub fn name(&self) -> String {
         match self.command_type {
             ExecCmdType::ShellCommand(_) => "Shell Command".to_string(),
+            ExecCmdType::Push(_) => "Push file or folder".to_string(),
+            ExecCmdType::Pull(_) => "Pull file or folder".to_string(),
             ExecCmdType::Tool(_) => "Tool".to_string(),
-            ExecCmdType::UserScript(_) => "User Script".to_string(),
         }
     }
 }
@@ -26,16 +28,31 @@ impl ExecCmd {
 #[serde(rename_all = "snake_case")]
 pub enum ExecCmdType {
     ShellCommand(ExecCmdShellCommand),
+    /// Push a file or folder to a guest
+    Push(ExecCmdFileTransfer),
+    /// Pull a file or folder from a guest
+    Pull(ExecCmdFileTransfer),
     Tool(ExecCmdTool),
-    UserScript(ExecCmdUserScript),
 }
 
 /// A command that will be run inside the guest's shell, if the guest type permits.
 #[derive(Parser, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct ExecCmdShellCommand {
+    #[clap(short, long, default_value="5000", help = "Timeout in milliseconds, defaults to 5s")]
+    pub timeout: u64,
     #[clap(trailing_var_arg=true, index = 1)]
     pub command: Vec<String>,
+}
+
+/// Represents the options for the push and pull file transfer sub-commands
+#[derive(Parser, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub struct ExecCmdFileTransfer {
+    #[clap(short, long, value_parser, help = "Location of file or folder to push on host")]
+    pub source_path: PathBuf,
+    #[clap(short, long, value_parser, help = "Location to push file or folder to on guest")]
+    pub target_path: PathBuf,
 }
 
 /// A tool that will be run against the guest. This will be a tool that is included with the testbed

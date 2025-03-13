@@ -283,7 +283,7 @@ pub enum AnalysisToolsSubCmd {
         /// Specify either an OVS port or a guest interface
         port_or_iface: String,
         /// Specify the name of the output file for the capture
-        output_file: String,
+        output_file: PathBuf,
         // /// Arguments to pass through to tcpdump such as filters, don't pass -w or -i
         // tcpdump_args: Vec<String>,
     },

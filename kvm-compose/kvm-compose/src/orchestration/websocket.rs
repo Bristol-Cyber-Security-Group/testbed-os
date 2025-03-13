@@ -68,6 +68,7 @@ pub async fn ws_orchestration_client(
 
         // set off three threads, depending on which ends first there is a different outcome
 
+        // this async task will generate the sequence of commands and push to a channel queue
         let orchestration_cmd_generation_thread = tokio::spawn(async move {
             // TODO - this assumes the messages were OK, so the deployment state should
             //  really come from the message sender
@@ -85,14 +86,23 @@ pub async fn ws_orchestration_client(
             res
         });
 
+        // this async task will loop over the channel queue taking the task to send over the
+        // websocket to the server
         let orchestration_message_cmd_receiver_thread = tokio::spawn(async move {
+
+            // loop polling over the command generator loop, once we get to the end (with an End
+            // protocol) we will end this loop. for every protocol generated we call
+            // `send_orchestration_instruction` to send the protocol to the testbed server and get
+            // the acknowledgement of the command then the result.
             loop {
                 // get message from orchestration channel
                 if let Some(protocol) = orchestration_recv.recv().await {
                     // end message is always sent if run_orchestration is successful or not
                     match protocol.instruction {
                         OrchestrationInstruction::End => {
-                            // if command generation is matched, then we can end this future
+                            // if command generation end is matched, then we can stop checking for
+                            // more commands and continue to wait for the server to finish if the
+                            // last sent command is long-running and/or will send more logging
                             break;
                         }
                         _ => {}
@@ -102,13 +112,17 @@ pub async fn ws_orchestration_client(
                         websocket_container_clone.clone(), // this is cloned every loop...
                         protocol,
                     ).await?;
+                    
                 } else {
                     bail!("exiting socket send loop, message not Ok");
                 }
             }
+
             Ok(())
         });
 
+        // this async task will listen for the user's ctrl+c interrupt to abort the command running
+        //
         let orchestration_interrupt_listener = tokio::spawn(async move {
             let _ = tokio::signal::ctrl_c().await;
 
@@ -121,6 +135,7 @@ pub async fn ws_orchestration_client(
         // we should let `orchestration_cmd_generation_thread` finish, unless we are cancelling.
         // but we need to make sure to abort all the futures once we are done.
 
+        // this will check each of the three async tasks to see which has finished first
         let deployment_result = tokio::spawn(future_loop(
             orchestration_cmd_generation_thread,
             orchestration_message_cmd_receiver_thread,
@@ -129,7 +144,7 @@ pub async fn ws_orchestration_client(
         match deployment_result {
             Ok(_) => {}
             Err(err) => {
-                bail!(err);
+                bail!(err); // TODO - we should close the websocket before bailing
             },
         }
 
@@ -141,7 +156,7 @@ pub async fn ws_orchestration_client(
                 .send(Message::Close(Some(CloseFrame {
             code: CloseCode::Normal,
             reason: Cow::from("End of orchestration"),
-        }))).await?;
+        }))).await.context("sending close message to orchestration worker")?;
 
         Ok(())
     })
@@ -154,7 +169,7 @@ pub async fn ws_orchestration_client(
         Ok(orchestration_result) => {
             match orchestration_result {
                 Ok(_) => {
-                    tracing::info!("orchestration Ok");
+                    tracing::info!("orchestration command finished");
                 }
                 Err(err) => {
                     bail!("Orchestration Failed, error: {err:#}");
@@ -171,6 +186,11 @@ pub async fn ws_orchestration_client(
     Ok(())
 }
 
+/// We have three concurrent async tasks running, and we need to be able to handle either if the
+/// command running has finished or if the interrupt listener has finished. If command running has
+/// finished then we abort the interrupt listener. If the interrupt listener has finished, we abort
+/// the command running. The command running consists of the command generator and the command
+/// sender.
 pub async fn future_loop<T>(
     orchestration_cmd_generation_thread: JoinHandle<anyhow::Result<Deployment>>,
     orchestration_message_cmd_receiver_thread: JoinHandle<T>,
@@ -197,6 +217,8 @@ pub async fn future_loop<T>(
             return result;
         }
         // TODO - what if either orchestration_cmd_generation_thread or orchestration_message_cmd_receiver_thread never finishes?
+
+        // TODO - what if the CMD generation thread has not finished generating?
     }
 }
 
@@ -265,74 +287,87 @@ async fn send_orchestration_instruction(
         bail!("problem in getting websocket acknowledgement response from server");
     }
 
-    // wait for response
-    if let Some(response) = websocket_container
-        .lock()
-        .await
-        .receiver
-        .next().await {
-        let response = response
-            .context("getting instruction outcome response")?;
-        match response {
-            Message::Text(b) => {
+    // now that we have the acknowledgement, we will need to wait for the response from the server
+    // that the command has completed either successfully or unsuccessfully. however, meanwhile the
+    // server may be sending an unknown number of logging messages before the completion message, so
+    // we will loop de-serialising the messages until we get completion confirmation
 
-                // the message could be either
-                // OrchestrationProtocolResponse or OrchestrationLogger, handle appropriately
+    loop {
 
-                // handle orchestration message from server
-                let response_result: Result<OrchestrationProtocolResponse, serde_json::Error> = serde_json::from_str(&b);
-                if let Ok(ref response) = response_result {
-                    let result_messages = response.get_result_messages()?;
-                    if let Some(success) = result_messages.success_message {
-                        for msg in success {
-                            tracing::info!("{}", msg);
-                        }
-                    }
-                    if let Some(fail) = result_messages.fail_message {
-                        // tracing::error!("Instruction completed with the following failures: {}", fail);
-                        for msg in fail {
-                            tracing::error!("Instruction failed for: {}", msg);
-                        }
-                    }
+        // wait for response
+        if let Some(response) = websocket_container
+            .lock()
+            .await
+            .receiver
+            .next().await {
+            let response = response
+                .context("getting instruction outcome response")?;
+            match response {
+                Message::Text(b) => {
 
-                    if !response.is_success()? {
-                        bail!("instruction failed");
-                    }
-                }
+                    // the message could be either
+                    // OrchestrationProtocolResponse or OrchestrationLogger, handle appropriately
 
-                // handle a logging message from server
-                let logging_result: Result<OrchestrationLogger, serde_json::Error> = serde_json::from_str(&b);
-                if let Ok(ref log) = logging_result {
-                    match log {
-                        OrchestrationLogger::Log { message, level } => {
-                            match level {
-                                OrchestrationLoggerLevel::Info => tracing::info!("{message}"),
-                                OrchestrationLoggerLevel::Error => tracing::error!("{message}"),
+                    // handle orchestration message from server
+                    let response_result: Result<OrchestrationProtocolResponse, serde_json::Error> = serde_json::from_str(&b);
+                    if let Ok(ref response) = response_result {
+                        let result_messages = response.get_result_messages()?;
+                        if let Some(success) = result_messages.success_message {
+                            for msg in success {
+                                tracing::info!("{}", msg);
                             }
                         }
-                        _ => {} // dont handle `End` here
+                        if let Some(fail) = result_messages.fail_message {
+                            // tracing::error!("Instruction completed with the following failures: {}", fail);
+                            for msg in fail {
+                                tracing::error!("Instruction failed for: {}", msg);
+                            }
+                        }
+
+                        if !response.is_success()? {
+                            bail!("instruction failed");
+                        }
+                        // regardless of the result, we break out of the loop
+                        break;
+                    }
+                    
+                    // if there was no confirmation of completion, it will be a logging message so
+                    // we will de-serialise it, present to the user, then continue looping until we
+                    // get the completion message
+
+                    // handle a logging message from server
+                    let logging_result: Result<OrchestrationLogger, serde_json::Error> = serde_json::from_str(&b);
+                    if let Ok(ref log) = logging_result {
+                        match log {
+                            OrchestrationLogger::Log { message, level } => {
+                                match level {
+                                    OrchestrationLoggerLevel::Info => tracing::info!("{message}"),
+                                    OrchestrationLoggerLevel::Error => tracing::error!("{message}"),
+                                }
+                            }
+                            _ => {} // dont handle `End` here
+                        }
+                    }
+
+                    // in case both messages were corrupt, bail
+                    if response_result.is_err() && logging_result.is_err() {
+                        bail!("message received from client was neither a result or logging message");
                     }
                 }
-
-                // in case both messages were corrupt, bail
-                if response_result.is_err() && logging_result.is_err() {
-                    bail!("message received from client was neither a result or logging message");
-                }
-
-            }
-            Message::Close(msg) => {
-                match msg {
-                    None => tracing::error!("received close from server as instruction result"),
-                    Some(close) => {
-                        tracing::error!("received close from server as instruction result, reason: {}", close.reason)
+                Message::Close(msg) => {
+                    match msg {
+                        None => tracing::error!("received close from server as instruction result"),
+                        Some(close) => {
+                            tracing::error!("received close from server as instruction result, reason: {}", close.reason)
+                        }
                     }
+                    return Ok(());
                 }
-                return Ok(());
+                _ => bail!("got unexpected message type for acknowledgement"),
             }
-            _ => bail!("got unexpected message type for acknowledgement"),
+        } else {
+            bail!("problem in getting websocket instruction outcome response from server");
         }
-    } else {
-        bail!("problem in getting websocket instruction outcome response from server");
     }
 
 
