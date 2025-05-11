@@ -6,4 +6,4 @@ network:
       dhcp4: true
       dhcp6: false
       dhcp-identifier: mac
-      mtu: 2000
+

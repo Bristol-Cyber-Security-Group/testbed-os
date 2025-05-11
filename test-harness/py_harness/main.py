@@ -5,7 +5,7 @@ import harness_settings
 from pathlib import Path
 from host_images import BaseOperatingSystem
 from harness_network import HarnessNetwork
-from host import BaseImage
+from host import BaseHost
 
 
 def get_libvirt_connection() -> libvirt.virConnect:
@@ -38,18 +38,26 @@ def main(connection: libvirt.virConnect):
     for base_os in BaseOperatingSystem:
         logging.info(f"Testing on base image: {base_os.name}")
 
-        base_image = BaseImage(conn, base_os)
-
-        # TODO - destroy previous base image if it exists
+        # TODO - init report wrapper for this run
 
         # create base VM in the default libvirt network
-        base_image.create()
+        base_host = BaseHost(conn, base_os)
+        result = base_host.create()
+        if not result:
+            base_host.ensure_destroyed()
+            # TODO - report failed result
+            break
+
+        # TODO install testbed
+
+        # turn off base host before creating linked clones
+        base_host.stop()
+
+        # begin n number of host loop
 
         # TODO create n number of hosts, check if any already exist and destroy
 
         # TODO install the testbed and ensure it worked, if it doesn't report and continue to next OS
-
-        # TODO turn off base image
 
         # TODO for each test case, create the one to three linked clone VMs and run tests
 
@@ -58,6 +66,8 @@ def main(connection: libvirt.virConnect):
     # TODO clean up the test harness working area in the libvirt images folder
 
     # TODO we could turn off the test harness network, leaving it for parallel harness runs for now
+    harness_network.net_destroy()
+    harness_network.net_undefine()
 
 
 if __name__ == '__main__':

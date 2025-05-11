@@ -8,6 +8,9 @@ class HarnessNetwork:
     """
     This class manages the libvirt network that will be used for the test harness. This is just a simple NAT network
     that allows the host(s) to communicate with each-other, and provides network connectivity.
+
+    Each test harness will have its own network, so we are free to destroy and recreate it. The network name will be
+    specific to the `test_id` which will relate to the test run trigger i.e. commit hash.
     """
 
     # hold a reference to the libvirt resources
@@ -30,7 +33,8 @@ class HarnessNetwork:
         if self.network is None:
             return
         logging.info("Destroying network")
-        self.network.destroy()
+        if self.network.isActive():
+            self.network.destroy()
 
     def net_undefine(self):
         if self.network is None:
@@ -40,17 +44,26 @@ class HarnessNetwork:
 
     def net_define(self):
         logging.info("Defining network")
+        # TODO this should be upgraded to a templating system rather than crude string replacements
+
+        # get xml from assets folder in container as a string
+        with open(harness_settings.testbed_network_location, "r") as f:
+            network_xml = f.read()
+        # replace the network name with the unique name for this harness execution
+        network_xml = network_xml.replace("test-harness-network", harness_settings.harness_network_name)
+        # now define
+        self.network = self.conn.networkDefineXML(network_xml)
 
     def net_start(self):
         logging.info("Starting network")
+        self.network.create()
 
     def reload(self):
         # Use this function to just destroy and then start the network before running the test harness
         logging.info("Making sure the test harness network is running")
         self.get_network()
-        # TODO currently not destroying the network as we might want to leave it running for parallel test harness runs
-        # self.net_destroy()
-        # self.net_undefine()
+        self.net_destroy()
+        self.net_undefine()
         self.net_define()
         self.net_start()
         logging.info("Reloading network done.")

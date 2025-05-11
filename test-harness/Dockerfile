@@ -3,9 +3,9 @@ LABEL authors="drrtdrrt"
 
 WORKDIR /app
 COPY requirements.txt .
-# we need some packages to be able to install libvirt-python
+# we need some packages to be able to install libvirt-python and libvirt utilities
 RUN apt-get update && \
-    apt-get install pkg-config libvirt-dev gcc -y && \
+    apt-get install pkg-config libvirt-dev gcc qemu-utils virtinst ssh -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 # install the test harness python environment
