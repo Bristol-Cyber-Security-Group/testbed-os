@@ -1,3 +1,4 @@
+import os
 import sys
 import libvirt
 import logging
@@ -21,8 +22,9 @@ def get_libvirt_connection() -> libvirt.virConnect:
         sys.exit(1)
 
 
-def main(connection: libvirt.virConnect):
-    # TODO initialise report
+def main(connection: libvirt.virConnect) -> bool:
+    # TODO initialise report - capture the different stages that will follow and accept if/when/where there is a failure
+    #  and also how/when to capture the early terminations due to failure gracefully
 
     # initialise working area for the test harness in the libvirt images folder
     workspace_folder = Path(harness_settings.workspace)
@@ -32,7 +34,10 @@ def main(connection: libvirt.virConnect):
 
     # set up the libvirt network for the test harness
     harness_network = HarnessNetwork(connection)
-    harness_network.reload()
+    if not harness_network.reload():
+        # there was a problem in creating the network for this instance of the test harness
+        logging.error("Failed to establish a libvirt network for the test harness, cannot continue")
+        return False
 
     # for each base image type, run test harness
     for base_os in BaseOperatingSystem:
@@ -77,8 +82,12 @@ if __name__ == '__main__':
     conn = get_libvirt_connection()
 
     # run test harness
-    main(conn)
+    result = main(conn)
 
     logging.info("Closing connection to libvirt")
     conn.close()
     logging.info("End of test harness")
+
+    if not result:
+        sys.exit(1)
+

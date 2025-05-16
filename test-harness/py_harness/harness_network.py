@@ -58,12 +58,18 @@ class HarnessNetwork:
         logging.info("Starting network")
         self.network.create()
 
-    def reload(self):
+    def reload(self) -> bool:
         # Use this function to just destroy and then start the network before running the test harness
         logging.info("Making sure the test harness network is running")
-        self.get_network()
-        self.net_destroy()
-        self.net_undefine()
-        self.net_define()
-        self.net_start()
-        logging.info("Reloading network done.")
+        try:
+            self.get_network()
+            self.net_destroy()
+            self.net_undefine()
+            self.net_define()
+            self.net_start()
+            logging.info("Reloading network done.")
+        except libvirt.libvirtError as e:
+            logging.error("Failed to reload network due to: {}".format(e))
+            self.net_destroy()
+            return False
+        return True
