@@ -9,10 +9,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: build-harness-image
         run: |
-          cd test-harness && docker image build -t test-harness:dev .
+          cd test-harness && docker image build -t test-harness:${{ github.sha }} .
       - name: run-test-harness
         run: |
-          cd test-harness && python --version
+          cd test-harness && docker run --rm test-harness:${{ github.sha }} python --version
       - name: cleanup
         run: |
-          docker image rm test-harness:dev
+          docker image rm test-harness:${{ github.sha }}
