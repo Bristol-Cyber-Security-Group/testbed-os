@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: build-harness-image
         run: |
-          cd test-harness && docker build -t test-harness:dev
+          cd test-harness && sudo docker image build -t test-harness:dev .
       - name: run-test-harness
         run: |
           cd test-harness && python --version
