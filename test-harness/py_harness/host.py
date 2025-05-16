@@ -131,7 +131,7 @@ class BaseHost(Host):
                 shutil.copy(harness_settings.cloud_init_user_data, harness_settings.workspace)
                 shutil.copy(harness_settings.cloud_init_network_config, harness_settings.workspace)
                 # replace the host name with the unique host name in the meta data
-                subprocess.run(["sed", "-i", f"s/testbed-server/testbedhost-base/g", f"{harness_settings.workspace}/meta-data"])
+                subprocess.run(["sed", "-i", f"s/testbed-server/testbed-host-base-{harness_settings.test_id}/g", f"{harness_settings.workspace}/meta-data"])
                 # now deploy with virt-install, this is a known working template for our use case in cloud-init
                 result = subprocess.run(["virt-install",
                                 "--name", self.name,
@@ -139,12 +139,14 @@ class BaseHost(Host):
                                 "--vcpus", str(harness_settings.base_vm_cpu),
                                 "--disk", self.img_location,
                                 "--import",
+                                "--mac", "52:54:00:00:00:00",
                                 "--os-variant", self.image_os.value.os_variant,
                                 "--network", f"network={harness_settings.harness_network_name}",
                                 "--cloud-init", f'user-data="{harness_settings.workspace}/user-data",meta-data="{harness_settings.workspace}/meta-data",network-config="{harness_settings.workspace}/network-config"',
                                 "--graphics", "none",
                                 "--noautoconsole",
-                                "--noreboot"
+                                "--noreboot",
+                                "--check", "mac_in_use=off", # we need this as we have clashing mac addresses
                                 ])
 
                 if result.returncode != 0:
@@ -154,9 +156,10 @@ class BaseHost(Host):
                 # libvirt will be initialising the VM, we need to wait until the VM is up by testing the SSH connection using
                 # the keys we have pushed in the configuration
                 logging.info("Waiting for cloud-init guest to start")
-                self.check_if_ready(harness_settings.base_ssh_key, "nocloud@testbedhost-base")
+                # the base guest will have the first IP in the network range for the third octet
+                return self.check_if_ready(harness_settings.base_ssh_key, f"nocloud@192.168.{harness_settings.harness_subnet_octet}.10")
         
-        return True
+        return False
 
     def install_testbed(self):
         pass

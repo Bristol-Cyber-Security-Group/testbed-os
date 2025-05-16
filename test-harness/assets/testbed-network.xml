@@ -18,13 +18,4 @@
         </dhcp>
     </ip>
 
-    <portgroup name='default' default='yes'>
-        <forward>
-            <port protocol='tcp' hostport='hostportbase' guestport='22' guestip='192.168.subnetoctet.10'/>
-            <port protocol='tcp' hostport='hostportone' guestport='22' guestip='192.168.subnetoctet.11'/>
-            <port protocol='tcp' hostport='hostporttwo' guestport='22' guestip='192.168.subnetoctet.12'/>
-            <port protocol='tcp' hostport='hostportthree' guestport='22' guestip='192.168.subnetoctet.13'/>
-        </forward>
-    </portgroup>
-
 </network>

@@ -49,14 +49,17 @@ def main(connection: libvirt.virConnect) -> bool:
             # TODO - init report wrapper for this run
 
             # create base VM in the default libvirt network
-            # base_host = BaseHost(conn, base_os)
-            # result = base_host.create()
-            # if not result:
-            #     base_host.ensure_destroyed()
-            #     # TODO - report failed result
-            #     break
+            base_host = BaseHost(conn, base_os)
+            create_base_host_result = base_host.create()
+            if not create_base_host_result:
+                base_host.ensure_destroyed()
+                # TODO - report failed result
 
-            # TODO install testbed
+                # go to next test
+                continue
+
+            # install testbed code
+            install_best_host_result = base_host.install_testbed()
 
             # turn off base host before creating linked clones
             # base_host.stop()
