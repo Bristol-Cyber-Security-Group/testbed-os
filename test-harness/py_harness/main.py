@@ -46,17 +46,17 @@ def main(connection: libvirt.virConnect) -> bool:
         # TODO - init report wrapper for this run
 
         # create base VM in the default libvirt network
-        base_host = BaseHost(conn, base_os)
-        result = base_host.create()
-        if not result:
-            base_host.ensure_destroyed()
-            # TODO - report failed result
-            break
+        # base_host = BaseHost(conn, base_os)
+        # result = base_host.create()
+        # if not result:
+        #     base_host.ensure_destroyed()
+        #     # TODO - report failed result
+        #     break
 
         # TODO install testbed
 
         # turn off base host before creating linked clones
-        base_host.stop()
+        # base_host.stop()
 
         # begin n number of host loop
 
@@ -69,6 +69,7 @@ def main(connection: libvirt.virConnect) -> bool:
     # TODO prepare report from test harness results
 
     # TODO clean up the test harness working area in the libvirt images folder
+    # os.rmdir(workspace_folder)
 
     # TODO we could turn off the test harness network, leaving it for parallel harness runs for now
     harness_network.net_destroy()
@@ -79,6 +80,9 @@ def main(connection: libvirt.virConnect) -> bool:
 
 if __name__ == '__main__':
     # TODO dev/debug mode where it pauses on failed test to allow inspection
+
+    logging.info(f"Starting harness with ID: {harness_settings.test_id}")
+    logging.info(f"Workspace: {harness_settings.workspace}")
 
     logging.info("Getting libvirt connection")
     conn = get_libvirt_connection()

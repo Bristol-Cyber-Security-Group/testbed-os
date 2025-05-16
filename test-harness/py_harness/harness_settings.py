@@ -13,6 +13,8 @@ host_ready_timeout_seconds = 120
 # libvirt settings
 harness_network_name = f"test-harness-network-{test_id}"
 
+harness_subnet_octet = 50
+
 base_vm_mem = 2048
 base_vm_disk = "+20G"
 base_vm_cpu = 2
