@@ -74,6 +74,8 @@ def main(connection: libvirt.virConnect) -> bool:
     harness_network.net_destroy()
     harness_network.net_undefine()
 
+    return True
+
 
 if __name__ == '__main__':
     # TODO dev/debug mode where it pauses on failed test to allow inspection
