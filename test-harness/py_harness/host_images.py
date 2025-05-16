@@ -57,7 +57,7 @@ class BaseOperatingSystem(enum.Enum):
         if self.exists():
             return
         logging.info(f"Downloading image: {self}")
-        urlretrieve(self.value.download_url, f"{harness_settings.workspace}/{self.get_base_img_location()}")
+        urlretrieve(self.value.download_url, self.get_base_img_location())
 
         # TODO
         self.check_hash()
