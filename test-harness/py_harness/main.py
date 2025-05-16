@@ -34,37 +34,40 @@ def main(connection: libvirt.virConnect) -> bool:
 
     # set up the libvirt network for the test harness
     harness_network = HarnessNetwork(connection)
-    if not harness_network.reload():
+    network_result = harness_network.reload()
+    if not network_result:
         # there was a problem in creating the network for this instance of the test harness
         logging.error("Failed to establish a libvirt network for the test harness, cannot continue")
-        return False
+        # TODO log network error in report
 
-    # for each base image type, run test harness
-    for base_os in BaseOperatingSystem:
-        logging.info(f"Testing on base image: {base_os.name}")
+    # only continue if the network creation was successful
+    if network_result:
+        # for each base image type, run test harness
+        for base_os in BaseOperatingSystem:
+            logging.info(f"Testing on base image: {base_os.name}")
 
-        # TODO - init report wrapper for this run
+            # TODO - init report wrapper for this run
 
-        # create base VM in the default libvirt network
-        # base_host = BaseHost(conn, base_os)
-        # result = base_host.create()
-        # if not result:
-        #     base_host.ensure_destroyed()
-        #     # TODO - report failed result
-        #     break
+            # create base VM in the default libvirt network
+            # base_host = BaseHost(conn, base_os)
+            # result = base_host.create()
+            # if not result:
+            #     base_host.ensure_destroyed()
+            #     # TODO - report failed result
+            #     break
 
-        # TODO install testbed
+            # TODO install testbed
 
-        # turn off base host before creating linked clones
-        # base_host.stop()
+            # turn off base host before creating linked clones
+            # base_host.stop()
 
-        # begin n number of host loop
+            # begin n number of host loop
 
-        # TODO create n number of hosts, check if any already exist and destroy
+            # TODO create n number of hosts, check if any already exist and destroy
 
-        # TODO install the testbed and ensure it worked, if it doesn't report and continue to next OS
+            # TODO install the testbed and ensure it worked, if it doesn't report and continue to next OS
 
-        # TODO for each test case, create the one to three linked clone VMs and run tests
+            # TODO for each test case, create the one to three linked clone VMs and run tests
 
     # TODO prepare report from test harness results
 
@@ -75,7 +78,8 @@ def main(connection: libvirt.virConnect) -> bool:
     harness_network.net_destroy()
     harness_network.net_undefine()
 
-    return True
+    # TODO - return based on success of harness, so take all result bools and only return True if all True
+    return network_result
 
 
 if __name__ == '__main__':
