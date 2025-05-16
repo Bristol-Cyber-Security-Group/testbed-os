@@ -11,9 +11,9 @@ jobs:
         run: |
           cd test-harness && docker image build -t test-harness:${{ github.sha }} .
       - name: run-test-harness
-        run: |
-          cd test-harness && docker run \
-            /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock  /var/lib/libvirt/images:/var/lib/libvirt/images \
+        run: >
+          cd test-harness && docker run
+            /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock  /var/lib/libvirt/images:/var/lib/libvirt/images
             --network=host -e COMMIT_HASH=${{ github.sha }} --rm test-harness:${{ github.sha }}
       - name: cleanup
         run: |
