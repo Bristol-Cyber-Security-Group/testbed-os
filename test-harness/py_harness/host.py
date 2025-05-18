@@ -188,7 +188,9 @@ class BaseHost(Host):
             if git_clone_result.returncode != 0:
                 logging.error("Failed to clone testbed repo from GitHub")
                 return False
-            git_checkout_result = ssh_command(f"cd testbed-os && git checkout {branch}")
+            git_checkout_result = ssh_command(f"cd testbed-os && git checkout {branch}",
+                harness_settings.base_ssh_key,
+                self.hostname,)
             if git_checkout_result.returncode != 0:
                 logging.error(f"Failed to checkout {branch} from GitHub")
                 return False
