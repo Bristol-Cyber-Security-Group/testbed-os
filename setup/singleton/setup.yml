@@ -10,9 +10,13 @@
       private: no
   tasks:
 
+  - name: Get auto install fact
+    set_fact:
+      auto_accept: "{{ auto_accept | default('') }}"
+
   - name: Convert install_pre to boolean
     set_fact:
-      install_bool: "{{ (install_pre | lower) in ['yes', 'y', 'true'] }}"
+      install_bool: "{{ (install_pre | lower) in ['yes', 'y', 'true'] or (auto_accept | lower) in ['yes', 'y', 'true'] }}"
     
 - name: Install Pre-Requisites
   import_playbook: ../common/2.prereq.yaml

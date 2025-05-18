@@ -57,12 +57,10 @@ class HarnessNetwork:
         # TODO this should be upgraded to a templating system rather than crude string replacements
 
         # This function will format the base xml with the configuration needed to create the test harness
-        # network. It will try to get a free port range for the portforwarding of VMs, and then also try
-        # to get a free IP range for the network. This is a slightly awkward process, because we define the
-        # network XML first, and libvirt will accept this even if there are clashing IPs. Only when you
-        # try to start the network, will it then tell you if there was a clash. So if there is a clash,
-        # this function will undefine the just attempted definition, increment the IP range and then
-        # try again.
+        # network. It will try to get a free IP range for the network. This is a slightly awkward process,
+        # because we define the network XML first, and libvirt will accept this even if there are clashing IPs.
+        # Only when you try to start the network, will it then tell you if there was a clash. So if there is a clash,
+        # this function will undefine the just attempted definition, increment the IP range and then try again.
 
         # now try to define, the subnet might be in use so increment until we get a free one
         for octet in range(50, 255):

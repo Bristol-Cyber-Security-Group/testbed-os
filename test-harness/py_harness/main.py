@@ -60,9 +60,11 @@ def main(connection: libvirt.virConnect) -> bool:
 
             # install testbed code
             install_best_host_result = base_host.install_testbed()
+            if not install_best_host_result:
+                continue
 
-            # turn off base host before creating linked clones
-            # base_host.stop()
+            # TODO turn off base host before creating linked clones
+            base_host.stop()
 
             # begin n number of host loop
 

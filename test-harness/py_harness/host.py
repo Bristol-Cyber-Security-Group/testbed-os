@@ -1,5 +1,7 @@
 import os
 import time
+from urllib.request import urlretrieve
+
 import libvirt
 import logging
 import harness_settings
@@ -19,6 +21,7 @@ class Host:
     conn: libvirt.virConnect
     name: str
     img_location: str
+    hostname: str
 
     def __init__(self, conn):
         self.conn = conn
@@ -28,6 +31,9 @@ class Host:
 
     def set_location(self, img_name: str):
         self.img_location = f"{harness_settings.workspace}/{img_name}"
+
+    def set_hostname(self, hostname: str):
+        self.hostname = hostname
 
     def exists(self) -> Optional[libvirt.virDomain]:
         logging.info(f"Checking if {self.name} exists")
@@ -60,12 +66,8 @@ class Host:
         timeout_increment = 0
         while timeout_increment < harness_settings.host_ready_timeout_seconds:
 
-            res = subprocess.run(["ssh", "-i", ssh_key,
-                            "-o", "StrictHostKeyChecking no",
-                            "-o", "UserKnownHostsFile /dev/null",
-                            hostname,
-                            "true"  # this just checks the connection status and returns
-                            ])
+            # this just checks the connection status and returns immediately
+            res = ssh_command("true", ssh_key, hostname)
 
             if res.returncode == 0:
                 logging.info("Host is up and ready")
@@ -108,6 +110,10 @@ class BaseHost(Host):
         self.image_os = image_os
         self.set_name(f"base-{harness_settings.test_id}")
         self.set_location("testbedhost_base.img")
+        # the hostname is dependent on the type of provisioning tool used i.e. nocloud for cloud-init
+        match image_os:
+            case BaseOperatingSystem.Ubuntu22_04: # | BaseOperatingSystem.Ubuntu20_04 | BaseOperatingSystem.Ubuntu24_04:
+                self.set_hostname(f"nocloud@192.168.{harness_settings.harness_subnet_octet}.10")
 
     def create(self) -> bool:
         # make sure we have the base image downloaded
@@ -157,12 +163,51 @@ class BaseHost(Host):
                 # the keys we have pushed in the configuration
                 logging.info("Waiting for cloud-init guest to start")
                 # the base guest will have the first IP in the network range for the third octet
-                return self.check_if_ready(harness_settings.base_ssh_key, f"nocloud@192.168.{harness_settings.harness_subnet_octet}.10")
+                return self.check_if_ready(harness_settings.base_ssh_key, self.hostname)
         
         return False
 
-    def install_testbed(self):
-        pass
+    def install_testbed(self) -> bool:
+        # we will go through the whole installation process of the testbed and stop before configuring the host, as that
+        # will be finished when we create the linked clones of this base VM
+
+        logging.info("Installing testbed code on base guest")
+
+        # get code for this commit
+        try:
+            branch = harness_settings.test_id if harness_settings.test_id != "dev" else "develop"
+            ssh_command(
+                f"git clone -b {branch} https://github.com/Bristol-Cyber-Security-Group/testbed-os.git",
+                harness_settings.base_ssh_key,
+                self.hostname,
+            )
+            logging.info(f"Testbed code cloned to commit: {branch}")
+        except Exception as e:
+            logging.error(e)
+            return False
+
+        # run the ansible install
+        try:
+            ssh_command("sudo apt update && sudo apt install ansible -y", harness_settings.base_ssh_key, self.hostname)
+            # TODO how to handle ask become pass, and the confirmation
+            ssh_command("cd ~/testbed-os/setup/singleton && bash -i -c 'ansible-playbook setup.yml'", harness_settings.base_ssh_key, self.hostname)
+        except Exception as e:
+            logging.error(e)
+            return False
+
+
+        # set user in qemu conf
+
+        # restart libvirtd
+
+        # brief check for installed artefacts such as kvm-compose
+
+        # install a cloud-init image for the guests, we will just use one type across all tests
+
+        # make sure ssh keys for guests exist and have correct permissions
+
+
+        return True
 
 
 class LinkedCloneHost(Host):
@@ -184,3 +229,11 @@ class LinkedCloneHost(Host):
         # TODO create linked clone
         super()._create()
 
+
+def ssh_command(cmd: str, ssh_key: str, hostname: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["ssh", "-i", ssh_key,
+                          "-o", "StrictHostKeyChecking no",
+                          "-o", "UserKnownHostsFile /dev/null",
+                          hostname,
+                          cmd,
+                          ])
