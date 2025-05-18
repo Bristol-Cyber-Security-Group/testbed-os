@@ -181,12 +181,16 @@ class BaseHost(Host):
             # TODO - get current state of dev code from host if test_id is dev
             branch = harness_settings.test_id if harness_settings.test_id != "dev" else "develop"
             git_clone_result = ssh_command(
-                f"git clone -b {branch} https://github.com/Bristol-Cyber-Security-Group/testbed-os.git",
+                f"git clone https://github.com/Bristol-Cyber-Security-Group/testbed-os.git",
                 harness_settings.base_ssh_key,
                 self.hostname,
             )
             if git_clone_result.returncode != 0:
                 logging.error("Failed to clone testbed repo from GitHub")
+                return False
+            git_checkout_result = ssh_command(f"cd testbed-os && git checkout {branch}")
+            if git_checkout_result.returncode != 0:
+                logging.error(f"Failed to checkout {branch} from GitHub")
                 return False
             logging.info(f"Testbed code cloned to commit: {branch}")
         except Exception as e:
