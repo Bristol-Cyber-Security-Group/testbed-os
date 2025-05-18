@@ -13,10 +13,6 @@
 #  - name: Convert install_pre to boolean
 #    set_fact:
 #      install_bool: "{{ (install_pre | lower) in ['yes', 'y', 'true'] }}"
-
-- name: Convert install_pre to boolean
-  set_fact:
-    install_bool: "yes"
     
 - name: Install Pre-Requisites
   import_playbook: ../common/2.prereq.yaml
