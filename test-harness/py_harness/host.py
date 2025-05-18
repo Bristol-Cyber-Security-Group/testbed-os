@@ -196,7 +196,7 @@ class BaseHost(Host):
             # TODO how to handle ask become pass, and the confirmation
             # since we are not using an interactive shell, the prompt will skip, so we must provide the variable as an
             # extra var, which will then be used as if the prompt accepted a yes from the user
-            ssh_command("bash -c 'cd ~/testbed-os/setup/singleton && ansible-playbook setup.yml --extra-vars 'install_bool=yes''", harness_settings.base_ssh_key, self.hostname)
+            ssh_command("cd ~/testbed-os/setup/singleton && ansible-playbook setup.yml --extra-vars 'install_bool=yes'", harness_settings.base_ssh_key, self.hostname)
         except Exception as e:
             logging.error(e)
             return False

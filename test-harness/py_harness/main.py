@@ -1,4 +1,4 @@
-import os
+import shutil
 import sys
 import libvirt
 import logging
@@ -78,7 +78,7 @@ def main(connection: libvirt.virConnect) -> bool:
     # TODO prepare report from test harness results
 
     # TODO clean up the test harness working area in the libvirt images folder
-    os.rmdir(workspace_folder)
+    shutil.rmtree(workspace_folder)
 
     # TODO we could turn off the test harness network, leaving it for parallel harness runs for now
     harness_network.net_destroy()
