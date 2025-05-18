@@ -9,13 +9,13 @@ jobs:
       - uses: actions/checkout@v3
       - name: build-harness-image
         run: |
-          cd test-harness && docker image build -t test-harness:${{ github.sha }} .
+          cd test-harness && docker image build -t test-harness:${{ github.event.pull_request.head.sha }} .
       - name: run-test-harness
         run: |
           cd test-harness && docker run \
             -v /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock \
             -v /var/lib/libvirt/images:/var/lib/libvirt/images --network=host \
-            -e COMMIT_HASH=${{ github.sha }} --rm test-harness:${{ github.sha }}
+            -e COMMIT_HASH=${{ github.event.pull_request.head.sha }} --rm test-harness:${{ github.event.pull_request.head.sha }}
       - name: cleanup
         run: |
-          docker image rm test-harness:${{ github.sha }}
+          docker image rm test-harness:${{ github.event.pull_request.head.sha }}
