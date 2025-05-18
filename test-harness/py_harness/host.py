@@ -282,7 +282,8 @@ class LinkedCloneHost(Host):
             os.remove(self.img_location)
 
         # make sure previous VM configs deleted
-        shutil.rmtree(clone_workspace_folder)
+        if os.path.exists(clone_workspace_folder):
+            shutil.rmtree(clone_workspace_folder)
 
         # use qemu-img to create a linked clone of the base image
         qemu_img_result = subprocess.run([
