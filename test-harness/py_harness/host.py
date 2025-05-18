@@ -190,7 +190,7 @@ class BaseHost(Host):
         try:
             ssh_command("sudo apt update && sudo apt install ansible -y", harness_settings.base_ssh_key, self.hostname)
             # TODO how to handle ask become pass, and the confirmation
-            ssh_command("cd ~/testbed-os/setup/singleton && bash -i -c 'ansible-playbook setup.yml'", harness_settings.base_ssh_key, self.hostname)
+            ssh_command("bash -i -c 'cd ~/testbed-os/setup/singleton && ansible-playbook setup.yml'", harness_settings.base_ssh_key, self.hostname)
         except Exception as e:
             logging.error(e)
             return False
