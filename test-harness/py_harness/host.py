@@ -180,11 +180,14 @@ class BaseHost(Host):
         try:
             # TODO - get current state of dev code from host if test_id is dev
             branch = harness_settings.test_id if harness_settings.test_id != "dev" else "develop"
-            ssh_command(
+            git_clone_result = ssh_command(
                 f"git clone -b {branch} https://github.com/Bristol-Cyber-Security-Group/testbed-os.git",
                 harness_settings.base_ssh_key,
                 self.hostname,
             )
+            if git_clone_result.returncode != 0:
+                logging.error("Failed to clone testbed repo from GitHub")
+                return False
             logging.info(f"Testbed code cloned to commit: {branch}")
         except Exception as e:
             logging.error(e)
@@ -216,10 +219,12 @@ class BaseHost(Host):
 
         # install a cloud-init image for the guests, we will just use one type across all tests
         try:
+            logging.info("Pre-downloading guest image")
+            # send download log to dev/null otherwise CICD logs will balloon with download progress
             ssh_command(
                 "sudo mkdir -p /var/lib/testbedos/images/ && "
                 "cd /var/lib/testbedos/images/ && "
-                f"sudo wget {harness_settings.guest_vm_image_url} -O ubuntu_20_04.img",
+                f"sudo wget {harness_settings.guest_vm_image_url} -O ubuntu_20_04.img -o /dev/null",
                 harness_settings.base_ssh_key, self.hostname)
         except Exception as e:
             logging.error(e)
