@@ -61,23 +61,24 @@ def main(connection: libvirt.virConnect) -> bool:
             # install testbed code
             install_best_host_result = base_host.install_testbed()
             if not install_best_host_result:
+                # TODO report failure, and where in the install it failed
                 continue
 
             # TODO turn off base host before creating linked clones
             base_host.stop()
 
             # begin n number of host loop
+            for n_hosts in range(1, harness_settings.max_n_hosts + 1):
+                logging.info(f"Testing on {n_hosts} hosts")
 
-            # TODO create n number of hosts, check if any already exist and destroy
+                # TODO create n number of hosts, check if any already exist and destroy
 
-            # TODO install the testbed and ensure it worked, if it doesn't report and continue to next OS
-
-            # TODO for each test case, create the one to three linked clone VMs and run tests
+                # TODO for each test case, create the one to three linked clone VMs and run tests
 
     # TODO prepare report from test harness results
 
     # TODO clean up the test harness working area in the libvirt images folder
-    # os.rmdir(workspace_folder)
+    os.rmdir(workspace_folder)
 
     # TODO we could turn off the test harness network, leaving it for parallel harness runs for now
     harness_network.net_destroy()

@@ -10,6 +10,9 @@ max_n_hosts = 1  # how many hosts the test harness will go up to before stopping
 host_ready_increment_seconds = 10
 host_ready_timeout_seconds = 120
 
+# set the guest image to be used inside the test harness
+guest_vm_image_url = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+
 # libvirt settings
 harness_network_name = f"test-harness-network-{test_id}"
 

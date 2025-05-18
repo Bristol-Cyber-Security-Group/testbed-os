@@ -85,7 +85,10 @@ class Host:
         logging.info(f"Stopping {self.name}")
         domain = self.exists()
         if domain is not None:
-            domain.shutdown()
+            try:
+                domain.shutdown()
+            except libvirt.libvirtError as e:
+                logging.error(f"Failed to shutdown host, with error: {e}")
         else:
             logging.warning(f"Domain {self.name} doesn't exist")
 
@@ -175,6 +178,7 @@ class BaseHost(Host):
 
         # get code for this commit
         try:
+            # TODO - get current state of dev code from host if test_id is dev
             branch = harness_settings.test_id if harness_settings.test_id != "dev" else "develop"
             ssh_command(
                 f"git clone -b {branch} https://github.com/Bristol-Cyber-Security-Group/testbed-os.git",
@@ -190,22 +194,38 @@ class BaseHost(Host):
         try:
             ssh_command("sudo apt update && sudo apt install ansible -y", harness_settings.base_ssh_key, self.hostname)
             # TODO how to handle ask become pass, and the confirmation
-            ssh_command("bash -i -c 'cd ~/testbed-os/setup/singleton && ansible-playbook setup.yml'", harness_settings.base_ssh_key, self.hostname)
+            # since we are not using an interactive shell, the prompt will skip, so we must provide the variable as an
+            # extra var, which will then be used as if the prompt accepted a yes from the user
+            ssh_command("bash -c 'cd ~/testbed-os/setup/singleton && ansible-playbook setup.yml --extra-vars 'install_bool=yes''", harness_settings.base_ssh_key, self.hostname)
         except Exception as e:
             logging.error(e)
             return False
 
-
-        # set user in qemu conf
-
-        # restart libvirtd
-
         # brief check for installed artefacts such as kvm-compose
+        try:
+            # TODO - check the results for reporting
+            poetry_result = ssh_command("cd ~/testbed-os/ && bash -l which poetry || exit", harness_settings.base_ssh_key, self.hostname)
+            pyenv_result = ssh_command("cd ~/testbed-os/ && bash -l which pyenv || exit", harness_settings.base_ssh_key, self.hostname)
+            kvm_compose_result = ssh_command("cd ~/testbed-os/ && bash -l which kvm-compose || exit", harness_settings.base_ssh_key, self.hostname)
+            kvm_ui_cli_result = ssh_command("cd ~/testbed-os/ && bash -l which kvm-ui-cli || exit", harness_settings.base_ssh_key, self.hostname)
+            docker_result = ssh_command("cd ~/testbed-os/ && bash -l which docker || exit", harness_settings.base_ssh_key, self.hostname)
+            avdmanager_result = ssh_command("cd ~/testbed-os/ && bash -l which avdmanager || exit", harness_settings.base_ssh_key, self.hostname)
+        except Exception as e:
+            logging.error(e)
+            return False
 
         # install a cloud-init image for the guests, we will just use one type across all tests
+        try:
+            ssh_command(
+                "sudo mkdir -p /var/lib/testbedos/images/ && "
+                "cd /var/lib/testbedos/images/ && "
+                f"sudo wget {harness_settings.guest_vm_image_url} -O ubuntu_20_04.img",
+                harness_settings.base_ssh_key, self.hostname)
+        except Exception as e:
+            logging.error(e)
+            return False
 
-        # make sure ssh keys for guests exist and have correct permissions
-
+        # TODO - do we need guest keys, since testbed manages that already
 
         return True
 
