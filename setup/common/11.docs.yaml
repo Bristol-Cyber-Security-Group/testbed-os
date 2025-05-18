@@ -14,8 +14,8 @@
     shell: |
       . ~/.bashrc
       rm -rf build/*
-      poetry run sphinx-build -M man docs build
-      poetry run sphinx-build -M html docs build
+      ~/.local/bin/poetry run sphinx-build -M man docs build
+      ~/.local/bin/poetry run sphinx-build -M html docs build
       sudo rm -rf /var/lib/testbedos/assets/documentation/
       sudo mkdir /var/lib/testbedos/assets/documentation/
       sudo cp -r build/html/* /var/lib/testbedos/assets/documentation/
