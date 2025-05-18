@@ -6,7 +6,7 @@ import harness_settings
 from pathlib import Path
 from host_images import BaseOperatingSystem
 from harness_network import HarnessNetwork
-from host import BaseHost
+from host import BaseHost, LinkedCloneHost
 
 
 def get_libvirt_connection() -> libvirt.virConnect:
@@ -64,16 +64,30 @@ def main(connection: libvirt.virConnect) -> bool:
                 # TODO report failure, and where in the install it failed
                 continue
 
-            # TODO turn off base host before creating linked clones
+            # turn off base host before creating linked clones
             base_host.stop()
 
             # begin n number of host loop
             for n_hosts in range(1, harness_settings.max_n_hosts + 1):
                 logging.info(f"Testing on {n_hosts} hosts")
 
-                # TODO create n number of hosts, check if any already exist and destroy
+                # create n number of hosts, check if any already exist and destroy
+                linked_clone_hosts = [LinkedCloneHost(conn, base_host, nn) for nn in range(1, n_hosts+1)]
+                for linked_clone_host in linked_clone_hosts:
+                    logging.info(f"Creating linked clone host: {linked_clone_host.name}")
+                    clone_create_result = linked_clone_host.create()
 
-                # TODO for each test case, create the one to three linked clone VMs and run tests
+                # TODO - configure testbed settings, first host will be 'main' for cluster mode
+
+
+                # TODO run all test cases, for now we will re-use the same guests for the whole test suite
+                logging.info("Begin integration tests")
+
+                # clean up linked clones
+                for linked_clone_host in linked_clone_hosts:
+                    logging.info(f"Destroying linked clone host: {linked_clone_host.name}")
+                    clone_destroy_result = linked_clone_host.ensure_destroyed()
+
 
     # TODO prepare report from test harness results
 

@@ -22,6 +22,9 @@ base_vm_mem = 2048
 base_vm_disk = "+20G"
 base_vm_cpu = 2
 
+guest_vm_mem = 5020
+guest_vm_cpu = 2
+
 # asset locations
 testbed_network_location = "/app/assets/testbed-network.xml"
 # cloud-init

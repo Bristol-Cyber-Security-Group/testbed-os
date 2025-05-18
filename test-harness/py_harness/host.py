@@ -22,6 +22,7 @@ class Host:
     name: str
     img_location: str
     hostname: str
+    mac_address: str
 
     def __init__(self, conn):
         self.conn = conn
@@ -34,6 +35,9 @@ class Host:
 
     def set_hostname(self, hostname: str):
         self.hostname = hostname
+
+    def set_mac_address(self, mac_address: str):
+        self.mac_address = mac_address
 
     def exists(self) -> Optional[libvirt.virDomain]:
         logging.info(f"Checking if {self.name} exists")
@@ -58,7 +62,9 @@ class Host:
             os.remove(self.img_location)
 
     def start(self):
-        pass
+        domain = self.exists()
+        if domain is not None:
+            domain.create()
 
     @staticmethod
     def check_if_ready(ssh_key: str, hostname: str) -> bool:
@@ -113,6 +119,7 @@ class BaseHost(Host):
         self.image_os = image_os
         self.set_name(f"base-{harness_settings.test_id}")
         self.set_location("testbedhost_base.img")
+        self.set_mac_address("52:54:00:00:00:00")
         # the hostname is dependent on the type of provisioning tool used i.e. nocloud for cloud-init
         match image_os:
             case BaseOperatingSystem.Ubuntu22_04: # | BaseOperatingSystem.Ubuntu20_04 | BaseOperatingSystem.Ubuntu24_04:
@@ -148,7 +155,7 @@ class BaseHost(Host):
                                 "--vcpus", str(harness_settings.base_vm_cpu),
                                 "--disk", self.img_location,
                                 "--import",
-                                "--mac", "52:54:00:00:00:00",
+                                "--mac", self.mac_address,
                                 "--os-variant", self.image_os.value.os_variant,
                                 "--network", f"network={harness_settings.harness_network_name}",
                                 "--cloud-init", f'user-data="{harness_settings.workspace}/user-data",meta-data="{harness_settings.workspace}/meta-data",network-config="{harness_settings.workspace}/network-config"',
@@ -190,7 +197,8 @@ class BaseHost(Host):
                 return False
             git_checkout_result = ssh_command(f"cd testbed-os && git checkout {branch}",
                 harness_settings.base_ssh_key,
-                self.hostname,)
+                self.hostname,
+            )
             if git_checkout_result.returncode != 0:
                 logging.error(f"Failed to checkout {branch} from GitHub")
                 return False
@@ -247,18 +255,79 @@ class LinkedCloneHost(Host):
     This is the linked clone of the base image used in the test harness.
     """
 
-    host_number: str
+    host_number: int
     base_host: BaseHost
 
-    def __init__(self, conn: libvirt.virConnect, base_host: BaseHost, number: str):
+    def __init__(self, conn: libvirt.virConnect, base_host: BaseHost, number: int):
         super().__init__(conn)
         self.base_host = base_host
         self.host_number = number
         self.set_name(f"{number}-{harness_settings.test_id}")
+        self.set_location(f"testbedhost_clone_{number}.img")
+        self.set_mac_address(f"52:54:00:00:00:0{number}")
+        match self.base_host.image_os:
+            case BaseOperatingSystem.Ubuntu22_04:  # | BaseOperatingSystem.Ubuntu20_04 | BaseOperatingSystem.Ubuntu24_04:
+                self.set_hostname(f"nocloud@192.168.{harness_settings.harness_subnet_octet}.1{number}")
 
-    def create(self):
+    def create(self) -> bool:
         # TODO create linked clone
-        super()._create()
+
+        clone_workspace_folder = f"{harness_settings.workspace}/{self.name}"
+
+        # make sure to destroy and previous domain definitions
+        self.ensure_destroyed()
+
+        # make sure previous VM images have been deleted
+        if os.path.exists(self.img_location):
+            os.remove(self.img_location)
+
+        # make sure previous VM configs deleted
+        shutil.rmtree(clone_workspace_folder)
+
+        # use qemu-img to create a linked clone of the base image
+        qemu_img_result = subprocess.run([
+            "qemu-img", "create", "-f", "qcow2", "-F", "qcow2",
+            "-b", self.base_host.img_location, self.img_location])
+
+        # TODO - is there any chance of code reuse with the base host provisioning
+        match self.base_host.image_os.value.os_init:
+            case OSInit.cloud_init:
+                os.mkdir(clone_workspace_folder)
+                shutil.copy(harness_settings.cloud_init_meta_data, clone_workspace_folder)
+                shutil.copy(harness_settings.cloud_init_user_data, clone_workspace_folder)
+                shutil.copy(harness_settings.cloud_init_network_config, clone_workspace_folder)
+                subprocess.run(["sed", "-i", f"s/testbed-server/{self.name}/g",
+                                f"{clone_workspace_folder}/meta-data"])
+
+                # start VM with virt-install
+                start_vm_result = subprocess.run(["virt-install",
+                                "--name", self.name,
+                                "--memory", str(harness_settings.guest_vm_mem),
+                                "--vcpus", str(harness_settings.guest_vm_cpu),
+                                "--disk", self.img_location,
+                                "--import",
+                                "--mac", self.mac_address,
+                                "--os-variant", self.base_host.image_os.value.os_variant,
+                                "--network", f"network={harness_settings.harness_network_name}",
+                                "--cloud-init", f'user-data="{clone_workspace_folder}/user-data",meta-data="{clone_workspace_folder}/meta-data",network-config="{clone_workspace_folder}/network-config"',
+                                "--graphics", "none",
+                                "--noautoconsole",
+                                "--noreboot",
+                                "--check", "mac_in_use=off", # we need this as we have clashing mac addresses
+                                ])
+
+                if start_vm_result.returncode != 0:
+                    logging.error("Failed to provision linked clone")
+                    return False
+
+                # libvirt will be initialising the VM, we need to wait until the VM is up by testing the SSH connection using
+                # the keys we have pushed in the configuration
+                logging.info("Waiting for cloud-init linked clone guest to start")
+                # the base guest will have the first IP in the network range for the third octet
+                return self.check_if_ready(harness_settings.base_ssh_key, self.hostname)
+
+
+        return True
 
 
 def ssh_command(cmd: str, ssh_key: str, hostname: str) -> subprocess.CompletedProcess:
