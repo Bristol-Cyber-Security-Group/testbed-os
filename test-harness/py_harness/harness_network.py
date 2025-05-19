@@ -107,3 +107,15 @@ class HarnessNetwork:
             self.net_destroy()
             return False
         return True
+
+    def ensure_on(self):
+        try:
+            self.get_network()
+            if self.network is None:
+                self.reload()
+            elif not self.network.isActive():
+                self.net_start()
+        except libvirt.libvirtError as e:
+            logging.error("Failed to reload network due to: {}".format(e))
+            return False
+        return True

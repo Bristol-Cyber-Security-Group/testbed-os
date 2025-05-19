@@ -70,7 +70,8 @@ def main(connection: libvirt.virConnect) -> bool:
 
             # turn off base host before creating linked clones
             base_host.stop()
-            # sleep a bit, the VM won't shut down quickly enough as the libvirt shutdown command in non-blocking
+            # sleep a bit, the VM won't shut down quickly enough as the libvirt shutdown command is non-blocking
+            # TODO - check with libvirt directly for off status
             time.sleep(5)
 
             # TODO check if the base host has turned off
@@ -96,6 +97,10 @@ def main(connection: libvirt.virConnect) -> bool:
                 # TODO run all test cases, for now we will re-use the same guests for the whole test suite
                 logging.info("Begin integration tests")
                 run_tests_result = run_tests(linked_clone_hosts)
+                if not run_tests_result:
+                    logging.error(f"Test suite failed")
+                else:
+                    logging.info(f"Test suite succeeded")
                 # TODO - collect report for tests
 
                 # clean up linked clones
@@ -107,11 +112,13 @@ def main(connection: libvirt.virConnect) -> bool:
     # TODO prepare report from test harness results
 
     # TODO clean up the test harness working area in the libvirt images folder
-    shutil.rmtree(workspace_folder)
+    if not harness_settings.dev_mode:
+        shutil.rmtree(workspace_folder)
 
     # TODO we could turn off the test harness network, leaving it for parallel harness runs for now
-    harness_network.net_destroy()
-    harness_network.net_undefine()
+    if not harness_settings.dev_mode:
+        harness_network.net_destroy()
+        harness_network.net_undefine()
 
     # TODO - return based on success of harness, so take all result bools and only return True if all True
     return network_result

@@ -40,3 +40,6 @@ cloud_init_user_data = "/app/assets/iso/user-data"
 cloud_init_network_config = "/app/assets/iso/network-config"
 # VM keys
 base_ssh_key = "/app/assets/ssh_key/id_ed25519"
+
+
+dev_mode = bool(os.getenv('DEV_MODE', False))

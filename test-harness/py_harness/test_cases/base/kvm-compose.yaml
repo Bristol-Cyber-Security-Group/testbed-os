@@ -56,7 +56,7 @@ machines:
         ip: "10.0.0.14"
     docker:
       image: nginx:stable
-      env_file: docker.env
+#      env_file: docker.env
       volumes:
         - source: ${PWD}/html
           target: /usr/share/nginx/html

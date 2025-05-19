@@ -61,10 +61,12 @@ class Host:
             logging.info(f"Deleting {self.img_location}")
             os.remove(self.img_location)
 
-    def start(self):
+    def start(self) -> bool:
         domain = self.exists()
         if domain is not None:
             domain.create()
+            return True
+        return False
 
     @staticmethod
     def check_if_ready(ssh_key: str, hostname: str) -> bool:
