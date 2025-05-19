@@ -101,7 +101,7 @@ def main(connection: libvirt.virConnect) -> bool:
                 # clean up linked clones
                 for linked_clone_host in linked_clone_hosts:
                     logging.info(f"Destroying linked clone host: {linked_clone_host.name}")
-                    # clone_destroy_result = linked_clone_host.ensure_destroyed()
+                    clone_destroy_result = linked_clone_host.ensure_destroyed()
 
 
     # TODO prepare report from test harness results
