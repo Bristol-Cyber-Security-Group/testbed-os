@@ -130,11 +130,11 @@ def main(connection: libvirt.virConnect) -> bool:
 
     # TODO prepare report from test harness results
 
-    # TODO clean up the test harness working area in the libvirt images folder
+    # clean up the test harness working area in the libvirt images folder
     if not harness_settings.dev_mode:
         shutil.rmtree(workspace_folder)
 
-    # TODO we could turn off the test harness network, leaving it for parallel harness runs for now
+    # we are done with the test harness network, we can destroy
     if not harness_settings.dev_mode:
         harness_network.net_destroy()
         harness_network.net_undefine()
