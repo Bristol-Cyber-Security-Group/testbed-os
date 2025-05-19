@@ -10,6 +10,9 @@ max_n_hosts = 1  # how many hosts the test harness will go up to before stopping
 host_ready_increment_seconds = 10
 host_ready_timeout_seconds = 120
 
+# this is the location of the test case code on the host, not in the docker image
+test_case_location = "~/testbed-os/test-harness/py_harness/test_cases/"
+
 # we can optionally mount the codebase into the container for development purposes
 code_mount_path = "/app/testbed-os"
 code_mounted = True if os.path.exists(code_mount_path) else False

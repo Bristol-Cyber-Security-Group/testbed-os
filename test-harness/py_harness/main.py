@@ -9,6 +9,7 @@ from pathlib import Path
 from host_images import BaseOperatingSystem
 from harness_network import HarnessNetwork
 from host import BaseHost, LinkedCloneHost
+from run_tests import run_tests
 
 
 def get_libvirt_connection() -> libvirt.virConnect:
@@ -89,11 +90,13 @@ def main(connection: libvirt.virConnect) -> bool:
 
 
                 # TODO - configure testbed settings, first host will be 'main' for cluster mode, the others should be
-                #  in client mode, pointing to the 'main' testbed host
+                #  in 'client' mode, pointing to the 'main' testbed host
 
 
                 # TODO run all test cases, for now we will re-use the same guests for the whole test suite
                 logging.info("Begin integration tests")
+                run_tests_result = run_tests(linked_clone_hosts)
+                # TODO - collect report for tests
 
                 # clean up linked clones
                 for linked_clone_host in linked_clone_hosts:

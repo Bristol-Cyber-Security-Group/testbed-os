@@ -229,7 +229,6 @@ class BaseHost(Host):
         # run the ansible install
         try:
             ssh_command("sudo apt update && sudo apt install ansible -y", harness_settings.base_ssh_key, self.hostname)
-            # TODO how to handle ask become pass, and the confirmation
             # since we are not using an interactive shell, the prompt will skip, so we must provide the variable as an
             # extra var, which will then be used as if the prompt accepted a yes from the user
             ssh_command("cd ~/testbed-os/setup/singleton && ansible-playbook setup.yml --extra-vars 'install_bool=yes'", harness_settings.base_ssh_key, self.hostname)
@@ -252,6 +251,7 @@ class BaseHost(Host):
 
         # install a cloud-init image for the guests, we will just use one type across all tests
         try:
+            # TODO - if in dev mode, check if already downloaded to skip this step
             logging.info("Pre-downloading guest image")
             # send download log to dev/null otherwise CICD logs will balloon with download progress
             ssh_command(
