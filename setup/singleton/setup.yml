@@ -1,18 +1,18 @@
 - name: Check Status
   import_playbook: ../common/1.status.yaml
   
-#- name: Check Consent
-#  hosts: all
-#  become: true
-#  vars_prompt:
-#    - name: "install_pre"
-#      prompt: "Would you like to install the missing components? (Yes/No)"
-#      private: no
-#  tasks:
+- name: Check Consent
+  hosts: all
+  become: true
+  vars_prompt:
+    - name: "install_pre"
+      prompt: "Would you like to install the missing components? (Yes/No)"
+      private: no
+  tasks:
 
-#  - name: Convert install_pre to boolean
-#    set_fact:
-#      install_bool: "{{ (install_pre | lower) in ['yes', 'y', 'true'] }}"
+  - name: Convert install_pre to boolean
+    set_fact:
+      install_bool: "{{ (install_pre | lower) in ['yes', 'y', 'true'] }}"
     
 - name: Install Pre-Requisites
   import_playbook: ../common/2.prereq.yaml
