@@ -2,7 +2,7 @@ import time
 import logging
 import harness_settings
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 from host import LinkedCloneHost
 from guest_control import ssh_command
 
@@ -21,9 +21,9 @@ class TestCase(ABC):
     linked_clone_hosts: List[LinkedCloneHost]
 
     # results
-    deploy_result: bool
-    test_result: bool
-    destroy_result: bool
+    deploy_result: Optional[bool] = None
+    test_result: Optional[bool] = None
+    destroy_result: Optional[bool] = None
 
     def __init__(self, test_case_name: str, linked_clone_hosts: List[LinkedCloneHost]):
         self.test_case_name = test_case_name

@@ -37,7 +37,8 @@ def main(connection: libvirt.virConnect) -> bool:
 
     # set up the libvirt network for the test harness
     harness_network = HarnessNetwork(connection)
-    network_result = harness_network.reload()
+    # don't reset the network if dev mode is on (assuming network was made before), otherwise down then up
+    network_result = harness_network.ensure_on() if harness_settings.dev_mode else harness_network.reload()
     if not network_result:
         # there was a problem in creating the network for this instance of the test harness
         logging.error("Failed to establish a libvirt network for the test harness, cannot continue")
@@ -51,22 +52,41 @@ def main(connection: libvirt.virConnect) -> bool:
 
             # TODO - init report wrapper for this run
 
-            # create base VM in the default libvirt network
+            # we will pre-prepare the base host and clone data before continuing, we will only use the number of clone
+            # hosts we need per n_hosts iteration later on - this does not yet create the VMs
             base_host = BaseHost(conn, base_os)
-            create_base_host_result = base_host.create()
-            if not create_base_host_result:
+            linked_clone_hosts = []
+            for n_host in range(1, harness_settings.max_n_hosts + 1):
+                linked_clone_hosts.append(LinkedCloneHost(conn, base_host, n_host))
+            # now we know what will be built, we can check to make sure there is nothing that will block the progression
+            # of the following by making sure things don't exist ...
+            # first make sure the clones don't exist, as these would prevent the base host from starting
+            for host in linked_clone_hosts:
+                host.ensure_destroyed()
+            # now we can make sure the base doesn't exist, but if in dev mode we will leave it there
+            if not harness_settings.dev_mode and base_host.exists():
                 base_host.ensure_destroyed()
-                # TODO - report failed result
 
-                # go to next test
-                continue
+            # now we can start the process of setting up the base VM and install the testbed, if it exists still that
+            # is because dev mode has allowed it and we just continue
+            base_host_exists = base_host.exists()  # this contains the libvirt reference to the domain
+            if base_host_exists is None:
+                create_base_host_result = base_host.create()
+                if not create_base_host_result:
+                    # TODO - report failed result
 
-            # install testbed code
+                    # go to next test
+                    continue
+            elif not base_host_exists.isActive():
+                # base host already exists, due to dev mode so just start it
+                base_host.start()
+                base_host.check_if_ready(harness_settings.base_ssh_key)
+
+            # install testbed code, in dev mode this just re-runs the ansible on top of the existing install
             install_best_host_result = base_host.install_testbed()
             if not install_best_host_result:
                 # TODO report failure, and where in the install it failed
                 continue
-
 
             # turn off base host before creating linked clones
             base_host.stop()
@@ -81,9 +101,8 @@ def main(connection: libvirt.virConnect) -> bool:
             for n_hosts in range(1, harness_settings.max_n_hosts + 1):
                 logging.info(f"Testing on {n_hosts} hosts")
 
-                # create n number of hosts, check if any already exist and destroy
-                linked_clone_hosts = [LinkedCloneHost(conn, base_host, nn) for nn in range(1, n_hosts+1)]
-                for linked_clone_host in linked_clone_hosts:
+                # create n number of hosts
+                for linked_clone_host in linked_clone_hosts[0:n_hosts]:
                     logging.info(f"Creating linked clone host: {linked_clone_host.name}")
                     clone_create_result = linked_clone_host.create()
 

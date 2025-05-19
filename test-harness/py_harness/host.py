@@ -68,14 +68,13 @@ class Host:
             return True
         return False
 
-    @staticmethod
-    def check_if_ready(ssh_key: str, hostname: str) -> bool:
+    def check_if_ready(self, ssh_key: str) -> bool:
         # depending on the timeout configuration, we will check every 10 seconds up to the timeout
         timeout_increment = 0
         while timeout_increment < harness_settings.host_ready_timeout_seconds:
 
             # this just checks the connection status and returns immediately
-            res = ssh_command("true", ssh_key, hostname)
+            res = ssh_command("true", ssh_key, self.hostname)
 
             if res.returncode == 0:
                 logging.info("Host is up and ready")
@@ -176,7 +175,7 @@ class BaseHost(Host):
                 # the keys we have pushed in the configuration
                 logging.info("Waiting for cloud-init guest to start")
                 # the base guest will have the first IP in the network range for the third octet
-                return self.check_if_ready(harness_settings.base_ssh_key, self.hostname)
+                return self.check_if_ready(harness_settings.base_ssh_key)
         
         return False
 
@@ -352,7 +351,7 @@ class LinkedCloneHost(Host):
                 # the keys we have pushed in the configuration
                 logging.info("Waiting for cloud-init linked clone guest to start")
                 # the base guest will have the first IP in the network range for the third octet
-                return self.check_if_ready(harness_settings.base_ssh_key, self.hostname)
+                return self.check_if_ready(harness_settings.base_ssh_key)
 
 
         return True
