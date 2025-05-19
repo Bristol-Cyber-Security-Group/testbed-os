@@ -24,6 +24,7 @@ class TestCase(ABC):
     deploy_result: Optional[bool] = None
     test_result: Optional[bool] = None
     destroy_result: Optional[bool] = None
+    cleanup_result: Optional[bool] = None
 
     def __init__(self, test_case_name: str, linked_clone_hosts: List[LinkedCloneHost]):
         self.test_case_name = test_case_name
@@ -43,6 +44,11 @@ class TestCase(ABC):
         logging.info(f"Destroying '{self.test_case_name}' test")
         self.destroy_result = destroy_test_case("base", self.linked_clone_hosts)
         if not self.destroy_result:
+            return False
+
+        logging.info(f"Clearing up artefacts for '{self.test_case_name}'")
+        self.cleanup_result = clear_artefacts("base", self.linked_clone_hosts)
+        if not self.cleanup_result:
             return False
 
         return self.test_result
@@ -93,4 +99,33 @@ def destroy_test_case(example_name: str, linked_clone_hosts: List[LinkedCloneHos
 
     if down_result.returncode != 0:
         return False
+    return True
+
+def clear_artefacts(example_name: str, linked_clone_hosts: List[LinkedCloneHost]) -> bool:
+    # re-usable function to remove the test case artefacts (vm images etc) once the test case has been destroyed
+
+    # get the location of the test, where the kvm-compose.yaml exists
+    test_case = f"{harness_settings.test_case_location}/{example_name}"
+
+    # on the main testbed, run the clear artefacts command for the test case in the correct location
+    logging.info(f"Run clear-artefacts command on '{test_case}'")
+    clear_artefacts_result = ssh_command(f"cd {test_case} && kvm-compose clear-artefacts",
+                              harness_settings.base_ssh_key,
+                              linked_clone_hosts[0].hostname,  # first host will be main
+                              )
+
+    # TODO - if this fails, should we still try to remote the state json? relevant for reporting as well
+    if clear_artefacts_result.returncode != 0:
+        return False
+
+    # finally also remove the state json, as this would prevent future up commands from working
+    logging.info(f"Remove state json for '{test_case}'")
+    rm_state_json_result = ssh_command(f"cd {test_case} && rm {test_case}-state.json",
+                              harness_settings.base_ssh_key,
+                              linked_clone_hosts[0].hostname,  # first host will be main
+                              )
+
+    if rm_state_json_result.returncode != 0:
+        return False
+
     return True
