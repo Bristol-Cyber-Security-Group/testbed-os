@@ -229,10 +229,16 @@ class BaseHost(Host):
 
         # run the ansible install
         try:
-            ssh_command("sudo apt update && sudo apt install ansible -y", harness_settings.base_ssh_key, self.hostname)
+            pkg_install_result = ssh_command("sudo apt update && sudo apt install ansible -y", harness_settings.base_ssh_key, self.hostname)
+            if pkg_install_result.returncode != 0:
+                logging.error(f"Failed to install ansible package")
+                return False
             # since we are not using an interactive shell, the prompt will skip, so we must provide the variable as an
             # extra var, which will then be used as if the prompt accepted a yes from the user
-            ssh_command("cd ~/testbed-os/setup/singleton && ansible-playbook setup.yml --extra-vars 'install_bool=yes'", harness_settings.base_ssh_key, self.hostname)
+            tb_install_result = ssh_command("cd ~/testbed-os/setup/singleton && ansible-playbook setup.yml --extra-vars 'install_bool=yes'", harness_settings.base_ssh_key, self.hostname)
+            if tb_install_result.returncode != 0:
+                logging.error(f"Failed to run ansible installation")
+                return False
         except Exception as e:
             logging.error(e)
             return False
