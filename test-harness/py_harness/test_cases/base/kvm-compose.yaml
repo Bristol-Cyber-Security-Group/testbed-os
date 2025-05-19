@@ -13,7 +13,7 @@ machines:
         cloud_image:
           name: ubuntu_20_04
           expand_gigabytes: 2
-          context: ./kvm-compose.yaml
+#          context: ./kvm-compose.yaml
           setup_script: ./setup_script.sh
 
   - name: client1
@@ -29,7 +29,7 @@ machines:
         cloud_image:
           name: ubuntu_20_04
           expand_gigabytes: 2
-          context: ./kvm-compose.yaml
+#          context: ./kvm-compose.yaml
           setup_script: ./setup_script.sh
 
   - name: client2
@@ -45,7 +45,7 @@ machines:
         cloud_image:
           name: ubuntu_20_04
           expand_gigabytes: 2
-          context: ./kvm-compose.yaml
+#          context: ./kvm-compose.yaml
           setup_script: ./setup_script.sh
 
   - name: nginx
