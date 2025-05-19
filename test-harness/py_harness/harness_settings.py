@@ -10,6 +10,10 @@ max_n_hosts = 1  # how many hosts the test harness will go up to before stopping
 host_ready_increment_seconds = 10
 host_ready_timeout_seconds = 120
 
+# we can optionally mount the codebase into the container for development purposes
+code_mount_path = "/app/testbed-os"
+code_mounted = True if os.path.exists(code_mount_path) else False
+
 # set the guest image to be used inside the test harness
 guest_vm_image_url = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
 

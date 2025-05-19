@@ -1,6 +1,5 @@
 import os
 import time
-from urllib.request import urlretrieve
 
 import libvirt
 import logging
@@ -9,6 +8,7 @@ import shutil
 import subprocess
 from typing import Optional
 from host_images import BaseOperatingSystem, OSInit
+from guest_control import ssh_command
 
 
 class Host:
@@ -141,6 +141,7 @@ class BaseHost(Host):
         # seed the VM installation depending on the tech being used
         match self.image_os.value.os_init:
             case OSInit.cloud_init:
+                # TODO - if there are anny linked clones remaining for some reason, this will block this run
                 logging.info("Provisioning base image with cloud-init configuration")
                 # we need to gather and customise the cloud-init config files
                 shutil.copy(harness_settings.cloud_init_meta_data, harness_settings.workspace)
@@ -185,23 +186,41 @@ class BaseHost(Host):
 
         # get code for this commit
         try:
-            # TODO - get current state of dev code from host if test_id is dev
+            # TODO - get current state of dev code from host if test_id is dev, rsync code into base host
             branch = harness_settings.test_id if harness_settings.test_id != "dev" else "develop"
-            git_clone_result = ssh_command(
-                f"git clone https://github.com/Bristol-Cyber-Security-Group/testbed-os.git",
-                harness_settings.base_ssh_key,
-                self.hostname,
-            )
-            if git_clone_result.returncode != 0:
-                logging.error("Failed to clone testbed repo from GitHub")
-                return False
-            git_checkout_result = ssh_command(f"cd testbed-os && git checkout {branch}",
-                harness_settings.base_ssh_key,
-                self.hostname,
-            )
-            if git_checkout_result.returncode != 0:
-                logging.error(f"Failed to checkout {branch} from GitHub")
-                return False
+            if branch == "develop" and harness_settings.code_mounted:
+                # the code has been mounted into the container, we can use this instead of pulling from github,
+                # we rsync the current code state into the base host
+                logging.info("In dev mode - will push local code state into base host")
+                rsync_result = subprocess.run(["rsync", "-avr", "-e",
+                                f"ssh -i {harness_settings.base_ssh_key} -o 'StrictHostKeyChecking no' -o 'UserKnownHostsFile /dev/null'",
+                                "--exclude", ".git/*",
+                                "--exclude", "target/*",
+                                "--exclude", "artefacts/*",
+                                harness_settings.code_mount_path,
+                                f"{self.hostname}:~/"
+                                ])
+                if rsync_result.returncode != 0:
+                    logging.error("Failed to push local code state into base host with rsync")
+                    return False
+            else:
+                # not in dev mode, pull from github
+                logging.info("Pulling code from GitHub for current workflow branch")
+                git_clone_result = ssh_command(
+                    f"git clone https://github.com/Bristol-Cyber-Security-Group/testbed-os.git",
+                    harness_settings.base_ssh_key,
+                    self.hostname,
+                )
+                if git_clone_result.returncode != 0:
+                    logging.error("Failed to clone testbed repo from GitHub")
+                    return False
+                git_checkout_result = ssh_command(f"cd testbed-os && git checkout {branch}",
+                    harness_settings.base_ssh_key,
+                    self.hostname,
+                )
+                if git_checkout_result.returncode != 0:
+                    logging.error(f"Failed to checkout {branch} from GitHub")
+                    return False
             logging.info(f"Testbed code cloned to commit: {branch}")
         except Exception as e:
             logging.error(e)
@@ -329,12 +348,3 @@ class LinkedCloneHost(Host):
 
 
         return True
-
-
-def ssh_command(cmd: str, ssh_key: str, hostname: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["ssh", "-i", ssh_key,
-                          "-o", "StrictHostKeyChecking no",
-                          "-o", "UserKnownHostsFile /dev/null",
-                          hostname,
-                          cmd,
-                          ])

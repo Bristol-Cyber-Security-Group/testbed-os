@@ -1,5 +1,7 @@
 import shutil
 import sys
+import time
+
 import libvirt
 import logging
 import harness_settings
@@ -64,10 +66,16 @@ def main(connection: libvirt.virConnect) -> bool:
                 # TODO report failure, and where in the install it failed
                 continue
 
+
             # turn off base host before creating linked clones
             base_host.stop()
+            # sleep a bit, the VM won't shut down quickly enough as the libvirt shutdown command in non-blocking
+            time.sleep(5)
 
-            # begin n number of host loop
+            # TODO check if the base host has turned off
+
+            # begin n number of host loop, we will assign the linked clone hosts a number from 1 to 3, where the first
+            # host will be the 'main' host in a cluster deployment if there is more than one host
             for n_hosts in range(1, harness_settings.max_n_hosts + 1):
                 logging.info(f"Testing on {n_hosts} hosts")
 
@@ -77,7 +85,11 @@ def main(connection: libvirt.virConnect) -> bool:
                     logging.info(f"Creating linked clone host: {linked_clone_host.name}")
                     clone_create_result = linked_clone_host.create()
 
-                # TODO - configure testbed settings, first host will be 'main' for cluster mode
+                # TODO - if creating linked clones failed
+
+
+                # TODO - configure testbed settings, first host will be 'main' for cluster mode, the others should be
+                #  in client mode, pointing to the 'main' testbed host
 
 
                 # TODO run all test cases, for now we will re-use the same guests for the whole test suite
@@ -86,7 +98,7 @@ def main(connection: libvirt.virConnect) -> bool:
                 # clean up linked clones
                 for linked_clone_host in linked_clone_hosts:
                     logging.info(f"Destroying linked clone host: {linked_clone_host.name}")
-                    clone_destroy_result = linked_clone_host.ensure_destroyed()
+                    # clone_destroy_result = linked_clone_host.ensure_destroyed()
 
 
     # TODO prepare report from test harness results
