@@ -1,22 +1,26 @@
 import logging
 from typing import List
 from host import LinkedCloneHost
-from test_cases.base import BaseTestCase
+from test_cases.test_case import TestCase, registered_test_cases
 
 
 def run_tests(linked_clone_hosts: List[LinkedCloneHost]) -> bool:
     # this is the entrypoint to run all the integration tests
     logging.info("Running tests")
 
-    # TODO - register the test cases either programmatically or statically
+    # Every test case will self-register into `registered_test_cases`, and this loop just instantiates the test with the
+    # list of hosts for this infrastructure deployment
+    executed_test_cases: List[TestCase] = []
+    # iterate through the registered classes
+    for test_case in registered_test_cases:
+        # instantiate the class with the list of hosts
+        instantiated_test_case = test_case(linked_clone_hosts)
+        # run and get result of the tests
+        test_case_result = instantiated_test_case.run()
+        # store the test case, which has all the results for this test case
+        executed_test_cases.append(instantiated_test_case)
 
-    # TODO - run the appropriate tests on each test case
-
-    # TODO for now we have an example test case and test, this should be removed once we start to implement real tests
-    base_test = BaseTestCase("base", linked_clone_hosts)
-    base_test_result = base_test.run()
-    if not base_test_result:
-        return False
+    # TODO - collate the test case results
 
     return True
 

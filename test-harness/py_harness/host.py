@@ -253,8 +253,14 @@ class BaseHost(Host):
 
         # install a cloud-init image for the guests, we will just use one type across all tests
         try:
-            # TODO - if in dev mode, check if already downloaded to skip this step
             logging.info("Pre-downloading guest image")
+            # if in dev mode, check if already downloaded to skip this step
+            if harness_settings.dev_mode:
+                exists_result = ssh_command("cd /var/lib/testbedos/images/ && ls ubuntu_20_04.img || exit", harness_settings.base_ssh_key, self.hostname)
+                if exists_result.returncode == 0:
+                    # image already exists, don't redownload
+                    return True
+
             # send download log to dev/null otherwise CICD logs will balloon with download progress
             ssh_command(
                 "sudo mkdir -p /var/lib/testbedos/images/ && "
