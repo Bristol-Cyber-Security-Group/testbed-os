@@ -66,7 +66,7 @@
             dest: /var/lib/testbedos/assets/documentation/
             owner: root
             group: root
-            mode: '0644'
+            mode: '0755'
             remote_src: yes
           become: yes
 
