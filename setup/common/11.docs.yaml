@@ -34,7 +34,7 @@
 
         - name: Build man pages with Sphinx
           shell: | 
-            source /home/{{ user_name }}/.bashr
+            source /home/{{ user_name }}/.bashrc
             poetry run sphinx-build -M man docs build
           args:
             chdir: "../.."
@@ -44,7 +44,7 @@
 
         - name: Build HTML documentation with Sphinx
           shell: |
-            source /home/{{ user_name }}/.bashr
+            source /home/{{ user_name }}/.bashrc
             poetry run sphinx-build -M html docs build
           args:
             chdir: "../.."
