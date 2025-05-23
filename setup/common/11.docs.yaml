@@ -1,6 +1,8 @@
 ---
 - name: Build Documentation
   hosts: all
+  vars: 
+    user_name: "{{ ansible_user_id }}"
   tasks:
 
   - name: Ensure /var/lib/testbedos/assets directory exists
@@ -12,7 +14,7 @@
 
   - name: Build Docs if they are not present
     shell: |
-      source ~/.bashrc
+      source /home/{{user_name}}/.bashrc
       rm -rf build/*
       poetry run sphinx-build -M man docs build
       poetry run sphinx-build -M html docs build
@@ -24,6 +26,7 @@
       executable: /bin/bash
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+    become: yes  
 
   - name: Check Docs are present
     ansible.builtin.stat:
