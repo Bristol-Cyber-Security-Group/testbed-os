@@ -16,10 +16,6 @@
     - name: Ensure documentation is built and deployed
       block:
 
-        - name: Load user environment
-          command: source /home/{{ user_name }}/.bashrc
-          become: yes
-
         - name: Clean previous build artifacts
           file:
             path: "{{ item }}"
@@ -37,7 +33,9 @@
           become: yes
 
         - name: Build man pages with Sphinx
-          command: poetry run sphinx-build -M man docs build
+          shell: | 
+            source /home/{{ user_name }}/.bashr
+            poetry run sphinx-build -M man docs build
           args:
             chdir: "../.."
           environment:
@@ -45,7 +43,9 @@
           become: yes
 
         - name: Build HTML documentation with Sphinx
-          command: poetry run sphinx-build -M html docs build
+          shell: |
+            source /home/{{ user_name }}/.bashr
+            poetry run sphinx-build -M html docs build
           args:
             chdir: "../.."
           environment:
