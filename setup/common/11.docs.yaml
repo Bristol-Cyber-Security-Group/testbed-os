@@ -74,8 +74,10 @@
       ansible.builtin.stat:
         path: /var/lib/testbedos/assets/documentation/index.html
       register: sphinx_docs
+      become: yes
 
     - name: Confirm if the documentation has been built
       ansible.builtin.debug:
         msg: "The documentation has been successfully built and deployed."
       when: sphinx_docs.stat.exists
+      become: yes
