@@ -16,6 +16,10 @@
     - name: Ensure documentation is built and deployed
       block:
 
+        - name: Get Poetry virtualenv path
+          shell: poetry env info -p
+          register: poetry_venv_path
+
         - name: Clean previous build artifacts
           file:
             path: "{{ item }}"
@@ -34,23 +38,20 @@
 
         - name: Build man pages with Sphinx
           shell: | 
-            source /home/{{ user_name }}/.bashrc
-            /home/{{ user_name }}/.local/bin/poetry  run sphinx-build -M man docs build
+            {{ poetry_venv_path }}/bin/sphinx-build -M man docs build
           args:
             chdir: "../.."
-          environment:
-            PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+            executable: /bin/bash
           become: yes
 
-        - name: Build HTML documentation with Sphinx
-          shell: |
-            source /home/{{ user_name }}/.bashrc
-            /home/{{ user_name }}/.local/bin/poetry  run sphinx-build -M html docs build
+        - name: Build HTML pages with Sphinx
+          shell: | 
+            {{ poetry_venv_path }}/bin/sphinx-build -M html docs build
           args:
             chdir: "../.."
-          environment:
-            PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+            executable: /bin/bash
           become: yes
+
 
         - name: Create documentation target directory
           file:
