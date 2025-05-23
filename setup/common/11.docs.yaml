@@ -3,7 +3,7 @@
   hosts: all
   vars:
     user_name: "{{ ansible_user_id }}"
-  become: yes
+
   tasks:
 
     - name: Ensure /var/lib/testbedos/assets directory exists
@@ -11,12 +11,14 @@
         path: /var/lib/testbedos/assets
         state: directory
         mode: '0755'
+      become: yes
 
     - name: Ensure documentation is built and deployed
       block:
 
         - name: Load user environment
           command: source /home/{{ user_name }}/.bashrc
+          become: yes
 
         - name: Clean previous build artifacts
           file:
@@ -25,12 +27,14 @@
           loop:
             - build
             - /var/lib/testbedos/assets/documentation
+          become: yes
 
         - name: Create build directory
           file:
             path: build
             state: directory
             mode: '0755'
+          become: yes
 
         - name: Build man pages with Sphinx
           command: poetry run sphinx-build -M man docs build
@@ -38,6 +42,7 @@
             chdir: "../.."
           environment:
             PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+          become: yes
 
         - name: Build HTML documentation with Sphinx
           command: poetry run sphinx-build -M html docs build
@@ -45,12 +50,14 @@
             chdir: "../.."
           environment:
             PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+          become: yes
 
         - name: Create documentation target directory
           file:
             path: /var/lib/testbedos/assets/documentation
             state: directory
             mode: '0755'
+          become: yes
 
         - name: Copy HTML documentation to target directory
           copy:
@@ -60,6 +67,7 @@
             group: root
             mode: '0644'
             remote_src: yes
+          become: yes
 
     - name: Check if documentation exists
       ansible.builtin.stat:
