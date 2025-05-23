@@ -12,7 +12,7 @@
 
   - name: Build Docs if they are not present
     shell: |
-      . ~/.bashrc
+      source ~/.bashrc
       rm -rf build/*
       poetry run sphinx-build -M man docs build
       poetry run sphinx-build -M html docs build
