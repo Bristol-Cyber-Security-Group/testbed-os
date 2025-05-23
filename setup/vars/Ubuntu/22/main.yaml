@@ -27,7 +27,7 @@ prereq_packages:
   - genisoimage
   - virt-manager
 
-docker_steps:
+docker_steps: |
   #!/bin/bash
   set -e
 

@@ -28,7 +28,7 @@ prereq_packages:
   - virt-manager
 
 
-docker_steps:
+docker_steps: |
   #!/bin/bash
   # Add Docker's official GPG key:
   sudo apt-get update
