@@ -68,6 +68,8 @@
             group: root
             mode: '0644'
             remote_src: yes
+          args:
+            chdir: "../.."
           become: yes
 
     - name: Check if documentation exists
