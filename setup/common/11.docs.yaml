@@ -1,39 +1,74 @@
 ---
-- name: Build Documentation
+- name: Build and Deploy Documentation
   hosts: all
-  vars: 
+  vars:
     user_name: "{{ ansible_user_id }}"
+  become: yes
   tasks:
 
-  - name: Ensure /var/lib/testbedos/assets directory exists
-    file:
-      path: /var/lib/testbedos/assets
-      state: directory
-      mode: '0755'
-    become: yes
+    - name: Ensure /var/lib/testbedos/assets directory exists
+      file:
+        path: /var/lib/testbedos/assets
+        state: directory
+        mode: '0755'
 
-  - name: Build Docs if they are not present
-    shell: |
-      source /home/{{user_name}}/.bashrc
-      rm -rf build/*
-      poetry run sphinx-build -M man docs build
-      poetry run sphinx-build -M html docs build
-      rm -rf /var/lib/testbedos/assets/documentation/
-      mkdir /var/lib/testbedos/assets/documentation/
-      cp -r build/html/* /var/lib/testbedos/assets/documentation/
-    args:
-      chdir: "../.."
-      executable: /bin/bash
-    environment:
-      PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
-    become: yes  
+    - name: Ensure documentation is built and deployed
+      block:
 
-  - name: Check Docs are present
-    ansible.builtin.stat:
-      path: /var/lib/testbedos/assets/documentation/
-    register: sphinx_docs
+        - name: Load user environment
+          shell: source /home/{{ user_name }}/.bashrc
+          args:
+            executable: /bin/bash
 
-  - name: Confirm if the Docs have been built
-    ansible.builtin.debug:
-      msg: "The Documentation has been built"
-    when:  sphinx_docs.stat.exists
+        - name: Clean previous build artifacts
+          file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - build
+            - /var/lib/testbedos/assets/documentation
+
+        - name: Create build directory
+          file:
+            path: build
+            state: directory
+            mode: '0755'
+
+        - name: Build man pages with Sphinx
+          command: poetry run sphinx-build -M man docs build
+          args:
+            chdir: "../.."
+          environment:
+            PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+
+        - name: Build HTML documentation with Sphinx
+          command: poetry run sphinx-build -M html docs build
+          args:
+            chdir: "../.."
+          environment:
+            PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
+
+        - name: Create documentation target directory
+          file:
+            path: /var/lib/testbedos/assets/documentation
+            state: directory
+            mode: '0755'
+
+        - name: Copy HTML documentation to target directory
+          copy:
+            src: build/html/
+            dest: /var/lib/testbedos/assets/documentation/
+            owner: root
+            group: root
+            mode: '0644'
+            remote_src: yes
+
+    - name: Check if documentation exists
+      ansible.builtin.stat:
+        path: /var/lib/testbedos/assets/documentation/index.html
+      register: sphinx_docs
+
+    - name: Confirm if the documentation has been built
+      ansible.builtin.debug:
+        msg: "✅ The documentation has been successfully built and deployed."
+      when: sphinx_docs.stat.exists
