@@ -16,9 +16,9 @@
       rm -rf build/*
       poetry run sphinx-build -M man docs build
       poetry run sphinx-build -M html docs build
-      sudo rm -rf /var/lib/testbedos/assets/documentation/
-      sudo mkdir /var/lib/testbedos/assets/documentation/
-      sudo cp -r build/html/* /var/lib/testbedos/assets/documentation/
+      rm -rf /var/lib/testbedos/assets/documentation/
+      mkdir /var/lib/testbedos/assets/documentation/
+      cp -r build/html/* /var/lib/testbedos/assets/documentation/
     args:
       chdir: "../.."
       executable: /bin/bash
