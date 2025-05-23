@@ -62,14 +62,12 @@
 
         - name: Copy HTML documentation to target directory
           copy:
-            src: build/html/
+            src: ../../build/html/
             dest: /var/lib/testbedos/assets/documentation/
             owner: root
             group: root
             mode: '0644'
             remote_src: yes
-          args:
-            chdir: "../.."
           become: yes
 
     - name: Check if documentation exists
