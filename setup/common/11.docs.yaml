@@ -38,7 +38,7 @@
 
         - name: Build man pages with Sphinx
           shell: | 
-            {{ poetry_venv_path }}/bin/sphinx-build -M man docs build
+            "{{ poetry_venv_path.stdout }}/bin/sphinx-build" -M man docs build
           args:
             chdir: "../.."
             executable: /bin/bash
@@ -46,7 +46,7 @@
 
         - name: Build HTML pages with Sphinx
           shell: | 
-            {{ poetry_venv_path }}/bin/sphinx-build -M html docs build
+            "{{ poetry_venv_path.stdout }}/bin/sphinx-build" -M html docs build
           args:
             chdir: "../.."
             executable: /bin/bash
