@@ -35,7 +35,7 @@
         - name: Build man pages with Sphinx
           shell: | 
             source /home/{{ user_name }}/.bashrc
-            poetry run sphinx-build -M man docs build
+            /home/{{ user_name }}/.local/bin/poetry  run sphinx-build -M man docs build
           args:
             chdir: "../.."
           environment:
@@ -45,7 +45,7 @@
         - name: Build HTML documentation with Sphinx
           shell: |
             source /home/{{ user_name }}/.bashrc
-            poetry run sphinx-build -M html docs build
+            /home/{{ user_name }}/.local/bin/poetry  run sphinx-build -M html docs build
           args:
             chdir: "../.."
           environment:
