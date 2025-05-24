@@ -3,35 +3,11 @@
   hosts: all
   become: true
   tasks:
+  - name: Include variables based on OS
+    include_vars: "{{ lookup('first_found', {'files': ['../vars/{{ ansible_os_family }}/{{ ansible_distribution_major_version }}/main.yaml'], 'paths': ['.']}) }}"
   - name: Install via Aptitude
     apt:
-      name: 
-      - libvirt-dev 
-      - libssl-dev 
-      - gcc 
-      - make 
-      - zlib1g 
-      - zlib1g-dev
-      - libsqlite3-dev 
-      - libffi-dev 
-      - libncurses5 
-      - libncurses5-dev
-      - libncursesw5
-      - libreadline-dev 
-      - lzma 
-      - liblzma-dev 
-      - libbz2-dev 
-      - libtool 
-      - autoconf
-      - git 
-      - pip 
-      - python3.10-venv
-      - qemu-kvm 
-      - libvirt-daemon-system 
-      - libvirt-clients
-      - libnss-libvirt
-      - genisoimage
-      - virt-manager
+      name: "{{prereq_packages}}"
       state: latest
       update_cache: yes
 
