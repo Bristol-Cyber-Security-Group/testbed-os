@@ -54,19 +54,24 @@ class Host:
         except libvirt.libvirtError as e:
             return None
 
-    def ensure_destroyed(self):
+    def ensure_destroyed(self) -> bool:
         # make sure there is no previous base VM
         domain = self.exists()
         logging.info("Ensuring the VM is destroyed")
-        if domain is not None:
-            logging.info("VM is defined, destroying")
-            if domain.isActive():
-                domain.destroy()
-            domain.undefine()
-        # make sure the img doesn't exist
-        if os.path.exists(self.img_location):
-            logging.info(f"Deleting {self.img_location}")
-            os.remove(self.img_location)
+        try:
+            if domain is not None:
+                logging.info("VM is defined, destroying")
+                if domain.isActive():
+                    domain.destroy()
+                domain.undefine()
+            # make sure the img doesn't exist
+            if os.path.exists(self.img_location):
+                logging.info(f"Deleting {self.img_location}")
+                os.remove(self.img_location)
+        except libvirt.libvirtError as e:
+            logging.error(f"Failed to destroy {self.img_location}")
+            return False
+        return True
 
     def start(self) -> bool:
         domain = self.exists()

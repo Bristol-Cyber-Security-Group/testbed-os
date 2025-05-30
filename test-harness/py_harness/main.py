@@ -1,3 +1,4 @@
+import json
 import shutil
 import sys
 import time
@@ -56,6 +57,8 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
         test_harness_report.test_harness_state = TestHarnessState.CREATE_NETWORK
         return test_harness_report
 
+    test_harness_report.test_harness_state = TestHarnessState.SUCCESS
+
     # only continue if the network creation was successful
     if network_result:
         # for each base image type, run test harness
@@ -92,13 +95,11 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
 
                     # go to next test
                     continue
-                else:
-                    os_report.create_base_host = True
             elif not base_host_exists.isActive():
                 # base host already exists, due to dev mode so just start it
                 base_host.start()
                 base_host.check_if_ready(harness_settings.base_ssh_key)
-            os_report.install_testbed = True
+            os_report.create_base_host = True
 
             # install testbed code, in dev mode this just re-runs the ansible on top of the existing install
             install_best_host_result = base_host.install_testbed()
@@ -163,9 +164,9 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
                 # if destroying any linked clones failed
                 if not all(destroy_results):
                     logging.error(f"Failed to destroy linked clone hosts")
-                    n_host_report.destroy_linked_clone_hosts = False
+                    n_host_report.clear_linked_clone_hosts = False
                 else:
-                    n_host_report.destroy_linked_clone_hosts = True
+                    n_host_report.clear_linked_clone_hosts = True
 
 
     # clean up the test harness working area in the libvirt images folder
@@ -205,7 +206,7 @@ if __name__ == '__main__':
 
     # run test harness
     result_report = main(conn)
-    result_report.print_results()
+    logging.info(f"REPORT:\n{json.dumps(result_report.to_dict(), indent=4)}")
 
     logging.info("Closing connection to libvirt")
     conn.close()
@@ -213,4 +214,3 @@ if __name__ == '__main__':
 
     if not result_report.get_success():
         sys.exit(1)
-

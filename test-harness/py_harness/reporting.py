@@ -24,6 +24,15 @@ class NHostReport:
         self.create_linked_clone_hosts = False
         self.clear_linked_clone_hosts = False
 
+    def to_dict(self) -> dict:
+        return {
+            "timestamp": str(self.timestamp.isoformat()),
+            "n_hosts": self.n_hosts,
+            "create_linked_clone_hosts": self.create_linked_clone_hosts,
+            "clear_linked_clone_hosts": self.clear_linked_clone_hosts,
+            "test_case_reports": [test_case_report.to_dict() for test_case_report in self.test_case_reports],
+        }
+
 
 class OSReport:
 
@@ -43,6 +52,15 @@ class OSReport:
         self.create_base_host = None
         self.install_testbed = None
 
+    def to_dict(self) -> dict:
+        return {
+            "timestamp": str(self.timestamp.isoformat()),
+            "operating_system": self.os.name,
+            "create_base_host": self.create_base_host,
+            "install_testbed": self.install_testbed,
+            "n_host_reports": [n_host_report.to_dict() for n_host_report in self.n_host_reports],
+        }
+
 
 class TestHarnessState(enum.Enum):
     """
@@ -52,13 +70,12 @@ class TestHarnessState(enum.Enum):
     # TODO - given the todo in main.py around failing cleanup, chance this from an enum to just bools
 
     # success will == 0, otherwise the other values will record where we failed
-    SUCCESS = enum.auto()
+    SUCCESS = 0
 
-    CREATE_WORKSPACE = enum.auto()
-    CREATE_NETWORK = enum.auto()
-    CLEAR_WORKSPACE = enum.auto()
-    CLEAR_NETWORK = enum.auto()
-
+    CREATE_WORKSPACE = 1
+    CREATE_NETWORK = 2
+    CLEAR_WORKSPACE = 3
+    CLEAR_NETWORK = 4
 
 
 class TestHarnessReport:
@@ -74,8 +91,12 @@ class TestHarnessReport:
         self.timestamp = datetime.now()
         self.os_reports = []
 
-    def print_results(self):
-        pass
+    def to_dict(self) -> dict:
+        return {
+            "timestamp": str(self.timestamp.isoformat()),
+            "test_harness_state": self.test_harness_state.value,
+            "os_reports": [os_report.to_dict() for os_report in self.os_reports],
+        }
 
     def get_success(self):
         # just check all stages of the report, if anything is in a failed state then fail the whole
@@ -99,5 +120,3 @@ class TestHarnessReport:
                         return False
 
         return True
-
-

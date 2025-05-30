@@ -37,7 +37,7 @@ class TestCase(ABC):
         logging.info(f"Running test case '{self.test_case_name}'")
 
         logging.info(f"Deploying '{self.test_case_name}' test")
-        self.deploy_result = deploy_test_case("base", self.linked_clone_hosts)
+        self.deploy_result = deploy_test_case(self.test_case_name, self.linked_clone_hosts)
         if not self.deploy_result:
             return False
 
@@ -45,12 +45,12 @@ class TestCase(ABC):
         self.test_result = self.test_case()
 
         logging.info(f"Destroying '{self.test_case_name}' test")
-        self.destroy_result = destroy_test_case("base", self.linked_clone_hosts)
+        self.destroy_result = destroy_test_case(self.test_case_name, self.linked_clone_hosts)
         if not self.destroy_result:
             return False
 
         logging.info(f"Clearing up artefacts for '{self.test_case_name}'")
-        self.cleanup_result = clear_artefacts("base", self.linked_clone_hosts)
+        self.cleanup_result = clear_artefacts(self.test_case_name, self.linked_clone_hosts)
         if not self.cleanup_result:
             return False
 
@@ -64,6 +64,16 @@ class TestCase(ABC):
     def test_case(self) -> bool:
         # test case to be implemented per test case, this should contain all runtime tests
         raise NotImplementedError()
+
+    def to_dict(self):
+        return {
+            "timestamp": str(self.timestamp.isoformat()),
+            "test_case_name": self.test_case_name,
+            "deploy_result": self.deploy_result,
+            "test_result": self.test_result,
+            "destroy_result": self.destroy_result,
+            "cleanup_result": self.cleanup_result,
+        }
 
 
 def deploy_test_case(example_name: str, linked_clone_hosts: List[LinkedCloneHost]) -> bool:
