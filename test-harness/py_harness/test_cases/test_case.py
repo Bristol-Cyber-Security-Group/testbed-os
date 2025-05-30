@@ -1,6 +1,7 @@
 import time
 import logging
 import harness_settings
+from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from host import LinkedCloneHost
@@ -19,6 +20,7 @@ class TestCase(ABC):
 
     test_case_name: str
     linked_clone_hosts: List[LinkedCloneHost]
+    timestamp: datetime
 
     # results
     deploy_result: Optional[bool] = None
@@ -27,6 +29,7 @@ class TestCase(ABC):
     cleanup_result: Optional[bool] = None
 
     def __init__(self, test_case_name: str, linked_clone_hosts: List[LinkedCloneHost]):
+        self.timestamp = datetime.now()
         self.test_case_name = test_case_name
         self.linked_clone_hosts = linked_clone_hosts
 

@@ -357,7 +357,7 @@ class LinkedCloneHost(Host):
                                 ])
 
                 if start_vm_result.returncode != 0:
-                    logging.error("Failed to provision linked clone")
+                    logging.error(f"Failed to provision linked clone {self.host_number}")
                     return False
 
                 # libvirt will be initialising the VM, we need to wait until the VM is up by testing the SSH connection using

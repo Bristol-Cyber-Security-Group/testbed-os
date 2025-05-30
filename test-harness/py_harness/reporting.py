@@ -1,0 +1,103 @@
+import enum
+from datetime import datetime
+from typing import Optional, List
+from host_images import BaseOperatingSystem
+from test_cases.test_case import TestCase
+
+
+
+class NHostReport:
+
+    timestamp: datetime
+    n_hosts: int
+
+    create_linked_clone_hosts: Optional[bool]
+    clear_linked_clone_hosts: Optional[bool]
+
+    # direct test case results
+    test_case_reports: List[TestCase]
+
+    def __init__(self, n_hosts: int):
+        self.timestamp = datetime.now()
+        self.n_hosts = n_hosts
+        self.test_case_reports = []
+        self.create_linked_clone_hosts = False
+        self.clear_linked_clone_hosts = False
+
+
+class OSReport:
+
+    operating_system: BaseOperatingSystem
+    timestamp: datetime
+
+    n_host_reports: List[NHostReport]
+
+    # optional as they can be null if the test harness didn't reach this step
+    create_base_host: Optional[bool]
+    install_testbed: Optional[bool]
+
+    def __init__(self, os: BaseOperatingSystem):
+        self.timestamp = datetime.now()
+        self.os = os
+        self.n_host_reports = []
+        self.create_base_host = None
+        self.install_testbed = None
+
+
+class TestHarnessState(enum.Enum):
+    """
+    This enum represents whether the base infrastructure of the test harness was successful or not
+    """
+
+    # TODO - given the todo in main.py around failing cleanup, chance this from an enum to just bools
+
+    # success will == 0, otherwise the other values will record where we failed
+    SUCCESS = enum.auto()
+
+    CREATE_WORKSPACE = enum.auto()
+    CREATE_NETWORK = enum.auto()
+    CLEAR_WORKSPACE = enum.auto()
+    CLEAR_NETWORK = enum.auto()
+
+
+
+class TestHarnessReport:
+    """
+    Contains all the reports
+    """
+
+    timestamp: datetime
+    os_reports: List[OSReport]
+    test_harness_state: TestHarnessState
+
+    def __init__(self):
+        self.timestamp = datetime.now()
+        self.os_reports = []
+
+    def print_results(self):
+        pass
+
+    def get_success(self):
+        # just check all stages of the report, if anything is in a failed state then fail the whole
+        # test harness run
+
+        # check test harness state
+        if self.test_harness_state != TestHarnessState.SUCCESS:
+            return False
+        # then check the OS reports
+        for os in self.os_reports:
+            if os.create_base_host == False or os.install_testbed == False:
+                return False
+            # building base images okay, then now check the n host setup
+            for n_host_report in os.n_host_reports:
+                if n_host_report.create_linked_clone_hosts == False \
+                        or n_host_report.clear_linked_clone_hosts == False:
+                    return False
+                # building clones okay, now check reports
+                for test_case_report in n_host_report.test_case_reports:
+                    if not test_case_report.success():
+                        return False
+
+        return True
+
+

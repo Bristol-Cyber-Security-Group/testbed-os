@@ -10,6 +10,7 @@ from host_images import BaseOperatingSystem
 from harness_network import HarnessNetwork
 from host import BaseHost, LinkedCloneHost
 from run_tests import run_tests
+from reporting import TestHarnessReport, TestHarnessState, OSReport, NHostReport
 
 
 def get_libvirt_connection() -> libvirt.virConnect:
@@ -25,15 +26,24 @@ def get_libvirt_connection() -> libvirt.virConnect:
         sys.exit(1)
 
 
-def main(connection: libvirt.virConnect) -> bool:
+def main(connection: libvirt.virConnect) -> TestHarnessReport:
     # TODO initialise report - capture the different stages that will follow and accept if/when/where there is a failure
     #  and also how/when to capture the early terminations due to failure gracefully
 
+    test_harness_report = TestHarnessReport()
+
     # initialise working area for the test harness in the libvirt images folder
-    workspace_folder = Path(harness_settings.workspace)
-    if not workspace_folder.exists():
-        workspace_folder.mkdir(parents=True, exist_ok=True)
-    # TODO make sure workspace is clean before starting, but do we re-use images downloaded?
+    try:
+        workspace_folder = Path(harness_settings.workspace)
+        if not workspace_folder.exists():
+            workspace_folder.mkdir(parents=True, exist_ok=True)
+        # TODO make sure workspace is clean before starting, but do we re-use images downloaded?
+    except OSError as e:
+        logging.error(f"Error creating workspace folder: {e}")
+        # set test harness state to failed workspace
+        test_harness_report.test_harness_state = TestHarnessState.CREATE_WORKSPACE
+        return test_harness_report
+
 
     # set up the libvirt network for the test harness
     harness_network = HarnessNetwork(connection)
@@ -43,6 +53,8 @@ def main(connection: libvirt.virConnect) -> bool:
         # there was a problem in creating the network for this instance of the test harness
         logging.error("Failed to establish a libvirt network for the test harness, cannot continue")
         # TODO log network error in report
+        test_harness_report.test_harness_state = TestHarnessState.CREATE_NETWORK
+        return test_harness_report
 
     # only continue if the network creation was successful
     if network_result:
@@ -50,7 +62,9 @@ def main(connection: libvirt.virConnect) -> bool:
         for base_os in BaseOperatingSystem:
             logging.info(f"Testing on base image: {base_os.name}")
 
-            # TODO - init report wrapper for this run
+            # init report wrapper for this run, add to parent report
+            os_report = OSReport(base_os)
+            test_harness_report.os_reports.append(os_report)
 
             # we will pre-prepare the base host and clone data before continuing, we will only use the number of clone
             # hosts we need per n_hosts iteration later on - this does not yet create the VMs
@@ -73,20 +87,27 @@ def main(connection: libvirt.virConnect) -> bool:
             if base_host_exists is None:
                 create_base_host_result = base_host.create()
                 if not create_base_host_result:
-                    # TODO - report failed result
+                    # report failed result
+                    os_report.create_base_host = False
 
                     # go to next test
                     continue
+                else:
+                    os_report.create_base_host = True
             elif not base_host_exists.isActive():
                 # base host already exists, due to dev mode so just start it
                 base_host.start()
                 base_host.check_if_ready(harness_settings.base_ssh_key)
+            os_report.install_testbed = True
 
             # install testbed code, in dev mode this just re-runs the ansible on top of the existing install
             install_best_host_result = base_host.install_testbed()
             if not install_best_host_result:
-                # TODO report failure, and where in the install it failed
+                # report failure, and where in the installation it failed
+                os_report.install_testbed = False
                 continue
+            else:
+                os_report.install_testbed = True
 
             # turn off base host before creating linked clones
             base_host.stop()
@@ -101,12 +122,23 @@ def main(connection: libvirt.virConnect) -> bool:
             for n_hosts in range(1, harness_settings.max_n_hosts + 1):
                 logging.info(f"Testing on {n_hosts} hosts")
 
+                # create the report for this n hosts, add to parent report
+                n_host_report = NHostReport(n_hosts)
+                os_report.n_host_reports.append(n_host_report)
+
                 # create n number of hosts
+                create_results = []
                 for linked_clone_host in linked_clone_hosts[0:n_hosts]:
                     logging.info(f"Creating linked clone host: {linked_clone_host.name}")
-                    clone_create_result = linked_clone_host.create()
-
-                # TODO - if creating linked clones failed
+                    create_results.append(linked_clone_host.create())
+                # if creating linked clones failed
+                if not all(create_results):
+                    logging.error(f"Failed to create linked clone hosts")
+                    # cannot continue with this run, report and move on
+                    n_host_report.create_linked_clone_hosts = False
+                    continue
+                else:
+                    n_host_report.create_linked_clone_hosts = True
 
 
                 # TODO - configure testbed settings, first host will be 'main' for cluster mode, the others should be
@@ -115,32 +147,51 @@ def main(connection: libvirt.virConnect) -> bool:
 
                 # TODO run all test cases, for now we will re-use the same guests for the whole test suite
                 logging.info("Begin integration tests")
-                run_tests_result = run_tests(linked_clone_hosts)
+                run_tests_result, test_case_results = run_tests(linked_clone_hosts)
                 if not run_tests_result:
                     logging.error(f"Test suite failed")
                 else:
                     logging.info(f"Test suite succeeded")
-                # TODO - collect report for tests
+                # collect report for tests
+                n_host_report.test_case_reports.extend(test_case_results)
 
                 # clean up linked clones
+                destroy_results = []
                 for linked_clone_host in linked_clone_hosts:
                     logging.info(f"Destroying linked clone host: {linked_clone_host.name}")
-                    clone_destroy_result = linked_clone_host.ensure_destroyed()
+                    destroy_results.append(linked_clone_host.ensure_destroyed())
+                # if destroying any linked clones failed
+                if not all(destroy_results):
+                    logging.error(f"Failed to destroy linked clone hosts")
+                    n_host_report.destroy_linked_clone_hosts = False
+                else:
+                    n_host_report.destroy_linked_clone_hosts = True
 
-
-    # TODO prepare report from test harness results
 
     # clean up the test harness working area in the libvirt images folder
     if not harness_settings.dev_mode:
-        shutil.rmtree(workspace_folder)
+        try:
+            shutil.rmtree(workspace_folder)
+        except OSError as e:
+            logging.error(f"Error deleting workspace folder: {e}")
+            test_harness_report.test_harness_state = TestHarnessState.CLEAR_WORKSPACE
+            return test_harness_report
+
+    # TODO - we might not have been able to clear the workspace, but we might have been able to clear the network, and
+    #  ideally we should despite the workspace failing to clear, but at the moment we wont try as the previous would
+    #  return on a failure
 
     # we are done with the test harness network, we can destroy
     if not harness_settings.dev_mode:
-        harness_network.net_destroy()
-        harness_network.net_undefine()
+        try:
+            harness_network.net_destroy()
+            harness_network.net_undefine()
+        except libvirt.libvirtError as e:
+            logging.error(f"Error destroying network: {e}")
+            test_harness_report.test_harness_state = TestHarnessState.CLEAR_NETWORK
+            return test_harness_report
 
-    # TODO - return based on success of harness, so take all result bools and only return True if all True
-    return network_result
+    return test_harness_report
 
 
 if __name__ == '__main__':
@@ -153,12 +204,13 @@ if __name__ == '__main__':
     conn = get_libvirt_connection()
 
     # run test harness
-    result = main(conn)
+    result_report = main(conn)
+    result_report.print_results()
 
     logging.info("Closing connection to libvirt")
     conn.close()
     logging.info("End of test harness")
 
-    if not result:
+    if not result_report.get_success():
         sys.exit(1)
 
