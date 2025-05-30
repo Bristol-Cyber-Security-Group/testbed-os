@@ -13,7 +13,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # copy in all scripts and artefacts for running the test harness
 COPY py_harness .
-COPY test_cases test_cases
 COPY assets assets
 RUN chmod 600 /app/assets/ssh_key/id_ed25519 && chmod 600 /app/assets/ssh_key/id_ed25519_kvm
 
