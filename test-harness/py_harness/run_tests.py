@@ -22,5 +22,11 @@ def run_tests(linked_clone_hosts: List[LinkedCloneHost]) -> bool:
 
     # TODO - collate the test case results
 
-    return True
+    # for all test cases, check if any have a failed result so that we can change the test harness outcome exit code
+    # we call .success() which will return False only if one of the test cases failed
+    all_results = all([tt.success() for tt in executed_test_cases])
+
+    # TODO - return the report with the success/fail value of all_results, to then be checked later by the test harness
+
+    return all_results
 

@@ -1,5 +1,6 @@
 import os
 import time
+from pathlib import Path
 
 import libvirt
 import logging
@@ -43,7 +44,13 @@ class Host:
         logging.info(f"Checking if {self.name} exists")
         try:
             # check to see if it exists
-            return self.conn.lookupByName(self.name)
+            domain_exists = self.conn.lookupByName(self.name)
+            # check filesystem as the image might have been wiped swapping in and out of dev mode
+            disk_exists = Path(self.img_location).exists()
+            if domain_exists is not None and disk_exists:
+                return domain_exists
+            else:
+                return None
         except libvirt.libvirtError as e:
             return None
 

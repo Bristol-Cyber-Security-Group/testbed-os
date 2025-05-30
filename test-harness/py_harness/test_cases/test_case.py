@@ -53,6 +53,10 @@ class TestCase(ABC):
 
         return self.test_result
 
+    def success(self) -> bool:
+        # check all the results, if any failed then return a false
+        return self.deploy_result and self.test_result and self.destroy_result and self.cleanup_result
+
     @abstractmethod
     def test_case(self) -> bool:
         # test case to be implemented per test case, this should contain all runtime tests
