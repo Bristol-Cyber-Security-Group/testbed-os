@@ -1,13 +1,9 @@
 <network>
     <name>test-harness-network</name>
     <forward mode='nat'>
-<!--        <nat>-->
-<!--            <port start='1024' end='65535'/>-->
-<!--        </nat>-->
+
     </forward>
-<!--    <bridge name='test-br0' stp='on' delay='0'/>-->
-<!--    <mtu size="2000"/>-->
-<!--    <domain name='testbed.host' localOnly='yes'/>-->
+
     <ip address='192.168.subnetoctet.1' netmask='255.255.255.0'>
         <dhcp>
             <range start='192.168.subnetoctet.2' end='192.168.subnetoctet.254'/>
