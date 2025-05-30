@@ -1,0 +1,44 @@
+---
+prereq_packages:
+  - libvirt-dev 
+  - libssl-dev 
+  - gcc 
+  - make 
+  - zlib1g 
+  - zlib1g-dev
+  - libsqlite3-dev 
+  - libffi-dev 
+  - libncurses5 
+  - libncurses5-dev
+  - libncursesw5
+  - libreadline-dev 
+  - lzma 
+  - liblzma-dev 
+  - libbz2-dev 
+  - libtool 
+  - autoconf
+  - git 
+  - pip 
+  - python3.11-venv
+  - qemu-kvm 
+  - libvirt-daemon-system 
+  - libvirt-clients
+  - libnss-libvirt
+  - genisoimage
+  - virt-manager
+
+
+docker_steps: |
+  #!/bin/bash
+  apt-get update
+  apt-get install -y ca-certificates curl
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+  chmod a+r /etc/apt/keyrings/docker.asc
+
+  echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  apt-get update
+  apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin

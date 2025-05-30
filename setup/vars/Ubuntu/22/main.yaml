@@ -1,0 +1,52 @@
+---
+prereq_packages:
+  - libvirt-dev 
+  - libssl-dev 
+  - gcc 
+  - make 
+  - zlib1g 
+  - zlib1g-dev
+  - libsqlite3-dev 
+  - libffi-dev 
+  - libncurses5 
+  - libncurses5-dev
+  - libncursesw5
+  - libreadline-dev 
+  - lzma 
+  - liblzma-dev 
+  - libbz2-dev 
+  - libtool 
+  - autoconf
+  - git 
+  - pip 
+  - python3.10-venv
+  - qemu-kvm 
+  - libvirt-daemon-system 
+  - libvirt-clients
+  - libnss-libvirt
+  - genisoimage
+  - virt-manager
+
+docker_steps: |
+  #!/bin/bash
+  set -e
+
+  # Update the apt package index and install packages to allow apt to use a repository over HTTPS
+  apt-get update
+  apt-get install -y ca-certificates curl gnupg
+
+  # Add Docker’s official GPG key
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  chmod a+r /etc/apt/keyrings/docker.gpg
+
+  # Use the following command to set up the repository
+  echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+    $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+  # Update the apt package index again
+  apt-get update
+
+  # Install Docker Engine, containerd, and Docker Compose
+  apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin

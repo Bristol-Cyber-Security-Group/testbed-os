@@ -59,7 +59,7 @@
 
   - name: Check Docs are present
     ansible.builtin.stat:
-      path: /var/lib/testbedos/assets/documentation/
+      path: /var/lib/testbedos/assets/documentation/index.html
     register: sphinx_docs
 
   - name: Check Textual User Interface is installed
