@@ -23,6 +23,7 @@
     ansible.builtin.file:
       path: "../../build"
       state: absent
+    become: yes
     when:  server_check.stat.exists
 
 

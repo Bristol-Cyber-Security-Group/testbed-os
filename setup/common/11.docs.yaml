@@ -17,7 +17,7 @@
       block:
 
         - name: Get Poetry virtualenv path
-          shell: poetry env info -p
+          shell: "$HOME/.local/bin/poetry env info -p"
           register: poetry_venv_path
 
         - name: Clean previous build artifacts
