@@ -5,7 +5,6 @@ from host_images import BaseOperatingSystem
 from test_cases.test_case import TestCase
 
 
-
 class NHostReport:
 
     timestamp: datetime

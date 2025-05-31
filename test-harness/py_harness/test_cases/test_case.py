@@ -11,6 +11,24 @@ from guest_control import ssh_command
 registered_test_cases = []
 
 
+class TestReport:
+
+    success = False
+    info: Optional[str]
+    test_name: str
+
+    def __init__(self, test_name: str, info: Optional[str] = None):
+        self.test_name = test_name
+        self.info = info
+
+    def to_dict(self) -> dict:
+        return {
+            "test_name": self.test_name,
+            "success": self.success,
+            "info": self.info,
+        }
+
+
 class TestCase(ABC):
 
     """
@@ -24,7 +42,7 @@ class TestCase(ABC):
 
     # results
     deploy_result: Optional[bool] = None
-    test_result: Optional[bool] = None
+    test_result: Optional[List[TestReport]] = None
     destroy_result: Optional[bool] = None
     cleanup_result: Optional[bool] = None
 
@@ -32,6 +50,7 @@ class TestCase(ABC):
         self.timestamp = datetime.now()
         self.test_case_name = test_case_name
         self.linked_clone_hosts = linked_clone_hosts
+        self.test_result = []
 
     def run(self) -> bool:
         logging.info(f"Running test case '{self.test_case_name}'")
@@ -41,8 +60,8 @@ class TestCase(ABC):
         if not self.deploy_result:
             return False
 
-        # subclass will implement the runtime tests
-        self.test_result = self.test_case()
+        # test case will return a list of TestReports, containing success and any info
+        self.test_result.extend(self.test_case())
 
         logging.info(f"Destroying '{self.test_case_name}' test")
         self.destroy_result = destroy_test_case(self.test_case_name, self.linked_clone_hosts)
@@ -54,14 +73,16 @@ class TestCase(ABC):
         if not self.cleanup_result:
             return False
 
-        return self.test_result
+        return True
 
     def success(self) -> bool:
         # check all the results, if any failed then return a false
-        return self.deploy_result and self.test_result and self.destroy_result and self.cleanup_result
+        # test_result needs to have the inner tests checked
+        all_test_result = all(item.success for item in self.test_result)
+        return self.deploy_result and all_test_result and self.destroy_result and self.cleanup_result
 
     @abstractmethod
-    def test_case(self) -> bool:
+    def test_case(self) -> List[TestReport]:
         # test case to be implemented per test case, this should contain all runtime tests
         raise NotImplementedError()
 
@@ -70,7 +91,7 @@ class TestCase(ABC):
             "timestamp": str(self.timestamp.isoformat()),
             "test_case_name": self.test_case_name,
             "deploy_result": self.deploy_result,
-            "test_result": self.test_result,
+            "test_result": [res.to_dict() for res in self.test_result],
             "destroy_result": self.destroy_result,
             "cleanup_result": self.cleanup_result,
         }
@@ -137,7 +158,7 @@ def clear_artefacts(example_name: str, linked_clone_hosts: List[LinkedCloneHost]
 
     # finally also remove the state json, as this would prevent future up commands from working
     logging.info(f"Remove state json for '{test_case}'")
-    rm_state_json_result = ssh_command(f"cd {test_case} && rm {test_case}-state.json",
+    rm_state_json_result = ssh_command(f"cd {test_case} && rm {example_name}-state.json",
                               harness_settings.base_ssh_key,
                               linked_clone_hosts[0].hostname,  # first host will be main
                               )
