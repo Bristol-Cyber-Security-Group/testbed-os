@@ -13,8 +13,6 @@ machines:
         cloud_image:
           name: ubuntu_20_04
           expand_gigabytes: 2
-#          context: ./kvm-compose.yaml
-          setup_script: ./setup_script.sh
 
   - name: client1
     network:
@@ -29,8 +27,6 @@ machines:
         cloud_image:
           name: ubuntu_20_04
           expand_gigabytes: 2
-#          context: ./kvm-compose.yaml
-          setup_script: ./setup_script.sh
 
   - name: client2
     network:
@@ -45,8 +41,6 @@ machines:
         cloud_image:
           name: ubuntu_20_04
           expand_gigabytes: 2
-#          context: ./kvm-compose.yaml
-          setup_script: ./setup_script.sh
 
   - name: nginx
     network:
@@ -56,10 +50,6 @@ machines:
         ip: "10.0.0.14"
     docker:
       image: nginx:stable
-#      env_file: docker.env
-      volumes:
-        - source: ${PWD}/html
-          target: /usr/share/nginx/html
 
 network:
   ovn:
