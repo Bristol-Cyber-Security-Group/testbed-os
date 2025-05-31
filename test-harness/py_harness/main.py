@@ -106,6 +106,8 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
             if not install_best_host_result:
                 # report failure, and where in the installation it failed
                 os_report.install_testbed = False
+                base_host.ensure_destroyed()
+                time.sleep(5)
                 continue
             else:
                 os_report.install_testbed = True

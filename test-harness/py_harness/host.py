@@ -45,8 +45,10 @@ class Host:
         try:
             # check to see if it exists
             domain_exists = self.conn.lookupByName(self.name)
+            logging.info(f"Domain exists: {True if domain_exists else False}")
             # check filesystem as the image might have been wiped swapping in and out of dev mode
             disk_exists = Path(self.img_location).exists()
+            logging.info(f"Disk exists: {True if disk_exists else False}")
             if domain_exists is not None and disk_exists:
                 return domain_exists
             else:
