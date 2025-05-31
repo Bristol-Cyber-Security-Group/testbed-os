@@ -16,16 +16,19 @@ class TestReport:
     success = False
     info: Optional[str]
     test_name: str
+    timestamp: datetime
 
     def __init__(self, test_name: str, info: Optional[str] = None):
         self.test_name = test_name
         self.info = info
+        self.timestamp = datetime.now()
 
     def to_dict(self) -> dict:
         return {
             "test_name": self.test_name,
             "success": self.success,
             "info": self.info,
+            "timestamp": str(self.timestamp.isoformat()),
         }
 
 
