@@ -11,7 +11,8 @@ In the python script, you must do the following:
 
 1. Create a class that inherits from `TestCase` 
 2. Implement the function `test_case`.
-2. Register this class into the `registered_test_cases` list
+3. Implement the tests that return type `TestReport` and/or re-use existing tests.
+4. Register this class into the `registered_test_cases` list
 
 Example:
 
@@ -22,21 +23,21 @@ from typing import List
 from host import LinkedCloneHost
 from .test_case import TestCase, registered_test_cases
 
-class BaseTestCase(TestCase):  # <--------------- 1.
+class BaseTestCase(TestCase):  # <------------------------------ 1.
 
     def __init__(self, linked_clone_hosts: List[LinkedCloneHost]):
         super().__init__("base", linked_clone_hosts)
 
-    def test_case(self) -> List[TestReport]:  # <------------ 2.
+    def test_case(self) -> List[TestReport]:  # <-------------- 2.
         
         # Here you implement tests inside the guests defined in the yaml
         
-        test_1 = ...  # This MUST be of type ``TestReport``
-        test_2 = ...
+        test_1 = ...  # This MUST be of type ``TestReport`` <-- 3.
+        test_2 = ... check_internet_connectivity( ... )
         
         return [test_1, test_2]  # return all tests in a list
 
-registered_test_cases.append(BaseTestCase)  # <-- 3.
+registered_test_cases.append(BaseTestCase)  # <---------------- 4.
 ```
 
 To implement tests, you will need to use the mechanisms defined in the testbed `kvm-compose` tool.
