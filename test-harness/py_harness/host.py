@@ -201,7 +201,6 @@ class BaseHost(Host):
 
         # get code for this commit
         try:
-            # TODO - get current state of dev code from host if test_id is dev, rsync code into base host
             branch = harness_settings.test_id if harness_settings.test_id != "dev" else "develop"
             if branch == "develop" and harness_settings.code_mounted:
                 # the code has been mounted into the container, we can use this instead of pulling from github,
@@ -303,8 +302,6 @@ class BaseHost(Host):
             logging.error(e)
             return False
 
-        # TODO - do we need guest keys, since testbed manages that already
-
         return True
 
 
@@ -329,7 +326,6 @@ class LinkedCloneHost(Host):
                 self.set_hostname(f"nocloud@192.168.{harness_settings.harness_subnet_octet}.1{number}")
 
     def create(self) -> bool:
-        # TODO create linked clone
 
         clone_workspace_folder = f"{harness_settings.workspace}/{self.name}"
 
@@ -349,7 +345,6 @@ class LinkedCloneHost(Host):
             "qemu-img", "create", "-f", "qcow2", "-F", "qcow2",
             "-b", self.base_host.img_location, self.img_location])
 
-        # TODO - is there any chance of code reuse with the base host provisioning
         match self.base_host.image_os.value.os_init:
             case OSInit.cloud_init:
                 os.mkdir(clone_workspace_folder)

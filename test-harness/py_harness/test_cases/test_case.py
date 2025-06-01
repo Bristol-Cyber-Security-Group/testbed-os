@@ -155,7 +155,7 @@ def clear_artefacts(example_name: str, linked_clone_hosts: List[LinkedCloneHost]
                               linked_clone_hosts[0].hostname,  # first host will be main
                               )
 
-    # TODO - if this fails, should we still try to remote the state json? relevant for reporting as well
+    # TODO - if this fails, should we still try to remove the state json? relevant for reporting as well
     if clear_artefacts_result.returncode != 0:
         return False
 

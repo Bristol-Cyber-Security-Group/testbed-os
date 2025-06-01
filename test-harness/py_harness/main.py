@@ -28,9 +28,6 @@ def get_libvirt_connection() -> libvirt.virConnect:
 
 
 def main(connection: libvirt.virConnect) -> TestHarnessReport:
-    # TODO initialise report - capture the different stages that will follow and accept if/when/where there is a failure
-    #  and also how/when to capture the early terminations due to failure gracefully
-
     test_harness_report = TestHarnessReport()
 
     # initialise working area for the test harness in the libvirt images folder
@@ -38,7 +35,7 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
         workspace_folder = Path(harness_settings.workspace)
         if not workspace_folder.exists():
             workspace_folder.mkdir(parents=True, exist_ok=True)
-        # TODO make sure workspace is clean before starting, but do we re-use images downloaded?
+        # TODO make sure workspace is clean before starting
     except OSError as e:
         logging.error(f"Error creating workspace folder: {e}")
         # set test harness state to failed workspace
@@ -53,7 +50,7 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
     if not network_result:
         # there was a problem in creating the network for this instance of the test harness
         logging.error("Failed to establish a libvirt network for the test harness, cannot continue")
-        # TODO log network error in report
+
         test_harness_report.test_harness_state = TestHarnessState.CREATE_NETWORK
         return test_harness_report
 
@@ -143,12 +140,6 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
                 else:
                     n_host_report.create_linked_clone_hosts = True
 
-
-                # TODO - configure testbed settings, first host will be 'main' for cluster mode, the others should be
-                #  in 'client' mode, pointing to the 'main' testbed host
-
-
-                # TODO run all test cases, for now we will re-use the same guests for the whole test suite
                 logging.info("Begin integration tests")
                 run_tests_result, test_case_results = run_tests(linked_clone_hosts)
                 if not run_tests_result:
