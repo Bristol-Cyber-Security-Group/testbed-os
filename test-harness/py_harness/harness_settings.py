@@ -1,0 +1,45 @@
+import logging
+import os
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# harness settings
+test_id = os.getenv('COMMIT_HASH', 'dev')
+workspace = f"/var/lib/libvirt/images/testbed-os/test-harness/{test_id}"
+max_n_hosts = 1  # how many hosts the test harness will go up to before stopping, max 3 supported
+
+host_ready_increment_seconds = 10
+host_ready_timeout_seconds = 120
+
+# this is the location of the test case code on the host, not in the docker image
+test_case_location = "~/testbed-os/test-harness/py_harness/test_cases/"
+
+# we can optionally mount the codebase into the container for development purposes
+code_mount_path = "/app/testbed-os"
+code_mounted = True if os.path.exists(code_mount_path) else False
+
+# set the guest image to be used inside the test harness
+guest_vm_image_url = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+
+# libvirt settings
+harness_network_name = f"test-harness-network-{test_id}"
+
+harness_subnet_octet = 50
+
+base_vm_mem = 2048
+base_vm_disk = "+20G"
+base_vm_cpu = 2
+
+guest_vm_mem = 5020
+guest_vm_cpu = 2
+
+# asset locations
+testbed_network_location = "/app/assets/testbed-network.xml"
+# cloud-init
+cloud_init_meta_data = "/app/assets/iso/meta-data"
+cloud_init_user_data = "/app/assets/iso/user-data"
+cloud_init_network_config = "/app/assets/iso/network-config"
+# VM keys
+base_ssh_key = "/app/assets/ssh_key/id_ed25519"
+
+
+dev_mode = bool(os.getenv('DEV_MODE', False))

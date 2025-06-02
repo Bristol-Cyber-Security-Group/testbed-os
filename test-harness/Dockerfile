@@ -1,0 +1,19 @@
+FROM python:3.13.3-slim-bookworm
+LABEL authors="drrtdrrt"
+
+WORKDIR /app
+COPY requirements.txt .
+# we need some packages to be able to install libvirt-python and libvirt utilities
+RUN apt-get update && \
+    apt-get install pkg-config libvirt-dev gcc qemu-utils virtinst ssh rsync -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+# install the test harness python environment
+RUN pip install --no-cache-dir -r requirements.txt
+
+# copy in all scripts and artefacts for running the test harness
+COPY py_harness .
+COPY assets assets
+RUN chmod 600 /app/assets/ssh_key/id_ed25519 && chmod 600 /app/assets/ssh_key/id_ed25519_kvm
+
+CMD ["python3", "main.py"]

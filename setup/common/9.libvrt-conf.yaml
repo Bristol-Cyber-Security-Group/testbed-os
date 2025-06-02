@@ -17,15 +17,32 @@
     when:   user_name not in libvirt_group.stdout
     become: true
 
+  - name: Check if user is in kvm group
+    command: getent group kvm
+    register: kvm_group
+
+  - name: Add user to kvm group
+    user:
+      name: "{{ user_name }}"
+      groups: kvm
+      append: yes
+    when: user_name not in kvm_group.stdout
+    become: true
+
   - name: Restart libvirt system
     systemd:
       name: libvirtd
       state: restarted
       enabled: yes
-    when:  user_name not in libvirt_group.stdout
+    when:  user_name not in libvirt_group.stdout or user_name not in kvm_group.stdout
     become: true
 
-  - name: Confirm libvirt user is in the group
+  - name: Confirm user is in the libvirt group
     debug:
       msg: "{{ user_name }} is in the libvirt user group"
     when:  user_name in libvirt_group.stdout
+
+  - name: Confirm user is in the kvm group
+    debug:
+      msg: "{{ user_name }} is in the libvirt user group"
+    when: user_name in kvm_group.stdout

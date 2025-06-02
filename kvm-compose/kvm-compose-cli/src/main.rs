@@ -66,6 +66,7 @@ pub async fn run_app() -> Result<(), anyhow::Error> {
         Err(err) => {
             tracing::error!("ERROR: {}", err);
             err.chain().skip(1).for_each(|cause| tracing::error!("because: {}", cause));
+            bail!(err)
         }
     }
     Ok(())

@@ -1,7 +1,7 @@
 # Test Harness
 
 This is the test harness for the testbed, with the objective to test all the features and processes of the testbed code.
-However this is not a replacement for testing on physical hardware, which will be a little different.
+However, this is not a replacement for testing on physical hardware, which will be a little different.
 This test harness will attempt to test as much as possible in a virtual environment.
 
 This is a collection of scripts to deploy N number of libvirt virtual machines to emulate a testbed environment on a single machine.
@@ -18,12 +18,15 @@ Terminology:
 
 # Architecture
 
-We will use cloud-init as a base image for the testbed hosts to simplify getting credentials into the host to control remotely.
+We use cloud-init as a base image for the testbed hosts to simplify provisioning and configuration.
+The base image operating systems will range over the supported operating systems for the testbed.
+Once the testbed is installed on the base image, we will utilise linked clones to spawn N number of identical hosts that will be further configured.
+The use of linked clones just makes clearing and starting a new test environment space and time efficient.
 
-We will use snapshots of the testbed hosts to speed up the testing from known working states.
+The tests will be repeated on one, two and three tested hosts to test the clustering feature and internal processes.
 
-We will use the design of "one, two and many" to test the testbed's capability to work in the various scenarios.
-However, the "many" will remain only as three testbed hosts due to our hardware limitation.
+Given that we are building virtual machines for the testbed hosts, the testbed guests will be nested virtual machines.
+These nested virtual machines will be short-lived and will not be doing any intense compute of I/O work so the performance hit will be negligible.
 
 ## Testing Phase 1
 This testing phase only concerns the installation of the testbed onto a fresh testbed host.
@@ -35,27 +38,32 @@ The output of this phase will be snapshotted as a starting point for the tests i
 ## Testing Phase 2
 This testing phase will test each pre-defined test case, defined as the kvm-compose.yaml files.
 
-All assets for each test case are asserted for their existence, including:
-- bridges, tunnels and veths
-- guests
-  - guest ip address
-  - guest communication across the testbed (single and multiple testbed hosts)
-  - guest external network connectivity
-
-Further tests:
+Runtime tests such as:
 - snapshots
 - CLI commands not directly involved in orchestration of a test case
 - running commands and pushing/pulling files to/from guests
-- network isolation
+- exhaustive network feature tests based on the yaml file constraints
 
 
 # Features Explicitly Not Tested
 
 - guests with desktop environments
   - reason: Guests with a GUI has been experimental in this project. Testing and automating graphical user interfaces is more complex aside from asserting the desktop environment exists. The performance of nested guests is also prohibitive by increasing testing complexity due to delays in input.
-- 
+- android guests (for now)
+  - reason: The testbed host must have a desktop environment to support the emulators graphics dependencies, we are currently only using headless hosts
 
-# Usage
+# Results and Reports
 
-Execute the single test harness script and wait for all tests to complete.
-Make sure libvirt is installed and the cloud-init image is downloaded into this folder.
+The test harness will output a report at the end of the run.
+This will contain the results for all tests executed, in a nested JSON format.
+The nesting captures the parameter combinations of base operating system, number of hosts and the test cases.
+Generally following test pass/fail result record using booleans.
+
+# Usage and CICD
+
+The test harness has been hooked up to the GitHub actions workflow.
+It will run on every PR and commit push for each branch.
+
+# Adding More Test Coverage
+
+Please see the README.md in the `test_cases` folder.
