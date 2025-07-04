@@ -7,7 +7,7 @@
       path: /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager
     register: sdkmanager_check
 
-  - name: Ensure necessary packages are installed
+  - name: Ensure necessary packages are installed (apt)
     apt:
       name:
         - openjdk-17-jdk
@@ -16,7 +16,18 @@
         - wget
       state: present
     become: yes
-    when: not sdkmanager_check.stat.exists
+    when: not sdkmanager_check.stat.exists and ansible_pkg_mgr == "apt"
+
+  - name: Ensure necessary packages are installed (pacman)
+    pacman:
+      name:
+        - jdk17-openjdk
+        - android-tools
+        - unzip
+        - wget
+      state: present
+    become: yes
+    when: not sdkmanager_check.stat.exists and ansible_pkg_mgr == "pacman"
 
   - name: Create Android SDK directory
     file:
