@@ -5,13 +5,13 @@ import time
 
 import libvirt
 import logging
-import harness_settings
+from py_harness import harness_settings
 from pathlib import Path
-from host_images import BaseOperatingSystem
-from harness_network import HarnessNetwork
-from host import BaseHost, LinkedCloneHost
+from py_harness.config.host_images import BaseOperatingSystem
+from py_harness.config.harness_network import HarnessNetwork
+from py_harness.config.host import BaseHost, LinkedCloneHost
 from run_tests import run_tests
-from reporting import TestHarnessReport, TestHarnessState, OSReport, NHostReport
+from reporting.reporting import TestHarnessReport, TestHarnessState, OSReport, NHostReport
 
 
 def get_libvirt_connection() -> libvirt.virConnect:
@@ -103,7 +103,11 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
             if not install_best_host_result:
                 # report failure, and where in the installation it failed
                 os_report.install_testbed = False
-                base_host.ensure_destroyed()
+                if not harness_settings.dev_mode:
+                    base_host.ensure_destroyed()
+                else:
+                    logging.error("Installation of the testbed did not work, but in dev mode so stopping here.")
+                    return test_harness_report
                 time.sleep(5)
                 continue
             else:

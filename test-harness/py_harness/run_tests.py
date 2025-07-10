@@ -1,6 +1,6 @@
 import logging
 from typing import List
-from host import LinkedCloneHost
+from py_harness.config.host import LinkedCloneHost
 from test_cases.test_case import TestCase, registered_test_cases
 
 

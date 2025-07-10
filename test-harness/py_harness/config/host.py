@@ -4,12 +4,12 @@ from pathlib import Path
 
 import libvirt
 import logging
-import harness_settings
+from py_harness import harness_settings
 import shutil
 import subprocess
 from typing import Optional
-from host_images import BaseOperatingSystem, OSInit
-from guest_control import ssh_command
+from .host_images import BaseOperatingSystem, OSInit
+from .guest_control import ssh_command
 
 
 class Host:
@@ -211,6 +211,7 @@ class BaseHost(Host):
                                 "--exclude", ".git/*",
                                 "--exclude", "target/*",
                                 "--exclude", "artefacts/*",
+                                "--exclude", "setup/common/build",
                                 harness_settings.code_mount_path,
                                 f"{self.hostname}:~/"
                                 ])

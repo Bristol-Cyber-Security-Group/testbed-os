@@ -1,6 +1,6 @@
 import enum
 import logging
-import harness_settings
+from py_harness import harness_settings
 from pathlib import Path
 from urllib.request import urlretrieve
 

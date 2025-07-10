@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 from typing import Optional, List
-from host_images import BaseOperatingSystem
+from py_harness.config.host_images import BaseOperatingSystem
 from test_cases.test_case import TestCase
 
 

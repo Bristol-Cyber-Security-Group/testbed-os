@@ -2,7 +2,7 @@ import time
 
 import libvirt
 import logging
-import harness_settings
+from py_harness import harness_settings
 from typing import Optional
 
 class HarnessNetwork:

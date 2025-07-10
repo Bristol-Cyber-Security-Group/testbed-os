@@ -73,6 +73,9 @@ Please see the README.md in the `test_cases` folder.
 You will need to run the test harness in the development mode, which will disable cleanup.
 This allows you to inspect the system during development in the case of a test failure.
 Note that any code changes either requires the image to be rebuilt or you mount the edited code into the image.
+You may also want to focus on one base host type i.e. just Ubuntu22 for example, by commenting out the other in `config/host_images.py`.
+This then keeps that base host deployed as the base image for you to work from, otherwise you will have only the last base image the harness worked on, on disk.
+
 You will need to build the image in the test harness folder:
 ```shell
 cd test-harness
@@ -90,6 +93,7 @@ docker run -it \
   -v /var/lib/libvirt/images:/var/lib/libvirt/images --network=host \
   -v $CODE_MOUNT:/app/testbed-os \
   -v $CODE_MOUNT/test-harness/py_harness:/app \
+  -v $CODE_MOUNT/test-harness/assets:/app/assets \
   -e DEV_MODE=1 --rm test-harness:dev
 ```
 
