@@ -12,12 +12,12 @@ clap = { workspace = true}
 tracing = { workspace = true}
 anyhow = { workspace = true}
 reqwest = { workspace = true}
-validator = {version = "0.16", features = ["derive"]}
+validator = {version = "0.20.0", features = ["derive"]}
 serde_yaml = { workspace = true}
-serde_plain = "1.0.1"
+serde_plain = "1.0.2"
 strum = "0.26.1"
 strum_macros = "0.26.1"
 nix = { workspace = true}
 tokio = { workspace = true}
-futures = "0.3.29"
+futures = { workspace = true}
 chrono = { workspace = true }
