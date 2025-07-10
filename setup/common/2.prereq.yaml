@@ -6,19 +6,10 @@
   - name: Include variables based on OS
     include_vars: "{{ lookup('first_found', {'files': ['../vars/{{ ansible_distribution }}/{{ ansible_distribution_major_version }}/main.yaml'], 'paths': ['.']}) }}"
 
-  - name: Install via Aptitude
-    apt:
+  - name: Install packages
+    ansible.builtin.package:
       name: "{{prereq_packages}}"
       state: latest
-      update_cache: yes
-    when: ansible_pkg_mgr == "apt"
-
-  - name: Install via Pacman
-    pacman:
-      name: "{{prereq_packages}}"
-      state: latest
-      update_cache: yes
-    when: ansible_pkg_mgr == "pacman"
 
   - name: Confirm LibVirt is installed
     ansible.builtin.debug: 

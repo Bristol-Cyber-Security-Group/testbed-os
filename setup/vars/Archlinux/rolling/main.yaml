@@ -9,3 +9,9 @@ prereq_packages:
 docker_steps: |
   #!/bin/bash
   pacman -S docker --noconfirm
+
+android_packages:
+  - jdk17-openjdk
+  - android-tools
+  - unzip
+  - wget
