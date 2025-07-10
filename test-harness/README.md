@@ -72,14 +72,16 @@ Please see the README.md in the `test_cases` folder.
 
 You will need to run the test harness in the development mode, which will disable cleanup.
 This allows you to inspect the system during development in the case of a test failure.
-
-You will need to build the image in the test harnes folder:
+Note that any code changes either requires the image to be rebuilt or you mount the edited code into the image.
+You will need to build the image in the test harness folder:
 ```shell
 cd test-harness
 docker image build -t test-harness:dev .
 ```
 
 Then you must run the image with dev mode enabled.
+We mount both the test harness code and then the testbed code inside.
+With the dev mode flag, this lets you run any changes to the test-harness and/or testbed code.
 NOTE: you must set your `CODE_MOUNT` variable to the root of your repo (the parent to the test-harness folder).
 ```shell
 CODE_MOUNT=/root of testbed repo/
@@ -87,6 +89,7 @@ docker run -it \
   -v /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock \
   -v /var/lib/libvirt/images:/var/lib/libvirt/images --network=host \
   -v $CODE_MOUNT:/app/testbed-os \
+  -v $CODE_MOUNT/test-harness/py_harness:/app \
   -e DEV_MODE=1 --rm test-harness:dev
 ```
 
