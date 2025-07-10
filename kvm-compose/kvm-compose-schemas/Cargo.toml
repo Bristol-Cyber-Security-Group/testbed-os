@@ -15,8 +15,8 @@ reqwest = { workspace = true}
 validator = {version = "0.20.0", features = ["derive"]}
 serde_yaml = { workspace = true}
 serde_plain = "1.0.2"
-strum = "0.26.1"
-strum_macros = "0.26.1"
+strum = "0.27.1"
+strum_macros = "0.27.1"
 nix = { workspace = true}
 tokio = { workspace = true}
 futures = { workspace = true}

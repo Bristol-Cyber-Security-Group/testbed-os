@@ -132,7 +132,7 @@ pub fn welcome(frame: &mut Frame) {
         Press any other key to continue.
         ")
             .block(Block::bordered().title("Testbed Setup")),
-        frame.size(),
+        frame.area(),
     );
 }
 
@@ -145,7 +145,7 @@ pub fn must_be_sudo(frame: &mut Frame) {
             \n\
             Press 'q' to quit."
         ).block(Block::bordered().title("Testbed Setup - ERROR")),
-        frame.size(),
+        frame.area(),
     );
 }
 

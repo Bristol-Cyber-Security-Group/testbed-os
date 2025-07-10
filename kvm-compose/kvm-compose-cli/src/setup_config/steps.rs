@@ -97,7 +97,7 @@ pub fn loop_step(
 
 #[allow(dead_code)]
 fn host_json(frame: &mut Frame) {
-    let area = frame.size();
+    let area = frame.area();
     // layout config
 
     // outer - Left is distance from title, Right unclear (might be area for blocks below, everything but title)
@@ -144,7 +144,7 @@ fn qemu_conf(frame: &mut Frame) {
     frame.render_widget(
         Paragraph::new("TODO")
             .block(Block::bordered().title("Testbed Setup - qemu conf")),
-        frame.size(),
+        frame.area(),
     );
 }
 
@@ -153,7 +153,7 @@ fn system_dns(frame: &mut Frame) {
     frame.render_widget(
         Paragraph::new("TODO")
             .block(Block::bordered().title("Testbed Setup - system dns")),
-        frame.size(),
+        frame.area(),
     );
 }
 
@@ -162,7 +162,7 @@ fn toggle_resource_monitoring(frame: &mut Frame) {
     frame.render_widget(
         Paragraph::new("TODO")
             .block(Block::bordered().title("Testbed Setup - toggle resource monitoring")),
-        frame.size(),
+        frame.area(),
     );
 }
 
@@ -171,6 +171,6 @@ fn execute(frame: &mut Frame) {
     frame.render_widget(
         Paragraph::new("TODO")
             .block(Block::bordered().title("Testbed Setup - execute")),
-        frame.size(),
+        frame.area(),
     );
 }
