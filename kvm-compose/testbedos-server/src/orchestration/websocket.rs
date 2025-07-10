@@ -1,7 +1,6 @@
-use std::borrow::Cow;
 use std::sync::Arc;
 use anyhow::{bail, Context};
-use axum::extract::ws::{CloseFrame, Message, WebSocket};
+use axum::extract::ws::{CloseFrame, Message, Utf8Bytes, WebSocket};
 use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::SplitSink;
 use tokio::sync::{mpsc, Mutex};
@@ -74,7 +73,7 @@ async fn run(
             match instruction {
                 Ok(ok) => {
                     // acknowledge
-                    let _ = sender.lock().await.send(Message::Text("Receiving instruction OK".to_string()))
+                    let _ = sender.lock().await.send(Message::Text("Receiving instruction OK".into()))
                         .await
                         .context("sending acknowledgement")?;
                     // confirm
@@ -83,7 +82,7 @@ async fn run(
                         .run_init()
                         .await?;
                     let serialised_response = serde_json::to_string(&run_instruction_res)?;
-                    let _ = sender.lock().await.send(Message::Text(serialised_response))
+                    let _ = sender.lock().await.send(Message::Text(serialised_response.into()))
                         .await
                         .context("sending instruction result")?;
                     // return the init protocol for later code to get deployment info
@@ -92,7 +91,7 @@ async fn run(
                 Err(_) => {
                     let _ = sender.lock().await.send(Message::Close(Some(CloseFrame {
                         code: 1011, // this is error
-                        reason: Cow::from("Could not deserialise the Init instruction"),
+                        reason: Utf8Bytes::from("Could not deserialise the Init instruction"),
                     }))).await.context("sending close to client websocket")?;
                     bail!("could not deserialise Init instruction");
                 }
@@ -101,7 +100,7 @@ async fn run(
         _ => {
             let _ = sender.lock().await.send(Message::Close(Some(CloseFrame {
                 code: 1011, // this is error
-                reason: Cow::from("The client did not begin orchestration with an Init instruction"),
+                reason: Utf8Bytes::from("The client did not begin orchestration with an Init instruction"),
             }))).await.context("sending close to client websocket")?;
             bail!("client did not begin with init instruction");
         }
@@ -133,7 +132,7 @@ async fn run(
         _ => {
             let _ = sender.lock().await.send(Message::Close(Some(CloseFrame {
                 code: 1011, // this is error
-                reason: Cow::from("The client did not begin orchestration with an Init instruction"),
+                reason: Utf8Bytes::from("The client did not begin orchestration with an Init instruction"),
             }))).await.context("sending close to client websocket")?;
             bail!("client did not begin with init instruction");
         }
@@ -219,7 +218,7 @@ async fn run(
                     // connection might already be closed by client so don't handle error with ?
                     let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
                         code: 1000,
-                        reason: Cow::from("Last command received, connection closed"),
+                        reason: Utf8Bytes::from("Last command received, connection closed"),
                     }))).await.context("sending close to client websocket"); // TODO - need ? here?
 
                     break;
@@ -229,7 +228,7 @@ async fn run(
                 // message from client was not Ok
                 let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
                     code: 1011,
-                    reason: Cow::from("The server could not process the last message, connection closed"),
+                    reason: Utf8Bytes::from("The server could not process the last message, connection closed"),
                 }))).await.context("sending close to client websocket")?;
 
                 break;
@@ -335,7 +334,7 @@ async fn get_instruction_result(
                     _ => {}
                 }
 
-                let _ = ws_sender.lock().await.send(Message::Text(serialised_response))
+                let _ = ws_sender.lock().await.send(Message::Text(serialised_response.into()))
                     .await
                     .context("sending instruction logging message")?;
             }
@@ -378,7 +377,7 @@ async fn process_client_instruction(
             let instruction: OrchestrationProtocol = serde_json::from_slice(&b)?;
             tracing::info!("orchestration got instruction: {:?}", &instruction.instruction);
 
-            let _ = loop_sender.lock().await.send(Message::Text("Receiving instruction OK".to_string()))
+            let _ = loop_sender.lock().await.send(Message::Text("Receiving instruction OK".into()))
                 .await
                 .context("sending acknowledgement")?;
 
@@ -396,7 +395,7 @@ async fn process_client_instruction(
 
             // send to client the result
             let serialised_response = serde_json::to_string(&run_instruction_res)?;
-            let _ = loop_sender.lock().await.send(Message::Text(serialised_response))
+            let _ = loop_sender.lock().await.send(Message::Text(serialised_response.into()))
                 .await
                 .context("sending instruction result")?;
 
@@ -443,14 +442,14 @@ async fn process_potential_cancel_token(
                 is_success: false,
                 message: "Cancel request".to_string(),
             })?;
-            let _ = loop_sender_cancel.lock().await.send(Message::Text(serialised_response))
+            let _ = loop_sender_cancel.lock().await.send(Message::Text(serialised_response.into()))
                 .await
                 .context("sending instruction result")?;
 
             tracing::info!("client has sent a cancellation token, closing connection");
             let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
                 code: 1000,
-                reason: Cow::from("The client sent a cancellation token, connection closed"),
+                reason: Utf8Bytes::from("The client sent a cancellation token, connection closed"),
             }))).await.context("sending close to client websocket")?;
             Ok(true)
         }

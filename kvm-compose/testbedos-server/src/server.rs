@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 use tokio::process::{Command};
 use std::sync::Arc;
 use axum::extract::Request;
-use http::{HeaderValue, Method};
+use axum::http::{HeaderValue, Method};
 use sysinfo::{System};
 use tera::Tera;
 use tokio::net::TcpListener;
