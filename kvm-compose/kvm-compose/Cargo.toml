@@ -12,7 +12,7 @@ name = "kvm_compose_lib"
 path = "src/lib.rs"
 
 [dependencies]
-serde = {version = "1.0.152", features = ["derive"]}
+serde = { workspace = true}
 thiserror = { workspace = true}
 anyhow = { workspace = true}
 reqwest = { workspace = true}
