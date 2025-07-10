@@ -84,40 +84,46 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
             # now we can start the process of setting up the base VM and install the testbed, if it exists still that
             # is because dev mode has allowed it and we just continue
             base_host_exists = base_host.exists()  # this contains the libvirt reference to the domain
-            if base_host_exists is None:
-                create_base_host_result = base_host.create()
-                if not create_base_host_result:
-                    # report failed result
-                    os_report.create_base_host = False
 
-                    # go to next test
+            # this skips the base host deployment, assuming it has already been run
+            if harness_settings.dev_skip_base_deploy:
+                if base_host_exists is None:
+                    create_base_host_result = base_host.create()
+                    if not create_base_host_result:
+                        # report failed result
+                        os_report.create_base_host = False
+
+                        # go to next test
+                        continue
+                elif not base_host_exists.isActive():
+                    # base host already exists, due to dev mode so just start it
+                    base_host.start()
+                    base_host.check_if_ready(harness_settings.base_ssh_key)
+                os_report.create_base_host = True
+
+                # install testbed code, in dev mode this just re-runs the ansible on top of the existing install
+                install_best_host_result = base_host.install_testbed()
+                if not install_best_host_result:
+                    # report failure, and where in the installation it failed
+                    os_report.install_testbed = False
+                    if not harness_settings.dev_mode:
+                        base_host.ensure_destroyed()
+                    else:
+                        logging.error("Installation of the testbed did not work, but in dev mode so stopping here.")
+                        return test_harness_report
+                    time.sleep(5)
                     continue
-            elif not base_host_exists.isActive():
-                # base host already exists, due to dev mode so just start it
-                base_host.start()
-                base_host.check_if_ready(harness_settings.base_ssh_key)
-            os_report.create_base_host = True
-
-            # install testbed code, in dev mode this just re-runs the ansible on top of the existing install
-            install_best_host_result = base_host.install_testbed()
-            if not install_best_host_result:
-                # report failure, and where in the installation it failed
-                os_report.install_testbed = False
-                if not harness_settings.dev_mode:
-                    base_host.ensure_destroyed()
                 else:
-                    logging.error("Installation of the testbed did not work, but in dev mode so stopping here.")
-                    return test_harness_report
-                time.sleep(5)
-                continue
-            else:
-                os_report.install_testbed = True
+                    os_report.install_testbed = True
 
-            # turn off base host before creating linked clones
-            base_host.stop()
-            # sleep a bit, the VM won't shut down quickly enough as the libvirt shutdown command is non-blocking
-            # TODO - check with libvirt directly for off status
-            time.sleep(5)
+                # turn off base host before creating linked clones
+                base_host.stop()
+                # sleep a bit, the VM won't shut down quickly enough as the libvirt shutdown command is non-blocking
+                # TODO - check with libvirt directly for off status
+                time.sleep(5)
+            else:
+                # we skipped the base host deploy, assume install way okay and set to True
+                os_report.install_testbed = True
 
             # TODO check if the base host has turned off
 
