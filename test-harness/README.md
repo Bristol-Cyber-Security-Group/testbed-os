@@ -67,3 +67,28 @@ It will run on every PR and commit push for each branch.
 # Adding More Test Coverage
 
 Please see the README.md in the `test_cases` folder.
+
+# Running Locally for test development
+
+You will need to run the test harness in the development mode, which will disable cleanup.
+This allows you to inspect the system during development in the case of a test failure.
+
+You will need to build the image in the test harnes folder:
+```shell
+cd test-harness
+docker image build -t test-harness:dev .
+```
+
+Then you must run the image with dev mode enabled.
+NOTE: you must set your `CODE_MOUNT` variable to the root of your repo (the parent to the test-harness folder).
+```shell
+CODE_MOUNT=/root of testbed repo/
+docker run -it \
+  -v /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock \
+  -v /var/lib/libvirt/images:/var/lib/libvirt/images --network=host \
+  -v $CODE_MOUNT:/app/testbed-os \
+  -e DEV_MODE=1 --rm test-harness:dev
+```
+
+This will then run the test harness in development mode, using the current code in the repo instead of pulling from GitHub.
+

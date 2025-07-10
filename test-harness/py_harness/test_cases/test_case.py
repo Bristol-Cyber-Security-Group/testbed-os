@@ -37,6 +37,9 @@ class TestCase(ABC):
     """
     This class represents a test case. This should be inherited by each implementation for a test case, and
     implement ``test_case``.
+
+    The implementation of ``test_case`` function must return a list of test case report(s) of type ``TestReport``.
+    This can be a list of one or more TestReports.
     """
 
     test_case_name: str
