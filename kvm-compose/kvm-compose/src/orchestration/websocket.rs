@@ -14,7 +14,7 @@ use tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode;
 use kvm_compose_schemas::cli_models::Opts;
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationLoggerLevel, OrchestrationProtocol, OrchestrationProtocolResponse};
-use crate::orchestration::orchestrator::{run_orchestration};
+use crate::orchestration::orchestrator::{run_orchestration, CommandResult};
 
 struct WebsocketContainer {
     pub sender: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
@@ -34,7 +34,7 @@ pub async fn ws_orchestration_client(
     deployment: Deployment,
     command: DeploymentCommand,
     opts: Opts,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<bool> {
     tracing::debug!("starting orchestration websocket");
 
     let ws_stream = match connect_async(runner_url).await {
@@ -141,12 +141,12 @@ pub async fn ws_orchestration_client(
             orchestration_message_cmd_receiver_thread,
             orchestration_interrupt_listener,
         )).await.context("running parallel tasks to manage command running state")?;
-        match deployment_result {
-            Ok(_) => {}
+        let success = match deployment_result {
+            Ok(cmd_res) => cmd_res.command_success,
             Err(err) => {
                 bail!(err); // TODO - we should close the websocket before bailing
             },
-        }
+        };
 
         // close websocket
         tracing::debug!("closing websocket");
@@ -158,18 +158,19 @@ pub async fn ws_orchestration_client(
             reason: Cow::from("End of orchestration"),
         }))).await.context("sending close message to orchestration worker")?;
 
-        Ok(())
+        Ok(success)
     })
         .await
         .context("spawning send receive task for client");
     
     // get result of task creation, then get result of orchestration - send errors to GUI and tell
     // the channel receiver to close
-    match run_orchestration_res {
+    let success = match run_orchestration_res {
         Ok(orchestration_result) => {
             match orchestration_result {
-                Ok(_) => {
+                Ok(success) => {
                     tracing::info!("orchestration command finished");
+                    success
                 }
                 Err(err) => {
                     bail!("Orchestration Failed, error: {err:#}");
@@ -179,11 +180,11 @@ pub async fn ws_orchestration_client(
         Err(err) => {
             bail!(err);
         }
-    }
+    };
 
     tracing::debug!("Orchestration socket closed");
 
-    Ok(())
+    Ok(success)
 }
 
 /// We have three concurrent async tasks running, and we need to be able to handle either if the
@@ -191,11 +192,11 @@ pub async fn ws_orchestration_client(
 /// finished then we abort the interrupt listener. If the interrupt listener has finished, we abort
 /// the command running. The command running consists of the command generator and the command
 /// sender.
-pub async fn future_loop<T>(
-    orchestration_cmd_generation_thread: JoinHandle<anyhow::Result<Deployment>>,
-    orchestration_message_cmd_receiver_thread: JoinHandle<T>,
-    orchestration_interrupt_listener: JoinHandle<Result<T, Error>>
-) -> anyhow::Result<Deployment> {
+pub async fn future_loop(
+    orchestration_cmd_generation_thread: JoinHandle<Result<CommandResult, Error>>,
+    orchestration_message_cmd_receiver_thread: JoinHandle<Result<(), Error>>,
+    orchestration_interrupt_listener: JoinHandle<Result<(), Error>>
+) -> anyhow::Result<CommandResult> {
     loop {
         if orchestration_interrupt_listener.is_finished() {
             // caught interrupt, abort the others
@@ -212,8 +213,8 @@ pub async fn future_loop<T>(
             tracing::debug!("awaiting on cmd gen");
             let result = orchestration_cmd_generation_thread.await?;
             tracing::debug!("awaiting on msg gen");
-            orchestration_message_cmd_receiver_thread.await?;
-            tracing::debug!("returning deployment result");
+            let cmd_run_result = orchestration_message_cmd_receiver_thread.await?;
+            cmd_run_result?;
             return result;
         }
         // TODO - what if either orchestration_cmd_generation_thread or orchestration_message_cmd_receiver_thread never finishes?

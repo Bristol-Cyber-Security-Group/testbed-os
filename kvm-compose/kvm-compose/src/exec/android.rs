@@ -14,7 +14,7 @@ pub async fn shell_command(
     _guest_name_with_project: &String,
     _common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<(String, i32)> {
     let error_str = "shell command (ADB shell) not implemented - see command: kvm-compose exec phone tool adb --help";
     logging_send.send(OrchestrationLogger::error(error_str.to_string())).await?;
     bail!(error_str)
