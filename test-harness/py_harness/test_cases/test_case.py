@@ -1,6 +1,6 @@
 import time
 import logging
-from harness_settings import test_case_location, base_ssh_key
+from harness_settings import test_case_location, base_ssh_key, dev_mode
 from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import List, Optional
@@ -60,6 +60,17 @@ class TestCase(ABC):
 
     def run(self) -> bool:
         logging.info(f"Running test case '{self.test_case_name}'")
+
+        if dev_mode:
+            logging.info(f"Dev mode enabled, making sure that there is no previous uncleared deployment")
+            for host in self.linked_clone_hosts:
+                logging.info("Making sure the testbed server is running on the hosts")
+                ssh_command(f"sudo systemctl restart testbedos-server.service",
+                            base_ssh_key,
+                            host.hostname,
+                            )
+            time.sleep(2)
+            destroy_test_case(self.test_case_name, self.linked_clone_hosts)
 
         logging.info(f"Deploying '{self.test_case_name}' test")
         self.deploy_result = deploy_test_case(self.test_case_name, self.linked_clone_hosts)

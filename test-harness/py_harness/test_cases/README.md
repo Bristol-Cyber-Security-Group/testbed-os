@@ -48,6 +48,10 @@ For tests like network connectivity, these can be re-used so one has been implem
 You can take a look to see how it is implemented, and how the reporting is organised.
 It is important that the tests uses the same format as these will then be automatically collected and presented in the final JSON report.
 
+## Important Note
+Once the test case is deployed, virtual machines might still be starting up.
+The different guest types take different amount of times to start up and have different mechanisms to check if up.
+It will be up to each specific test case to make this check before proceeding.
 
 ## Test Descriptions
 

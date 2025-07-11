@@ -17,10 +17,12 @@ class BaseTestCase(TestCase):
         merged_guests += libvirt_guests
         merged_guests += docker_guests
 
+        up_result_report = check_if_libvirt_guests_are_up(self.test_case_name, self.linked_clone_hosts, libvirt_guests)
+
         # try internet connectivity tests
         libvirt_net_test_report = check_internet_connectivity(self.test_case_name, self.linked_clone_hosts, merged_guests)
 
 
-        return [libvirt_net_test_report]
+        return [up_result_report, libvirt_net_test_report]
 
 registered_test_cases.append(BaseTestCase)

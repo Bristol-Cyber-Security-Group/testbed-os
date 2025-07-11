@@ -86,7 +86,7 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
             base_host_exists = base_host.exists()  # this contains the libvirt reference to the domain
 
             # this skips the base host deployment, assuming it has already been run
-            if harness_settings.dev_skip_base_deploy:
+            if not harness_settings.dev_skip_base_deploy:
                 if base_host_exists is None:
                     create_base_host_result = base_host.create()
                     if not create_base_host_result:
@@ -159,17 +159,18 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
                 # collect report for tests
                 n_host_report.test_case_reports.extend(test_case_results)
 
-                # clean up linked clones
-                destroy_results = []
-                for linked_clone_host in linked_clone_hosts:
-                    logging.info(f"Destroying linked clone host: {linked_clone_host.name}")
-                    destroy_results.append(linked_clone_host.ensure_destroyed())
-                # if destroying any linked clones failed
-                if not all(destroy_results):
-                    logging.error(f"Failed to destroy linked clone hosts")
-                    n_host_report.clear_linked_clone_hosts = False
-                else:
-                    n_host_report.clear_linked_clone_hosts = True
+                if not harness_settings.dev_mode:
+                    # clean up linked clones
+                    destroy_results = []
+                    for linked_clone_host in linked_clone_hosts:
+                        logging.info(f"Destroying linked clone host: {linked_clone_host.name}")
+                        destroy_results.append(linked_clone_host.ensure_destroyed())
+                    # if destroying any linked clones failed
+                    if not all(destroy_results):
+                        logging.error(f"Failed to destroy linked clone hosts")
+                        n_host_report.clear_linked_clone_hosts = False
+                    else:
+                        n_host_report.clear_linked_clone_hosts = True
 
 
     # clean up the test harness working area in the libvirt images folder
