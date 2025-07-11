@@ -5,6 +5,7 @@ use rexpect::ReadUntil;
 use rexpect::session::PtySession;
 use tokio::sync::mpsc::{Sender};
 use tokio::sync::{mpsc};
+use console::strip_ansi_codes;
 use kvm_compose_schemas::exec::ExecCmdFileTransfer;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::exec::file_transfer::*;
@@ -167,20 +168,29 @@ pub async fn shell_command(
         }
     }
 
-    // make sure exit code was a number
-    let exit_code = if command_exit_code.is_some() {
-        let maybe_int_exit_code = command_exit_code.unwrap().parse::<i32>();
-        match maybe_int_exit_code {
-            Ok(ok) => ok,
-            Err(_) => bail!("the command did not return an exit code: {:?}", maybe_int_exit_code),
-        }
+    // parse the outputs
+    let ansi_strip_command_output = strip_ansi_codes(&command_output).to_string();
+    let ansi_strip_command_exit_code = if let Some(exit_code) = command_exit_code {
+        strip_ansi_codes(&exit_code).to_string()
     } else {
-        bail!("could not get an exit code from running the command");
+        logging_send.send(OrchestrationLogger::error(format!("Could not get exit code, got {command_exit_code:?} instead. Setting to -1"))).await?;
+        "-1".to_string()
+    };
+    // TODO - stripping carriage returns like this is likely to cause a weird edge case, how to avoid?
+    //  i.e. can we prevent this ANSI code problem earlier up the chain?
+    let ansi_strip_command_output = ansi_strip_command_output.replace("\r", "");
+    let ansi_strip_command_exit_code = ansi_strip_command_exit_code.replace("\r", "");
+
+    // make sure exit code was a number
+    let maybe_int_exit_code = ansi_strip_command_exit_code.parse::<i32>();
+    let parsed_exit_code = match maybe_int_exit_code {
+        Ok(ok) => ok,
+        Err(_) => bail!("the command did not return an exit code: {:?}", maybe_int_exit_code),
     };
 
     // the command output will also have the first line as the command input, as a side effect of
     // using expect - we need to remove it as we did for the exit code
-    let mut command_output_lines = command_output.lines();
+    let mut command_output_lines = ansi_strip_command_output.lines();
     command_output_lines.next();
     let mut final_command_output = command_output_lines
         .map(|line| format!("{}\n", line))
@@ -192,8 +202,8 @@ pub async fn shell_command(
 
     // log the output depending on if the command worked or not
     let cmd_output_string = format!("Command output:\n{}", final_command_output);
-    let finish_command_string = format!("Finished running command in guest {} pty, with exit code {}", guest_name_with_project, exit_code);
-    if exit_code != 0 {
+    let finish_command_string = format!("Finished running command in guest {} pty, with exit code {}", guest_name_with_project, parsed_exit_code);
+    if parsed_exit_code != 0 {
         logging_send.send(OrchestrationLogger::error(cmd_output_string)).await?;
         logging_send.send(OrchestrationLogger::error(finish_command_string)).await?;
     } else {
@@ -201,7 +211,7 @@ pub async fn shell_command(
         logging_send.send(OrchestrationLogger::info(finish_command_string)).await?;
     }
 
-    Ok((final_command_output, exit_code))
+    Ok((final_command_output, parsed_exit_code))
 }
 
 /// Depending on whether the virsh console is currently in use or not, will determine whether we can
