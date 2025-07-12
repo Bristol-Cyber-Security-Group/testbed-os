@@ -22,10 +22,19 @@ class BaseTestCase(TestCase):
         # try internet connectivity tests
         libvirt_net_test_report = check_internet_connectivity(self.test_case_name, self.linked_clone_hosts, merged_guests)
 
+        inter_guest_connection = test_connection_between_guests(
+            self.test_case_name,
+            self.linked_clone_hosts,
+            "client1",
+            "server",
+            "10.0.0.11:8000",
+            "curl between two libvirt guests",
+        )
 
         return [
             up_result_report,
             libvirt_net_test_report,
+            inter_guest_connection,
         ]
 
 registered_test_cases.append(BaseTestCase)

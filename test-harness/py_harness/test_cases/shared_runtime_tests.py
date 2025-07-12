@@ -3,7 +3,7 @@ import time
 
 from py_harness.harness_settings import test_case_location, base_ssh_key
 from py_harness.config.host import LinkedCloneHost
-from py_harness.config.guest_control import ssh_command
+from py_harness.config.guest_control import ssh_command, long_running_ssh_command
 from .test_case import TestReport
 from typing import List
 import inspect
@@ -82,4 +82,41 @@ def check_internet_connectivity(
             msg = msg + f"guest: {guest}, stderr: {err_msg.stderr}\n"
         report.info = msg
 
+    return report
+
+
+def test_connection_between_guests(
+    test_case_name: str,
+    linked_clone_hosts: List[LinkedCloneHost],
+    from_guest: str,
+    to_guest: str,
+    to_guest_ip_and_port: str,
+    test_report_name: str,
+) -> TestReport:
+    # send a curl request from one guest to another
+    test_case = f"{test_case_location}/{test_case_name}"
+    python_server_process: subprocess.Popen[str] = long_running_ssh_command(
+        f"cd {test_case} && kvm-compose exec {to_guest} shell-command python3 -m http.server",
+        base_ssh_key,
+        linked_clone_hosts[0].hostname,  # first host will be main
+        )
+
+
+    # wait a second to let the command and server start
+    time.sleep(1)
+    # run the curl from the other guest
+    curl_process: subprocess.CompletedProcess = ssh_command(
+        f"cd {test_case} && kvm-compose exec {from_guest} shell-command curl {to_guest_ip_and_port}",
+        base_ssh_key,
+        linked_clone_hosts[0].hostname,  # first host will be main
+        )
+
+    # consume the lines to get to the statuscode
+    list(python_server_process.stdout.readlines())
+
+    python_server_process.terminate()
+
+    report = TestReport(inspect.currentframe().f_code.co_name)
+    report.success = True if curl_process.returncode == 0 else False
+    report.info = test_report_name
     return report
