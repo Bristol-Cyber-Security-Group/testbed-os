@@ -21,6 +21,8 @@ pub async fn prepare_guest_exec_command(
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<bool> {
 
+    logging_send.send(OrchestrationLogger::info(format!("running exec {:?} on {}", exec_cmd.command_type, exec_cmd.guest_name))).await?;
+
     // make sure we use the guest name without the project name internally
     let guest_name = &exec_cmd.guest_name;
     let project_name_hyphen = format!("{}-", &project_name);
