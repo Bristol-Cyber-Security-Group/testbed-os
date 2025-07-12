@@ -9,7 +9,7 @@ from typing import List
 import inspect
 
 
-def check_if_libvirt_guests_are_up(
+def check_if_guests_are_up(
     test_case_name: str,
     linked_clone_hosts: List[LinkedCloneHost],
     libvirt_guest_names: List[str],
@@ -36,9 +36,11 @@ def check_if_libvirt_guests_are_up(
 
         # collect all three results, if all three up then break with test report
         all_ok = all(item[1].returncode == 0 for item in results)
-        if all_ok:
+        # check if there are the right number of hosts up
+        n_hosts_up = len(list(filter(lambda x: x[1].returncode == 0, results)))
+        if all_ok and n_hosts_up == len(libvirt_guest_names):
             report.success = True
-            report.info = "Libvirt guests are all up"
+            report.info = f"The ({n_hosts_up}) guests are all up"
             return report
 
         time.sleep(timeout_increment)
@@ -47,7 +49,7 @@ def check_if_libvirt_guests_are_up(
         if timeout_counter > timeout:
             # failed, set up test result failure
             report.success = False
-            msg = ""
+            msg = f"There were ({n_hosts_up}) up, "
             for guest, err_msg in results:
                 msg = msg + f"guest: {guest}, stderr: {err_msg.stderr}\n"
             report.info = msg
