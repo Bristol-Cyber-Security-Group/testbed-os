@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import time
 
@@ -15,6 +16,8 @@ def check_if_guests_are_up(
     libvirt_guest_names: List[str],
 ) -> TestReport:
     report = TestReport(inspect.currentframe().f_code.co_name)
+    logging.info(f"Running test {report.test_name}")
+
     test_case = f"{test_case_location}/{test_case_name}"
     # for each guest up to a timeout, use the exec command to test if the guest can run the command, meaning it is
     # up and ready to be used - the command will only work if you can log in, which is a satisfactory 'ready' state
@@ -61,6 +64,9 @@ def check_internet_connectivity(
         linked_clone_hosts: List[LinkedCloneHost],
         guest_names: List[str],
 ) -> TestReport:
+    report = TestReport(inspect.currentframe().f_code.co_name)
+    logging.info(f"Running test {report.test_name}")
+
     test_case = f"{test_case_location}/{test_case_name}"
     # for each guest supplied (by names in the yaml file), try to curl google as a network test
     results = []
@@ -71,7 +77,6 @@ def check_internet_connectivity(
                             )
         results.append([guest_name, curl_result])
 
-    report = TestReport(inspect.currentframe().f_code.co_name)
     # check test results
     all_ok = all(item[1].returncode == 0 for item in results)
     report.success = all_ok
@@ -92,18 +97,22 @@ def test_connection_between_guests(
     to_guest: str,
     to_guest_ip_and_port: str,
     test_report_name: str,
+    start_python_server: bool,
 ) -> TestReport:
     # send a curl request from one guest to another
+    report = TestReport(inspect.currentframe().f_code.co_name + test_report_name)
+    logging.info(f"Running test {report.test_name}")
+
     test_case = f"{test_case_location}/{test_case_name}"
-    python_server_process: subprocess.Popen[str] = long_running_ssh_command(
-        f"cd {test_case} && kvm-compose exec {to_guest} shell-command python3 -m http.server",
-        base_ssh_key,
-        linked_clone_hosts[0].hostname,  # first host will be main
-        )
+    if start_python_server:
+        python_server_process: subprocess.Popen[str] = long_running_ssh_command(
+            f"cd {test_case} && kvm-compose exec {to_guest} shell-command python3 -m http.server",
+            base_ssh_key,
+            linked_clone_hosts[0].hostname,  # first host will be main
+            )
 
-
-    # wait a second to let the command and server start
-    time.sleep(1)
+        # wait a second to let the command and server start
+        time.sleep(5)
     # run the curl from the other guest
     curl_process: subprocess.CompletedProcess = ssh_command(
         f"cd {test_case} && kvm-compose exec {from_guest} shell-command curl {to_guest_ip_and_port}",
@@ -111,10 +120,11 @@ def test_connection_between_guests(
         linked_clone_hosts[0].hostname,  # first host will be main
         )
 
-    # consume the lines to get to the statuscode
-    list(python_server_process.stdout.readlines())
+    if start_python_server:
+        # consume the lines to get to the statuscode
+        list(python_server_process.stdout.readlines())
 
-    python_server_process.terminate()
+        python_server_process.terminate()
 
     report = TestReport(inspect.currentframe().f_code.co_name + test_report_name)
     report.success = True if curl_process.returncode == 0 else False

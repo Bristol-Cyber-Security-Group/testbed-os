@@ -30,6 +30,7 @@ class BaseTestCase(TestCase):
             "server",
             "10.0.0.11:8000",
             "_both_libvirt",
+            True,
         )
         # test internal connection between a libvirt guest and docker guest, where connection initiated from docker guest
         inter_docker_guest_connection = test_connection_between_guests(
@@ -39,6 +40,7 @@ class BaseTestCase(TestCase):
             "server",
             "10.0.0.11:8000",
             "_from_docker",
+            True,
         )
         # TODO - to a docker guest
 
