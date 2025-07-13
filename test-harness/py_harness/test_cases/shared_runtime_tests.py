@@ -116,7 +116,7 @@ def test_connection_between_guests(
 
     python_server_process.terminate()
 
-    report = TestReport(inspect.currentframe().f_code.co_name)
+    report = TestReport(inspect.currentframe().f_code.co_name + test_report_name)
     report.success = True if curl_process.returncode == 0 else False
-    report.info = test_report_name
+    report.info = ""
     return report
