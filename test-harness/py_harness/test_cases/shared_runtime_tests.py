@@ -15,7 +15,7 @@ def check_if_guests_are_up(
     linked_clone_hosts: List[LinkedCloneHost],
     libvirt_guest_names: List[str],
 ) -> TestReport:
-    report = TestReport(inspect.currentframe().f_code.co_name)
+    report = TestReport(inspect.currentframe().f_code.co_name + "_" + test_case_name)
     logging.info(f"Running test {report.test_name}")
 
     test_case = f"{test_case_location}/{test_case_name}"
@@ -60,11 +60,11 @@ def check_if_guests_are_up(
 
 
 def check_internet_connectivity(
-        test_case_name: str,
-        linked_clone_hosts: List[LinkedCloneHost],
-        guest_names: List[str],
+    test_case_name: str,
+    linked_clone_hosts: List[LinkedCloneHost],
+    guest_names: List[str],
 ) -> TestReport:
-    report = TestReport(inspect.currentframe().f_code.co_name)
+    report = TestReport(inspect.currentframe().f_code.co_name + "_" + test_case_name)
     logging.info(f"Running test {report.test_name}")
 
     test_case = f"{test_case_location}/{test_case_name}"
@@ -100,7 +100,7 @@ def test_connection_between_guests(
     start_python_server: bool,
 ) -> TestReport:
     # send a curl request from one guest to another
-    report = TestReport(inspect.currentframe().f_code.co_name + test_report_name)
+    report = TestReport(inspect.currentframe().f_code.co_name + test_report_name + "_" + test_case_name)
     logging.info(f"Running test {report.test_name}")
 
     test_case = f"{test_case_location}/{test_case_name}"
