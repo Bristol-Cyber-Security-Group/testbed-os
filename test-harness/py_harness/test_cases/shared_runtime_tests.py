@@ -2,9 +2,9 @@ import logging
 import subprocess
 import time
 
-from py_harness.harness_settings import test_case_location, base_ssh_key
-from py_harness.config.host import LinkedCloneHost
-from py_harness.config.guest_control import ssh_command, long_running_ssh_command
+from harness_settings import test_case_location, base_ssh_key
+from config.host import LinkedCloneHost
+from config.guest_control import ssh_command, long_running_ssh_command
 from .test_case import TestReport
 from typing import List
 import inspect

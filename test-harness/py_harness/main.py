@@ -5,11 +5,11 @@ import time
 
 import libvirt
 import logging
-from py_harness import harness_settings
+import harness_settings
 from pathlib import Path
-from py_harness.config.host_images import BaseOperatingSystem
-from py_harness.config.harness_network import HarnessNetwork
-from py_harness.config.host import BaseHost, LinkedCloneHost
+from config.host_images import BaseOperatingSystem
+from config.harness_network import HarnessNetwork
+from config.host import BaseHost, LinkedCloneHost
 from run_tests import run_tests
 from reporting.reporting import TestHarnessReport, TestHarnessState, OSReport, NHostReport
 

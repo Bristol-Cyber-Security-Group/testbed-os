@@ -4,8 +4,8 @@ from harness_settings import test_case_location, base_ssh_key, dev_mode
 from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from py_harness.config.host import LinkedCloneHost
-from py_harness.config.guest_control import ssh_command
+from config.host import LinkedCloneHost
+from config.guest_control import ssh_command
 
 # register the test cases here in the files they are written
 registered_test_cases = []
