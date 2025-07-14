@@ -19,7 +19,9 @@ pub async fn prepare_guest_exec_command(
     state: &State,
     orchestration_common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<bool> {
+
+    logging_send.send(OrchestrationLogger::info(format!("running exec {:?} on {}", exec_cmd.command_type, exec_cmd.guest_name))).await?;
 
     // make sure we use the guest name without the project name internally
     let guest_name = &exec_cmd.guest_name;
@@ -46,8 +48,9 @@ pub async fn prepare_guest_exec_command(
             ).await;
             // check command running result
             match cmd_res {
-                Ok(_) => {
+                Ok(success) => {
                     // do nothing with a success for now
+                    Ok(success)
                 }
                 Err(err) => {
                     // propagate the error
@@ -59,7 +62,6 @@ pub async fn prepare_guest_exec_command(
             bail!("Could not find guest {guest_name} in the project state");
         }
     }
-    Ok(())
 }
 
 /// Run the exec command on the guest. This function will determine what command to use based on
@@ -71,7 +73,7 @@ pub async fn run_guest_exec_cmd(
     state: &State,
     orchestration_common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<bool> {
     check_command_on_guest_type(guest_data, exec_cmd)?;
 
     // we know the guest name coming into this function has the project name stripped, but we will
@@ -79,7 +81,7 @@ pub async fn run_guest_exec_cmd(
     let guest_name_with_project = format!("{}-{}", &orchestration_common.project_name, &guest_name);
 
     // create common so that we can use orchestration commands
-    match &exec_cmd {
+    let success = match &exec_cmd {
         ExecCmdType::ShellCommand(command) => {
             tracing::info!("running shell command on guest {guest_name}");
             // make sure there was a command given of at least one word
@@ -90,16 +92,21 @@ pub async fn run_guest_exec_cmd(
                 bail!("No command was given");
             }
 
-            match &guest_data.guest_type.guest_type {
+            let shell_command_result = match &guest_data.guest_type.guest_type {
                 GuestType::Libvirt(_) => {
-                    libvirt::shell_command(cmd, command.timeout, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?;
+                    libvirt::shell_command(cmd, command.timeout, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?
                 }
                 GuestType::Docker(_) => {
-                    docker::shell_command(cmd, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?;
+                    docker::shell_command(cmd, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?
                 }
                 GuestType::Android(_) => {
-                    android::shell_command(cmd, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?;
+                    android::shell_command(cmd, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?
                 }
+            };
+            if shell_command_result.1 == 0 {
+                true
+            } else {
+                false
             }
         }
         ExecCmdType::Push(transfer) => {
@@ -108,6 +115,7 @@ pub async fn run_guest_exec_cmd(
                 GuestType::Libvirt(_) => libvirt::push(transfer, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?,
                 _ => bail!("unsupported guest type"),
             }
+            true
         }
         ExecCmdType::Pull(transfer) => {
             tracing::info!("pushing {:?} from guest {guest_name}", &transfer.source_path);
@@ -115,6 +123,7 @@ pub async fn run_guest_exec_cmd(
                 GuestType::Libvirt(_) => libvirt::pull(transfer, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?,
                 _ => bail!("unsupported guest type"),
             }
+            true
         }
         ExecCmdType::Tool(tool) => {
             tracing::info!("running tool on guest {guest_name_with_project}");
@@ -141,9 +150,10 @@ pub async fn run_guest_exec_cmd(
                     android::test_privacy(&namespace, &command.command, &logging_send).await?;
                 }
             }
+            true
         }
-    }
-    Ok(())
+    };
+    Ok(success)
 }
 
 /// Check if the command is available for the guest type

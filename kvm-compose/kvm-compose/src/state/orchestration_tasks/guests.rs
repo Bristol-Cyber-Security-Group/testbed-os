@@ -621,9 +621,8 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
         // assume there is only one interface for docker
         if !net.is_empty() {
             // for now assume only one interface
-            if let Some(gateway) = &net[0].gateway {
-                cmd_string.push(format!("--dns={}", gateway));
-            }
+            // TODO - configure DNS in yaml
+            cmd_string.push("--dns=1.1.1.1".to_string());
         }
 
         // cmd_string.push(format!("--dns=1.0.0.1"));

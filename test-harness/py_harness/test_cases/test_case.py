@@ -1,11 +1,11 @@
 import time
 import logging
-import harness_settings
+from harness_settings import test_case_location, base_ssh_key, dev_mode
 from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from host import LinkedCloneHost
-from guest_control import ssh_command
+from config.host import LinkedCloneHost
+from config.guest_control import ssh_command
 
 # register the test cases here in the files they are written
 registered_test_cases = []
@@ -37,6 +37,9 @@ class TestCase(ABC):
     """
     This class represents a test case. This should be inherited by each implementation for a test case, and
     implement ``test_case``.
+
+    The implementation of ``test_case`` function must return a list of test case report(s) of type ``TestReport``.
+    This can be a list of one or more TestReports.
     """
 
     test_case_name: str
@@ -57,6 +60,17 @@ class TestCase(ABC):
 
     def run(self) -> bool:
         logging.info(f"Running test case '{self.test_case_name}'")
+
+        if dev_mode:
+            logging.info(f"Dev mode enabled, making sure that there is no previous uncleared deployment")
+            for host in self.linked_clone_hosts:
+                logging.info("Making sure the testbed server is running on the hosts")
+                ssh_command(f"sudo systemctl restart testbedos-server.service",
+                            base_ssh_key,
+                            host.hostname,
+                            )
+            time.sleep(2)
+            destroy_test_case(self.test_case_name, self.linked_clone_hosts)
 
         logging.info(f"Deploying '{self.test_case_name}' test")
         self.deploy_result = deploy_test_case(self.test_case_name, self.linked_clone_hosts)
@@ -105,12 +119,12 @@ def deploy_test_case(example_name: str, linked_clone_hosts: List[LinkedCloneHost
     # the tests we want to use exist in the test harness folder, which will have the relevant kvm-compose.yaml files
 
     # get the location of the test, where the kvm-compose.yaml exists
-    test_case = f"{harness_settings.test_case_location}/{example_name}"
+    test_case = f"{test_case_location}/{example_name}"
     # make sure the testbed-server is running as a daemon on all hosts
     for host in linked_clone_hosts:
         logging.info("Making sure the testbed server is running on the hosts")
         ssh_command(f"sudo systemctl restart testbedos-server.service",
-                    harness_settings.base_ssh_key,
+                    base_ssh_key,
                     host.hostname,
                     )
     # need to give the server a second to start before it can accept commands
@@ -118,7 +132,7 @@ def deploy_test_case(example_name: str, linked_clone_hosts: List[LinkedCloneHost
     # on the main testbed, run the up command for the test case in the correct location
     logging.info(f"Run up command on '{test_case}'")
     up_result = ssh_command(f"cd {test_case} && kvm-compose up",
-                harness_settings.base_ssh_key,
+                base_ssh_key,
                 linked_clone_hosts[0].hostname,  # first host will be main
                 )
 
@@ -130,11 +144,11 @@ def destroy_test_case(example_name: str, linked_clone_hosts: List[LinkedCloneHos
     # re-usable function to destroy a test harness test case on the testbed ...
 
     # get the location of the test, where the kvm-compose.yaml exists
-    test_case = f"{harness_settings.test_case_location}/{example_name}"
+    test_case = f"{test_case_location}/{example_name}"
     # on the main testbed, run the down command for the test case in the correct location
     logging.info(f"Run down command on '{test_case}'")
     down_result = ssh_command(f"cd {test_case} && kvm-compose down",
-                            harness_settings.base_ssh_key,
+                            base_ssh_key,
                             linked_clone_hosts[0].hostname,  # first host will be main
                             )
 
@@ -146,12 +160,12 @@ def clear_artefacts(example_name: str, linked_clone_hosts: List[LinkedCloneHost]
     # re-usable function to remove the test case artefacts (vm images etc) once the test case has been destroyed
 
     # get the location of the test, where the kvm-compose.yaml exists
-    test_case = f"{harness_settings.test_case_location}/{example_name}"
+    test_case = f"{test_case_location}/{example_name}"
 
     # on the main testbed, run the clear artefacts command for the test case in the correct location
     logging.info(f"Run clear-artefacts command on '{test_case}'")
     clear_artefacts_result = ssh_command(f"cd {test_case} && kvm-compose clear-artefacts",
-                              harness_settings.base_ssh_key,
+                              base_ssh_key,
                               linked_clone_hosts[0].hostname,  # first host will be main
                               )
 
@@ -162,7 +176,7 @@ def clear_artefacts(example_name: str, linked_clone_hosts: List[LinkedCloneHost]
     # finally also remove the state json, as this would prevent future up commands from working
     logging.info(f"Remove state json for '{test_case}'")
     rm_state_json_result = ssh_command(f"cd {test_case} && rm {example_name}-state.json",
-                              harness_settings.base_ssh_key,
+                              base_ssh_key,
                               linked_clone_hosts[0].hostname,  # first host will be main
                               )
 
