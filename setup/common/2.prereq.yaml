@@ -10,6 +10,7 @@
     ansible.builtin.package:
       name: "{{prereq_packages}}"
       state: latest
+      update_cache: yes
 
   - name: Confirm LibVirt is installed
     ansible.builtin.debug: 
