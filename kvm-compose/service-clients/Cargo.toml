@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 tokio = { workspace = true }
-tokio-util = { version = "0.7.10", features = ["codec"] }
+#tokio-util = { version = "0.7.10", features = ["codec"] }
 serde_json = { workspace = true }
-futures = "0.3.29"
-tracing = { workspace = true }
+#futures = "0.3.29"
+#tracing = { workspace = true }

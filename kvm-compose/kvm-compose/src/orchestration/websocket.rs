@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::sync::Arc;
 use anyhow::{bail, Context, Error};
 use futures_util::stream::{SplitSink, SplitStream};
@@ -8,7 +7,7 @@ use tokio::sync::{mpsc, Mutex};
 use tokio::sync::mpsc::{Sender};
 use tokio::task::JoinHandle;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
-use tokio_tungstenite::tungstenite::{Message};
+use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
 use tokio_tungstenite::tungstenite::protocol::CloseFrame;
 use tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode;
 use kvm_compose_schemas::cli_models::Opts;
@@ -155,7 +154,7 @@ pub async fn ws_orchestration_client(
                 .sender
                 .send(Message::Close(Some(CloseFrame {
             code: CloseCode::Normal,
-            reason: Cow::from("End of orchestration"),
+            reason: Utf8Bytes::from("End of orchestration"),
         }))).await.context("sending close message to orchestration worker")?;
 
         Ok(success)
@@ -256,7 +255,7 @@ async fn send_orchestration_instruction(
         .lock()
         .await
         .sender
-        .send(Message::Binary(serialised_instruction))
+        .send(Message::Binary(serialised_instruction.into()))
         .await
         .context("sending serialised OrchestrationProtocol")?;
 

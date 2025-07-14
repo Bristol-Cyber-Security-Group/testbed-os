@@ -6,7 +6,7 @@ use kvm_compose_schemas::kvm_compose_yaml::{Machine, MachineNetwork};
 use std::any::Any;
 use std::path::{PathBuf};
 use async_trait::async_trait;
-use rand::distributions::Alphanumeric;
+use rand::distr::Alphanumeric;
 use rand::Rng;
 use crate::ovn::components::MacAddress;
 
@@ -472,7 +472,7 @@ impl TestbedComponent for AndroidGuest {
         // create veth names based on the guest name, note that we will append either "-in" or "-out",
         // so the larger of the two takes 4 characters of the 15 available. Also given that there
         // is a possibility of collisions based on the name of the guest, just use random characters
-        let rand_string: String = rand::thread_rng()
+        let rand_string: String = rand::rng()
             .sample_iter(&Alphanumeric)
             .take(3)
             .map(char::from)

@@ -20,9 +20,9 @@ pub fn add_gui_handlers() -> Router<Arc<AppState>> {
         .route("/gui/deployments", get(gui_deployments_list))
         .route("/gui/deployments/create",
                get(gui_deployments_create_view).post(gui_deployments_create))
-        .route("/gui/deployments/:project", get(gui_deployments_view))
-        .route("/gui/deployments/:project/delete", post(gui_deployment_delete))
-        .route("/gui/deployments/:project/yaml", post(gui_update_yaml))
+        .route("/gui/deployments/{project}", get(gui_deployments_view))
+        .route("/gui/deployments/{project}/delete", post(gui_deployment_delete))
+        .route("/gui/deployments/{project}/yaml", post(gui_update_yaml))
         .route("/gui/configuration", get(gui_configuration))
         .route("/gui/configuration/setup", get(gui_configuration_setup))
         .route("/gui/documentation", get(gui_documentation))

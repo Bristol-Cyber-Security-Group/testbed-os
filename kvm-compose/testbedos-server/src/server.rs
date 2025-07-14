@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 use tokio::process::{Command};
 use std::sync::Arc;
 use axum::extract::Request;
-use http::{HeaderValue, Method};
+use axum::http::{HeaderValue, Method};
 use sysinfo::{System};
 use tera::Tera;
 use tokio::net::TcpListener;
@@ -192,33 +192,33 @@ pub fn main_app(app_state: Arc<AppState>) -> Router {
             "/api/cluster",
             post(join_cluster)
         )
-        .route("/api/cluster/:name", get(check_membership))
+        .route("/api/cluster/{name}", get(check_membership))
         .route("/api/validate/yaml", post(validate_yaml_endpoint))
         .route("/api/validate/projectname", post(validate_project_name_handler))
         .route(
             "/api/deployments",
             get(list_deployments).post(create_deployment),
         )
-        .route("/api/deployments/:name/yaml", get(get_deployment_yaml))
+        .route("/api/deployments/{name}/yaml", get(get_deployment_yaml))
         .route("/api/active-deployments", get(list_active_deployments))
         .route(
-            "/api/deployments/:name",
+            "/api/deployments/{name}",
             get(get_deployment)
                 .delete(delete_deployment)
                 .put(update_deployment),
         )
         // .route("/api/deployments/:name/action", post(action_deployment))
-        .route("/api/deployments/:name/state", get(get_state).post(set_state))
+        .route("/api/deployments/{name}/state", get(get_state).post(set_state))
         .route("/api/metrics/prometheus/hosts", get(prometheus_scrape_endpoint_for_hosts))
         .route("/api/metrics/prometheus/libvirt", get(prometheus_scrape_endpoint_for_libvirt))
         .route("/api/metrics/prometheus/android", get(prometheus_scrape_endpoint_for_android))
         .route("/api/metrics/prometheus/docker", get(prometheus_scrape_endpoint_for_docker))
         .route("/api/metrics/host", get(get_main_testbed_host_resource))
         .route("/api/metrics/state", get(get_metrics_state))
-        .route("/api/metrics/guest/:project/:name", get(get_main_testbed_guest_resource))
-        .route("/api/metrics/dashboard/:project", get(resource_monitoring_dashboard))
+        .route("/api/metrics/guest/{project}/{name}", get(get_main_testbed_guest_resource))
+        .route("/api/metrics/dashboard/{project}", get(resource_monitoring_dashboard))
         .nest("/api/orchestration", add_orchestration_handlers())
-        .nest("/", add_gui_handlers())
+        .merge(add_gui_handlers())
         .layer(CorsLayer::new()
             .allow_origin("http://localhost:8080".parse::<HeaderValue>().unwrap())
             .allow_methods([Method::GET, Method::POST]))

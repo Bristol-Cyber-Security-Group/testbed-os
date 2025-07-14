@@ -1,7 +1,6 @@
-use std::borrow::Cow;
 use std::sync::Arc;
 use anyhow::{bail, Context, Error};
-use axum::extract::ws::{CloseFrame, Message, WebSocket};
+use axum::extract::ws::{CloseFrame, Message, Utf8Bytes, WebSocket};
 use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::{SplitSink};
 use tokio::sync::{mpsc};
@@ -38,14 +37,14 @@ async fn run(
     let init = match init {
         Message::Text(t) => {
             tracing::info!("message from web client: {t}");
-            get_init_protocol(t)
+            get_init_protocol(t.to_string())
         }
         _ => {
             tracing::info!("incorrect message from web client");
             // not correct init msg
             let _ = sender.send(Message::Close(Some(CloseFrame {
                 code: 1011, // this is error
-                reason: Cow::from("The web client did not begin command with an Init instruction"),
+                reason: Utf8Bytes::from("The web client did not begin command with an Init instruction"),
             }))).await.context("sending close to client websocket")?;
             bail!("web client did not begin with init instruction");
         }
@@ -53,7 +52,7 @@ async fn run(
 
     // acknowledge to the web client if the init request was successful or not
     let init_response = create_init_request_response(&init);
-    sender.send(Message::Text(init_response.to_string_json())).await?;
+    sender.send(Message::Text(init_response.to_string_json().into())).await?;
     if init_response.was_error == true {
         // request was invalid, don't continue and close websocket
         return Ok(())
@@ -81,7 +80,7 @@ async fn run(
         Err(_) => {
             let _ = sender.send(Message::Close(Some(CloseFrame {
                 code: 1011, // this is error
-                reason: Cow::from(format!("Error: The project named '{}' does not exist", project_name.clone())),
+                reason: Utf8Bytes::from(format!("Error: The project named '{}' does not exist", project_name.clone())),
             }))).await.context("sending close to client websocket")?;
             bail!("web client did not begin with init instruction");
         }
@@ -207,7 +206,7 @@ async fn orchestration_message_handler(
                 _ => {}
             }
 
-            sender.send(Message::Text(protocol.to_string()?)).await?;
+            sender.send(Message::Text(protocol.to_string()?.into())).await?;
 
         } else {
             bail!("exiting socket send loop, message not Ok");
