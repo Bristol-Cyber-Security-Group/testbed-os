@@ -118,16 +118,29 @@ async fn run(
                 .await
                 .context("getting deployment for orchestration websocket")?;
 
-            let previous_state = deployment.state;
-            // set deployment to running
-            deployment.state = DeploymentState::Running;
-            db_config.deployment_config_db
-                .write()
-                .await
-                .update_deployment(deployment.name.clone(), deployment.clone())
-                .await
-                .context("updating deployment to running state")?;
-            (deployment, previous_state, deployment_command)
+
+            // set deployment to running if running destructive commands
+            match deployment_command {
+                DeploymentCommand::Up { up_cmd: _ } | DeploymentCommand::Down |
+                DeploymentCommand::GenerateArtefacts | DeploymentCommand::ClearArtefacts |
+                DeploymentCommand::Snapshot { snapshot_cmd: _ } |
+                DeploymentCommand::TestbedSnapshot { snapshot_guests: _ } => {
+                    // these commands are destructive
+                    let previous_state = deployment.state;
+                    deployment.state = DeploymentState::Running;
+                    db_config.deployment_config_db
+                        .write()
+                        .await
+                        .update_deployment(deployment.name.clone(), deployment.clone())
+                        .await
+                        .context("updating deployment to running state")?;
+                    (deployment, previous_state, deployment_command)
+                }
+                _ => {
+                    let current_state = deployment.state.clone();
+                    (deployment, current_state, deployment_command)
+                }
+            }
         }
         _ => {
             let _ = sender.lock().await.send(Message::Close(Some(CloseFrame {

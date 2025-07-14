@@ -136,12 +136,12 @@ impl OvnCommand for DhcpDatabaseEntry {
 
         // TODO - get uuid in case it exists, and edit that - or look at the DHCP add command that might do it for us?
 
-        // create the rule in OVN, we also add 8.8.8.8 as the DNS server for external access
+        // create the rule in OVN, we also add 1.1.1.1 as the DNS server for external access
         tracing::info!("creating DHCP Options database rule cidr: {} router: {}", &self.cidr.to_string(), &self.router);
         let rule_create_res = f(vec_of_strings![
             "ovn-nbctl", "create", "dhcp_options", format!("cidr={}", self.cidr.to_string()),
             format!("options=\"lease_time\"=\"{}\" \"router\"=\"{}\" \"server_id\"=\"{}\" \"server_mac\"=\"{}\" \"dns_server\"=\"{}\"",
-                &self.lease_time, &self.router, &self.server_id, &self.server_mac.address.to_string(), "{8.8.8.8}"),
+                &self.lease_time, &self.router, &self.server_id, &self.server_mac.address.to_string(), "{1.1.1.1}"),
             &external_ids
 
         ], config.clone()).await;
@@ -180,7 +180,7 @@ impl OvnCommand for DhcpDatabaseEntry {
             &self.server_id,
             &self.server_mac.address.to_string(),
             &config.1.project_name,
-            &"{8.8.8.8}".to_string(),
+            &"{1.1.1.1}".to_string(),
         ), config.clone()).await;
         let rule_uuid = match uuid_lookup_cmd {
             Ok(ok) => ok,

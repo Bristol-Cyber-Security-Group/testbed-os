@@ -565,9 +565,16 @@ impl OrchestrationInstruction {
             OrchestrationInstruction::Exec(exec_cmd) => {
 
                 match prepare_guest_exec_command(&orchestration_common.project_name, exec_cmd, &state, &orchestration_common, &logging_send).await {
-                    Ok(_) => OrchestrationProtocolResponse::Generic {
-                        is_success: true,
-                        message: format!("Exec command {:?} succeeded", exec_cmd.command_type),
+                    Ok(success) => {
+                        let message = if success {
+                            format!("Exec command {:?} succeeded", exec_cmd.command_type)
+                        } else {
+                            format!("Exec command {:?} failed", exec_cmd.command_type)
+                        };
+                        OrchestrationProtocolResponse::Generic {
+                            is_success: success,
+                            message,
+                        }
                     },
                     Err(err) => OrchestrationProtocolResponse::Generic {
                         is_success: false,

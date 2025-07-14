@@ -10,7 +10,7 @@ pub async fn shell_command(
     guest_name_with_project: &String,
     _common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<(String, i32)> {
 
     // join the user command to the docker exec command
     let mut docker_cmd = vec!["docker", "exec", guest_name_with_project];
@@ -28,11 +28,10 @@ pub async fn shell_command(
     match cmd_res {
         Ok(ok) => {
             logging_send.send(OrchestrationLogger::info(format!("Command output:\n{ok}"))).await?;
+            return Ok((ok, 0)); // TODO - get actual return code
         }
         Err(err) => {
             bail!(err);
         }
     }
-
-    Ok(())
 }
