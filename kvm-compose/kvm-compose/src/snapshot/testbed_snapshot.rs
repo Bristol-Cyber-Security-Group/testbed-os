@@ -1,8 +1,10 @@
 use anyhow::Context;
 use chrono::{DateTime, Utc};
 use futures_util::future::try_join_all;
+use tokio::sync::mpsc::Sender;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::orchestration::{is_main_testbed, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command};
+use crate::orchestration::api::OrchestrationLogger;
 use crate::state::{State};
 
 /// This function will create the whole testbed snapshot by preparing all the artefacts of the
@@ -11,6 +13,7 @@ use crate::state::{State};
 pub async fn run_testbed_snapshot_action(
     state: &State,
     common: &OrchestrationCommon,
+    logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
     // turn off guests
     tracing::info!("turning off all guests before continuing...");
@@ -18,7 +21,7 @@ pub async fn run_testbed_snapshot_action(
     for (_, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
             GuestType::Libvirt(libvirt) => {
-                guest_stop_futures.push(libvirt.destroy_action(common.clone(), guest_data.clone()));
+                guest_stop_futures.push(libvirt.destroy_action(common.clone(), guest_data.clone(), logging_send));
             }
             GuestType::Docker(_) => {}
             GuestType::Android(_) => {
@@ -37,7 +40,7 @@ pub async fn run_testbed_snapshot_action(
                     // place remote images back into the artefacts folder, this will overwrite
                     // the original images but we want to preserve state of the current guest
                     // images
-                    pull_image_futures.push(libvirt.pull_image_action(common.clone(), guest_data.clone()));
+                    pull_image_futures.push(libvirt.pull_image_action(common.clone(), guest_data.clone(), logging_send));
                 }
             }
             GuestType::Docker(_) => {
@@ -56,7 +59,7 @@ pub async fn run_testbed_snapshot_action(
     for (_, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
             GuestType::Libvirt(libvirt) => {
-                guest_start_futures.push(libvirt.create_action(common.clone(), guest_data.clone()));
+                guest_start_futures.push(libvirt.create_action(common.clone(), guest_data.clone(), logging_send));
             }
             GuestType::Docker(_) => {}
             GuestType::Android(_) => {

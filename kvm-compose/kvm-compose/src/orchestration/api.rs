@@ -286,7 +286,7 @@ impl OrchestrationInstruction {
                 let mut res_name_list = Vec::new();
 
                 for create in create_list {
-                    create_futures.push(create.get_create_future(orchestration_common.clone()));
+                    create_futures.push(create.get_create_future(orchestration_common.clone(), logging_send));
                     res_name_list.push(create.name());
                 }
                 // join all futures and collect results
@@ -306,7 +306,7 @@ impl OrchestrationInstruction {
                 let mut res_name_list = Vec::new();
 
                 for create in destroy_list {
-                    destroy_futures.push(create.get_destroy_future(orchestration_common.clone()));
+                    destroy_futures.push(create.get_destroy_future(orchestration_common.clone(), logging_send));
                     res_name_list.push(create.name());
                 }
                 // join all futures and collect results
@@ -391,7 +391,7 @@ impl OrchestrationInstruction {
                 }
             }
             OrchestrationInstruction::ClearArtefacts => {
-                let res = clear_artefacts(state, orchestration_common).await;
+                let res = clear_artefacts(state, orchestration_common, logging_send).await;
                 match res {
                     Ok(_) => OrchestrationProtocolResponse::Generic { is_success: true, message: "Clearing Artefacts".to_string() },
                     Err(err) => OrchestrationProtocolResponse::Generic { is_success: false, message: format!("Clearing Artefacts, {err:#}") },
@@ -399,7 +399,7 @@ impl OrchestrationInstruction {
             }
             OrchestrationInstruction::SetupImage(list) => {
                 // this handles setting up backing images and clones of backing image
-                let response = Self::setup_image_helper(list, &orchestration_common).await;
+                let response = Self::setup_image_helper(list, &orchestration_common, logging_send).await;
                 response
             }
             OrchestrationInstruction::PushArtefacts(list) => {
@@ -409,7 +409,7 @@ impl OrchestrationInstruction {
                 let mut res_name_list = Vec::new();
 
                 for create in list {
-                    futures.push(create.get_push_image_future(orchestration_common.clone()));
+                    futures.push(create.get_push_image_future(orchestration_common.clone(), logging_send));
                     res_name_list.push(create.name());
                 }
                 // join all futures and collect results
@@ -478,7 +478,7 @@ impl OrchestrationInstruction {
                 let mut res_name_list = Vec::new();
 
                 for create in list {
-                    futures.push(create.get_rebase_clone_future(orchestration_common.clone(), state));
+                    futures.push(create.get_rebase_clone_future(orchestration_common.clone(), state, logging_send));
                     res_name_list.push(create.name());
                 }
                 // join all futures and collect results
@@ -498,7 +498,7 @@ impl OrchestrationInstruction {
                 let mut res_name_list = Vec::new();
 
                 for create in list {
-                    futures.push(create.get_run_setup_script_future(orchestration_common.clone()));
+                    futures.push(create.get_run_setup_script_future(orchestration_common.clone(), logging_send));
                     res_name_list.push(create.name());
                 }
                 // join all futures and collect results
@@ -533,7 +533,7 @@ impl OrchestrationInstruction {
                     let testbed_snapshots = TestbedSnapshots::new(&state, &orchestration_common).await?;
                     testbed_snapshots.snapshot_all_guests(&orchestration_common).await?;
                 }
-                match run_testbed_snapshot_action(&state, &orchestration_common).await {
+                match run_testbed_snapshot_action(&state, &orchestration_common, logging_send).await {
                     Ok(_) => OrchestrationProtocolResponse::Generic {
                         is_success: true,
                         message: "Created Testbed Snapshot".to_string(),
@@ -619,6 +619,7 @@ impl OrchestrationInstruction {
     async fn setup_image_helper(
         list: &Vec<OrchestrationResource>,
         orchestration_common: &OrchestrationCommon,
+        logging_send: &Sender<OrchestrationLogger>,
     ) -> OrchestrationProtocolResponse {
         // create futures and get the name list, since the vec is ordered by insertion then the name list will
         // be in the same order
@@ -626,7 +627,7 @@ impl OrchestrationInstruction {
         let mut res_name_list = Vec::new();
 
         for create in list {
-            create_futures.push(create.get_setup_image_future(orchestration_common.clone()));
+            create_futures.push(create.get_setup_image_future(orchestration_common.clone(), logging_send));
             res_name_list.push(create.name());
         }
         // join all futures and collect results
@@ -702,18 +703,18 @@ impl OrchestrationResource {
     }
 
     /// Get the future for the create action for the resource
-    pub async fn get_create_future(&self, orchestration_common: OrchestrationCommon) -> anyhow::Result<()> {
+    pub async fn get_create_future(&self, orchestration_common: OrchestrationCommon, logging_send: &Sender<OrchestrationLogger>) -> anyhow::Result<()> {
         match self {
             OrchestrationResource::Guest(guest) => {
                 match &guest.guest_type.guest_type {
                     GuestType::Libvirt(libvirt) => {
-                        libvirt.create_action(orchestration_common, guest.clone()).await
+                        libvirt.create_action(orchestration_common, guest.clone(), logging_send).await
                     }
                     GuestType::Docker(docker) => {
-                        docker.create_action(orchestration_common, guest.clone()).await
+                        docker.create_action(orchestration_common, guest.clone(), logging_send).await
                     }
                     GuestType::Android(android) => {
-                        android.create_action(orchestration_common, guest.clone()).await
+                        android.create_action(orchestration_common, guest.clone(), logging_send).await
                     }
                 }
             }
@@ -777,18 +778,18 @@ impl OrchestrationResource {
     }
 
     /// Get the future for the destroy action for the resource
-    pub async fn get_destroy_future(&self, orchestration_common: OrchestrationCommon) -> anyhow::Result<()> {
+    pub async fn get_destroy_future(&self, orchestration_common: OrchestrationCommon, logging_send: &Sender<OrchestrationLogger>) -> anyhow::Result<()> {
         match self {
             OrchestrationResource::Guest(guest) => {
                 match &guest.guest_type.guest_type {
                     GuestType::Libvirt(libvirt) => {
-                        libvirt.destroy_action(orchestration_common, guest.clone()).await
+                        libvirt.destroy_action(orchestration_common, guest.clone(), logging_send).await
                     }
                     GuestType::Docker(docker) => {
-                        docker.destroy_action(orchestration_common, guest.clone()).await
+                        docker.destroy_action(orchestration_common, guest.clone(), logging_send).await
                     }
                     GuestType::Android(android) => {
-                        android.destroy_action(orchestration_common, guest.clone()).await
+                        android.destroy_action(orchestration_common, guest.clone(), logging_send).await
                     }
                 }
             }
@@ -851,15 +852,15 @@ impl OrchestrationResource {
         }
     }
 
-    pub async fn get_push_image_future(&self, orchestration_common: OrchestrationCommon) -> anyhow::Result<()> {
+    pub async fn get_push_image_future(&self, orchestration_common: OrchestrationCommon, logging_send: &Sender<OrchestrationLogger>) -> anyhow::Result<()> {
         match self {
             OrchestrationResource::Guest(g) => {
                 match &g.guest_type.guest_type {
                     GuestType::Libvirt(l) => {
-                        l.push_image_action(orchestration_common, g.clone()).await
+                        l.push_image_action(orchestration_common, g.clone(), logging_send).await
                     }
                     GuestType::Docker(d) => {
-                        d.push_image_action(orchestration_common, g.clone()).await
+                        d.push_image_action(orchestration_common, g.clone(), logging_send).await
                     }
                     GuestType::Android(_) => unreachable!()
                 }
@@ -868,12 +869,12 @@ impl OrchestrationResource {
         }
     }
 
-    pub async fn get_setup_image_future(&self, orchestration_common: OrchestrationCommon) -> anyhow::Result<()> {
+    pub async fn get_setup_image_future(&self, orchestration_common: OrchestrationCommon, logging_sender: &Sender<OrchestrationLogger>) -> anyhow::Result<()> {
         match self {
             OrchestrationResource::Guest(g) => {
                 match &g.guest_type.guest_type {
                     GuestType::Libvirt(l) => {
-                        l.setup_image_action(orchestration_common, g.clone()).await
+                        l.setup_image_action(orchestration_common, g.clone(), logging_sender).await
                     }
                     GuestType::Docker(_) => unreachable!(),
                     GuestType::Android(_) => unreachable!()
@@ -883,12 +884,12 @@ impl OrchestrationResource {
         }
     }
 
-    pub async fn get_rebase_clone_future(&self, orchestration_common: OrchestrationCommon, state: &State) -> anyhow::Result<()> {
+    pub async fn get_rebase_clone_future(&self, orchestration_common: OrchestrationCommon, state: &State, logging_send: &Sender<OrchestrationLogger>) -> anyhow::Result<()> {
         match self {
             OrchestrationResource::Guest(g) => {
                 match &g.guest_type.guest_type {
                     GuestType::Libvirt(l) => {
-                        l.rebase_image_action(orchestration_common, g.clone(), state.testbed_guests.clone()).await
+                        l.rebase_image_action(orchestration_common, g.clone(), state.testbed_guests.clone(), logging_send).await
                     }
                     GuestType::Docker(_) => unreachable!(),
                     GuestType::Android(_) => unreachable!()
@@ -898,12 +899,12 @@ impl OrchestrationResource {
         }
     }
 
-    pub async fn get_run_setup_script_future(&self, orchestration_common: OrchestrationCommon) -> anyhow::Result<()> {
+    pub async fn get_run_setup_script_future(&self, orchestration_common: OrchestrationCommon, logging_send: &Sender<OrchestrationLogger>) -> anyhow::Result<()> {
         match self {
             OrchestrationResource::Guest(g) => {
                 match &g.guest_type.guest_type {
                     GuestType::Libvirt(l) => {
-                        l.setup_action(orchestration_common, g.clone()).await
+                        l.setup_action(orchestration_common, g.clone(), logging_send).await
                     }
                     GuestType::Docker(_) => unreachable!(),
                     GuestType::Android(_) => unreachable!()

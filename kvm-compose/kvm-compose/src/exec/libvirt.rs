@@ -47,9 +47,12 @@ pub async fn shell_command(
     guest_name_with_project: &String,
     _common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
+    suppress_logging: bool,
 ) -> anyhow::Result<(String, i32)> {
 
-    logging_send.send(OrchestrationLogger::info(format!("Logging into guest {} pty", guest_name_with_project))).await?;
+    if !suppress_logging {
+        logging_send.send(OrchestrationLogger::info(format!("Logging into guest {} pty", guest_name_with_project))).await?;
+    }
     
     // TODO - here we should determine 
     //  1) what OS the guest is (this can be done with virt-inspector from guestfs-tools)
@@ -149,7 +152,9 @@ pub async fn shell_command(
             let tty_res = tty.await?;
             match tty_res {
                 Ok((output, exit_code)) => {
-                    logging_send.send(OrchestrationLogger::info("PTY closed OK".to_string())).await?;
+                    if !suppress_logging {
+                        logging_send.send(OrchestrationLogger::info("PTY closed OK".to_string())).await?;
+                    }
                     command_output = output;
                     command_exit_code = exit_code;
                 },
@@ -160,7 +165,11 @@ pub async fn shell_command(
         // log messages in the queue
         let msg = cmd_log_receiver.recv().await;
         match msg {
-            Some(msg) => logging_send.send(OrchestrationLogger::info(msg.to_string())).await?,
+            Some(msg) => {
+                if !suppress_logging {
+                    logging_send.send(OrchestrationLogger::info(msg.to_string())).await?
+                }
+            },
             None => {
                 // don't handle if the channel has been closed, we must wait for thread to close
                 tracing::debug!("the exec command logging channel was unexpectedly closed");
@@ -173,7 +182,9 @@ pub async fn shell_command(
     let ansi_strip_command_exit_code = if let Some(exit_code) = command_exit_code {
         strip_ansi_codes(&exit_code).to_string()
     } else {
-        logging_send.send(OrchestrationLogger::error(format!("Could not get exit code, got {command_exit_code:?} instead. Setting to -1"))).await?;
+        if !suppress_logging {
+            logging_send.send(OrchestrationLogger::error(format!("Could not get exit code, got {command_exit_code:?} instead. Setting to -1"))).await?;
+        }
         "-1".to_string()
     };
     // TODO - stripping carriage returns like this is likely to cause a weird edge case, how to avoid?
@@ -201,14 +212,16 @@ pub async fn shell_command(
     }
 
     // log the output depending on if the command worked or not
-    let cmd_output_string = format!("Command output:\n{}", final_command_output);
-    let finish_command_string = format!("Finished running command in guest {} pty, with exit code {}", guest_name_with_project, parsed_exit_code);
-    if parsed_exit_code != 0 {
-        logging_send.send(OrchestrationLogger::error(cmd_output_string)).await?;
-        logging_send.send(OrchestrationLogger::error(finish_command_string)).await?;
-    } else {
-        logging_send.send(OrchestrationLogger::info(cmd_output_string)).await?;
-        logging_send.send(OrchestrationLogger::info(finish_command_string)).await?;
+    if !suppress_logging {
+        let cmd_output_string = format!("Command output:\n{}", final_command_output);
+        let finish_command_string = format!("Finished running command in guest {} pty, with exit code {}", guest_name_with_project, parsed_exit_code);
+        if parsed_exit_code != 0 {
+            logging_send.send(OrchestrationLogger::error(cmd_output_string)).await?;
+            logging_send.send(OrchestrationLogger::error(finish_command_string)).await?;
+        } else {
+            logging_send.send(OrchestrationLogger::info(cmd_output_string)).await?;
+            logging_send.send(OrchestrationLogger::info(finish_command_string)).await?;
+        }
     }
 
     Ok((final_command_output, parsed_exit_code))

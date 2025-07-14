@@ -110,6 +110,7 @@ pub async fn mount_cdrom_in_guest(
         guest_name_with_project,
         common,
         logging_send,
+        true,
     ).await?;
 
     logging_send.send(OrchestrationLogger::info(format!("Getting device output:\n{dev}"))).await?;
@@ -126,6 +127,7 @@ pub async fn mount_cdrom_in_guest(
         guest_name_with_project,
         common,
         logging_send,
+        true,
     ).await?;
 
     // then mount the dev to an intermediate location
@@ -136,6 +138,7 @@ pub async fn mount_cdrom_in_guest(
         guest_name_with_project,
         common,
         logging_send,
+        true,
     ).await?;
 
     if exit_code != 0 {
@@ -166,6 +169,7 @@ pub async fn move_pushed_file(
         guest_name_with_project,
         common,
         logging_send,
+        true,
     ).await?;
 
     // use the destination provided by the user to move the file or folder from the mounted ISO to
@@ -177,6 +181,7 @@ pub async fn move_pushed_file(
         guest_name_with_project,
         common,
         logging_send,
+        true,
     ).await?;
 
     if exit_code != 0 {
@@ -204,6 +209,7 @@ pub async fn unmount_and_detach_cdrom_from_guest(
         guest_name_with_project,
         common,
         logging_send,
+        true,
     ).await?;
 
     if exit_code != 0 {

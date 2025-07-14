@@ -1,7 +1,7 @@
 pub mod android;
-mod docker;
-mod libvirt;
-mod file_transfer;
+pub mod docker;
+pub mod libvirt;
+pub mod file_transfer;
 
 use anyhow::{bail, Context};
 use tokio::sync::mpsc::Sender;
@@ -94,7 +94,7 @@ pub async fn run_guest_exec_cmd(
 
             let shell_command_result = match &guest_data.guest_type.guest_type {
                 GuestType::Libvirt(_) => {
-                    libvirt::shell_command(cmd, command.timeout, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?
+                    libvirt::shell_command(cmd, command.timeout_ms, guest_data, &guest_name_with_project, orchestration_common, &logging_send, command.suppress_logging).await?
                 }
                 GuestType::Docker(_) => {
                     docker::shell_command(cmd, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?

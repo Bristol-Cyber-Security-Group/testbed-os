@@ -40,9 +40,11 @@ pub enum ExecCmdType {
 #[serde(rename_all = "snake_case")]
 pub struct ExecCmdShellCommand {
     #[clap(short, long, default_value="5000", help = "Timeout in milliseconds, defaults to 5s")]
-    pub timeout: u64,
+    pub timeout_ms: u64,
     #[clap(trailing_var_arg=true, index = 1)]
     pub command: Vec<String>,
+    #[clap(short, long, help = "Suppress all logging during command execution")]
+    pub suppress_logging: bool,
 }
 
 /// Represents the options for the push and pull file transfer sub-commands
