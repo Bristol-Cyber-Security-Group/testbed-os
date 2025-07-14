@@ -5,7 +5,7 @@
 
   - name: Gather installed package facts
     package_facts:
-      manager: apt
+      manager: auto
     become: yes
 
   - name: Include variables based on OS

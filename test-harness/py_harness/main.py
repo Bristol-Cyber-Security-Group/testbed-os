@@ -75,15 +75,20 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
             # now we know what will be built, we can check to make sure there is nothing that will block the progression
             # of the following by making sure things don't exist ...
             # first make sure the clones don't exist, as these would prevent the base host from starting
+            logging.info("Making sure linked clone hosts are destroyed")
             for host in linked_clone_hosts:
                 host.ensure_destroyed()
             # now we can make sure the base doesn't exist, but if in dev mode we will leave it there
             if not harness_settings.dev_mode and base_host.exists():
+                logging.info("Making sure base host is destroyed")
                 base_host.ensure_destroyed()
 
+            logging.info("Begin base host deployment")
             # now we can start the process of setting up the base VM and install the testbed, if it exists still that
             # is because dev mode has allowed it and we just continue
             base_host_exists = base_host.exists()  # this contains the libvirt reference to the domain
+
+            # TODO - disk doesnt exist but domain definition does somehow, need to clear the definition
 
             # this skips the base host deployment, assuming it has already been run
             if not harness_settings.dev_skip_base_deploy:

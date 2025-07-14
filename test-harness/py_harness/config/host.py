@@ -58,8 +58,8 @@ class Host:
 
     def ensure_destroyed(self) -> bool:
         # make sure there is no previous base VM
+        logging.info(f"Ensuring the VM {self.name} is destroyed")
         domain = self.exists()
-        logging.info("Ensuring the VM is destroyed")
         try:
             if domain is not None:
                 logging.info("VM is defined, destroying")

@@ -1,0 +1,17 @@
+---
+prereq_packages:
+  - libvirt
+  - git
+  - qemu-full
+  - cdrtools
+  - virt-manager
+
+docker_steps: |
+  #!/bin/bash
+  pacman -S docker --noconfirm
+
+android_packages:
+  - jdk17-openjdk
+  - android-tools
+  - unzip
+  - wget

@@ -1,6 +1,8 @@
 - name: Install Android SDK
   hosts: all
   tasks:
+  - name: Include variables based on OS
+    include_vars: "{{ lookup('first_found', {'files': ['../vars/{{ ansible_distribution }}/{{ ansible_distribution_major_version }}/main.yaml'], 'paths': ['.']}) }}"
 
   - name: Check if sdkmanager is installed
     stat:
@@ -8,13 +10,9 @@
     register: sdkmanager_check
 
   - name: Ensure necessary packages are installed
-    apt:
-      name:
-        - openjdk-17-jdk
-        - android-tools-adb
-        - unzip
-        - wget
-      state: present
+    ansible.builtin.package:
+      name: "{{android_packages}}"
+      state: latest
     become: yes
     when: not sdkmanager_check.stat.exists
 
