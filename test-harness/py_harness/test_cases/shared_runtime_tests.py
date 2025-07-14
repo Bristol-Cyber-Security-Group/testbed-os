@@ -126,7 +126,29 @@ def test_connection_between_guests(
 
         python_server_process.terminate()
 
-    report = TestReport(inspect.currentframe().f_code.co_name + test_report_name)
     report.success = True if curl_process.returncode == 0 else False
+    report.info = ""
+    return report
+
+
+def run_command(
+    target_guest: str,
+    command: str,
+    test_case_name: str,
+    linked_clone_hosts: List[LinkedCloneHost],
+    test_report_name: str,
+) -> TestReport:
+    # run a command on a guest
+    report = TestReport(inspect.currentframe().f_code.co_name + test_report_name + "_" + test_case_name)
+    logging.info(f"Running test {report.test_name}")
+
+    test_case = f"{test_case_location}/{test_case_name}"
+    command_process: subprocess.CompletedProcess = ssh_command(
+        f"cd {test_case} && kvm-compose exec {target_guest} shell-command {command}",
+        base_ssh_key,
+        linked_clone_hosts[0].hostname,  # first host will be main
+        )
+
+    report.success = True if command_process.returncode == 0 else False
     report.info = ""
     return report
