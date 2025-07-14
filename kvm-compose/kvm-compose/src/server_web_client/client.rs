@@ -58,15 +58,17 @@ pub async fn orchestration_action(
         .context("connecting websocket to testbed server for orchestration");
 
     // handle result from `orchestration_result`
-    match orchestration_result {
-        Ok(_) => {
+    let success = match orchestration_result {
+        Ok(success) => {
             tracing::info!("websocket closed Ok");
+            success
         }
         Err(err) => {
             tracing::error!("there was a problem in the orchestration, will stop");
             err.chain().for_each(|cause| tracing::error!("because: {}", cause));
+            false
         }
-    }
+    };
 
     let check_deployment =
         http_actions::check_deployment(&client, &project_name, &server_url).await
@@ -75,9 +77,13 @@ pub async fn orchestration_action(
     // TODO - make sure the database update matches result?
     tracing::debug!("deployment is now in {:?} state", &check_deployment.state);
 
-    // return the result of this command
-    get_result(&check_deployment.state)
-        .context("getting orchestration result")?;
+    // only bail if the command wasn't successful, despite the state of the deployment being failed
+    // .. this is because not all commands impact the deployment state i.e. exec commands
+    if !success {
+        // return the result of this command
+        get_result(&check_deployment.state)
+            .context("getting orchestration result")?;
+    }
 
     Ok(())
 }

@@ -7,11 +7,11 @@ import libvirt
 import logging
 import harness_settings
 from pathlib import Path
-from host_images import BaseOperatingSystem
-from harness_network import HarnessNetwork
-from host import BaseHost, LinkedCloneHost
+from config.host_images import BaseOperatingSystem
+from config.harness_network import HarnessNetwork
+from config.host import BaseHost, LinkedCloneHost
 from run_tests import run_tests
-from reporting import TestHarnessReport, TestHarnessState, OSReport, NHostReport
+from reporting.reporting import TestHarnessReport, TestHarnessState, OSReport, NHostReport
 
 
 def get_libvirt_connection() -> libvirt.virConnect:
@@ -84,36 +84,46 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
             # now we can start the process of setting up the base VM and install the testbed, if it exists still that
             # is because dev mode has allowed it and we just continue
             base_host_exists = base_host.exists()  # this contains the libvirt reference to the domain
-            if base_host_exists is None:
-                create_base_host_result = base_host.create()
-                if not create_base_host_result:
-                    # report failed result
-                    os_report.create_base_host = False
 
-                    # go to next test
+            # this skips the base host deployment, assuming it has already been run
+            if not harness_settings.dev_skip_base_deploy:
+                if base_host_exists is None:
+                    create_base_host_result = base_host.create()
+                    if not create_base_host_result:
+                        # report failed result
+                        os_report.create_base_host = False
+
+                        # go to next test
+                        continue
+                elif not base_host_exists.isActive():
+                    # base host already exists, due to dev mode so just start it
+                    base_host.start()
+                    base_host.check_if_ready(harness_settings.base_ssh_key)
+                os_report.create_base_host = True
+
+                # install testbed code, in dev mode this just re-runs the ansible on top of the existing install
+                install_best_host_result = base_host.install_testbed()
+                if not install_best_host_result:
+                    # report failure, and where in the installation it failed
+                    os_report.install_testbed = False
+                    if not harness_settings.dev_mode:
+                        base_host.ensure_destroyed()
+                    else:
+                        logging.error("Installation of the testbed did not work, but in dev mode so stopping here.")
+                        return test_harness_report
+                    time.sleep(5)
                     continue
-            elif not base_host_exists.isActive():
-                # base host already exists, due to dev mode so just start it
-                base_host.start()
-                base_host.check_if_ready(harness_settings.base_ssh_key)
-            os_report.create_base_host = True
+                else:
+                    os_report.install_testbed = True
 
-            # install testbed code, in dev mode this just re-runs the ansible on top of the existing install
-            install_best_host_result = base_host.install_testbed()
-            if not install_best_host_result:
-                # report failure, and where in the installation it failed
-                os_report.install_testbed = False
-                base_host.ensure_destroyed()
+                # turn off base host before creating linked clones
+                base_host.stop()
+                # sleep a bit, the VM won't shut down quickly enough as the libvirt shutdown command is non-blocking
+                # TODO - check with libvirt directly for off status
                 time.sleep(5)
-                continue
             else:
+                # we skipped the base host deploy, assume install way okay and set to True
                 os_report.install_testbed = True
-
-            # turn off base host before creating linked clones
-            base_host.stop()
-            # sleep a bit, the VM won't shut down quickly enough as the libvirt shutdown command is non-blocking
-            # TODO - check with libvirt directly for off status
-            time.sleep(5)
 
             # TODO check if the base host has turned off
 
@@ -149,17 +159,18 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
                 # collect report for tests
                 n_host_report.test_case_reports.extend(test_case_results)
 
-                # clean up linked clones
-                destroy_results = []
-                for linked_clone_host in linked_clone_hosts:
-                    logging.info(f"Destroying linked clone host: {linked_clone_host.name}")
-                    destroy_results.append(linked_clone_host.ensure_destroyed())
-                # if destroying any linked clones failed
-                if not all(destroy_results):
-                    logging.error(f"Failed to destroy linked clone hosts")
-                    n_host_report.clear_linked_clone_hosts = False
-                else:
-                    n_host_report.clear_linked_clone_hosts = True
+                if not harness_settings.dev_mode:
+                    # clean up linked clones
+                    destroy_results = []
+                    for linked_clone_host in linked_clone_hosts:
+                        logging.info(f"Destroying linked clone host: {linked_clone_host.name}")
+                        destroy_results.append(linked_clone_host.ensure_destroyed())
+                    # if destroying any linked clones failed
+                    if not all(destroy_results):
+                        logging.error(f"Failed to destroy linked clone hosts")
+                        n_host_report.clear_linked_clone_hosts = False
+                    else:
+                        n_host_report.clear_linked_clone_hosts = True
 
 
     # clean up the test harness working area in the libvirt images folder

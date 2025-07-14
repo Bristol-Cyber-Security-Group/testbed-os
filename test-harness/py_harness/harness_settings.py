@@ -43,3 +43,4 @@ base_ssh_key = "/app/assets/ssh_key/id_ed25519"
 
 
 dev_mode = bool(os.getenv('DEV_MODE', False))
+dev_skip_base_deploy = bool(os.getenv('SKIP_BASE', False))
