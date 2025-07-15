@@ -411,6 +411,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 
                     // TODO - push file to guest using console mechanism
 
+                    logging_sender.send(OrchestrationLogger::info("Waiting until guest is up before continuing".to_string())).await?;
                     wait_for_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
                     let local_script_path = parse_path_with_deployment_config(script, &common)?;
 
@@ -448,9 +449,17 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                         logging_sender,
                         true,
                     ).await?;
-                    logging_sender.send(OrchestrationLogger::info(format!("Script finished running with exit code {exit_code:?}"))).await?;
+
+                    let script_output = format!("Script output:\n{res_str:?}");
+                    let script_exit_code = format!("Script finished running with exit code {exit_code:?}");
                     if exit_code != 0 {
-                        logging_sender.send(OrchestrationLogger::error(format!("Script output:\n{res_str:?}"))).await?;
+                        logging_sender.send(OrchestrationLogger::error(script_exit_code)).await?;
+                        logging_sender.send(OrchestrationLogger::error(script_output)).await?;
+                        // we fail the run here, since we assume that it was necessary to work
+                        bail!("Setup script execution failed");
+                    } else {
+                        logging_sender.send(OrchestrationLogger::info(script_exit_code)).await?;
+                        logging_sender.send(OrchestrationLogger::info(script_output)).await?;
                     }
                 }
             }

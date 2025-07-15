@@ -1,4 +1,5 @@
 use std::ops::{Add};
+use std::time::Duration;
 use anyhow::{bail, Context, Error};
 use rexpect::process::{signal};
 use rexpect::ReadUntil;
@@ -6,6 +7,8 @@ use rexpect::session::PtySession;
 use tokio::sync::mpsc::{Sender};
 use tokio::sync::{mpsc};
 use console::strip_ansi_codes;
+use tokio::task::JoinHandle;
+use tokio::time;
 use kvm_compose_schemas::exec::ExecCmdFileTransfer;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::exec::file_transfer::*;
@@ -85,61 +88,17 @@ pub async fn shell_command(
     // set up a channel to send logging from the command running
     let (cmd_log_sender, mut cmd_log_receiver) = mpsc::channel(16);
 
-    // run the rexpect code in a blocking thread (to prevent locking up the server), while sending
-    // logging results in a channel
-    // also return the possible exit code to be parsed at the end to be returned to the caller and
-    // via logging to the user
-    let tty = tokio::task::spawn_blocking(move || {
-        // spawn the pty in the expect session
-        // TODO - CLI configurable timeout?
-        let mut pty = rexpect::spawn(&virsh_cmd, Some(timeout))
-            .context("rexpect error")?;
-
-        // we need to know if virsh will let us open the pty or there is already a connection to it
-        let intial_state = determine_initial_pty_state(&mut pty)
-            .context("getting initial state of tty")?;
-        match intial_state {
-            PtyInitialState::SessionOpen => bail!("there was already a tty session open to the guest, cannot continue"),
-            _ => {}
-        }
-        // we have a connection
-        cmd_log_sender.blocking_send("Successfully opened PTY session to guest".to_string())?;
-
-        // we send a new line command to dismiss the virsh escape character message
-        pty.send_line("")?;
-
-        pty_state_loop(&mut pty, &username, &password, &shell_user_host_string, &cmd_log_sender)?;
-
-        // the shell is open, we can finally run the command
-        cmd_log_sender.blocking_send(format!("Running command ({usr_cmd}) on guest"))?;
-        pty.send_line(&usr_cmd)?;
-
-        // check if there was a password prompt, otherwise get result
-        let res = pty_state_loop(&mut pty, &username, &password, &shell_user_host_string, &cmd_log_sender)?;
-
-        // grab the command exit code, but prepend a space to not save it in the history
-        cmd_log_sender.blocking_send("Getting command exit code".to_string())?;
-        pty.send_line(" echo $?")?;
-        let exit_code_res = pty.exp_string(&shell_user_host_string)?;
-        // the exit code will include the new terminal line below, so we need to trim that
-        let mut exit_code_lines = exit_code_res.lines();
-        exit_code_lines.next();
-        let exit_code = exit_code_lines.next();
-        //cmd_log_sender.blocking_send(format!("Command exit code:\n{:?}", exit_code))?;
-
-        cmd_log_sender.blocking_send("Sending close command to PTY".to_string())?;
-        pty.send("\x1D")?;
-        pty.process.kill(signal::SIGKILL)?;
-
-        // return both the output of the command and the exit code
-        // need to push the exit code if okay as a string rather than &str
-        let exit_code_string = if exit_code.is_some() {
-            Some(exit_code.unwrap().to_string())
-        } else {
-            None
-        };
-        Ok::<(String, Option<String>), Error>((res, exit_code_string))
-    });
+    // get the blocking thread that runs rexpect in a blocking context
+    let tty = begin_pty_thread(
+        virsh_cmd,
+        timeout,
+        username,
+        password,
+        shell_user_host_string,
+        usr_cmd,
+        cmd_log_sender.clone(),
+        true, // we will run the command the first time
+    );
 
     let command_exit_code;
     let command_output;
@@ -147,32 +106,49 @@ pub async fn shell_command(
     // loop to check if the command run has finished or not, but also check to see if there are log
     // messages to print before exiting - the pty will close itself as it has a timeout
     loop {
-        if cmd_log_receiver.is_empty() && tty.is_finished() {
-            // no more log messages and the pty has stopped running
-            let tty_res = tty.await?;
-            match tty_res {
-                Ok((output, exit_code)) => {
-                    if !suppress_logging {
-                        logging_send.send(OrchestrationLogger::info("PTY closed OK".to_string())).await?;
+        // we have to use a tokio select! here because there is a race condition between the tty
+        // thread finishing and reporting is_finished()==true and the log receiver waiting for the
+        // next message
+        tokio::select! {
+            msg = cmd_log_receiver.recv() => {
+                match msg {
+                    Some(msg) => {
+                        if !suppress_logging {
+                            logging_send.send(OrchestrationLogger::info(msg.to_string())).await?
+                        }
+                    },
+                    None => {
+                        // don't handle if the channel has been closed, we must wait for thread to close
+                        tracing::debug!("the exec command logging channel was unexpectedly closed");
                     }
-                    command_output = output;
-                    command_exit_code = exit_code;
-                },
-                Err(err) => bail!(err),
-            }
-            break;
-        }
-        // log messages in the queue
-        let msg = cmd_log_receiver.recv().await;
-        match msg {
-            Some(msg) => {
-                if !suppress_logging {
-                    logging_send.send(OrchestrationLogger::info(msg.to_string())).await?
                 }
-            },
-            None => {
-                // don't handle if the channel has been closed, we must wait for thread to close
-                tracing::debug!("the exec command logging channel was unexpectedly closed");
+            }
+            _ = time::sleep(Duration::from_millis(100)) => {
+                // this will execute every 100 if the above branch doesn't return
+                if cmd_log_receiver.is_empty() && tty.is_finished() {
+                    // no more log messages and the pty has stopped running
+                    let tty_res = tty.await?;
+                    match tty_res {
+                        Ok((output, exit_code)) => {
+                            if !suppress_logging {
+                                logging_send.send(OrchestrationLogger::info("PTY closed OK".to_string())).await?;
+                            }
+                            command_output = output;
+                            command_exit_code = exit_code;
+                        },
+                        Err(err) => {
+                            // the
+                            if err.to_string().contains("Timeout Error") {
+                                // in case there was a timeout error, we want to re-open the tty and
+                                // check again to see if the command was still running
+
+                                // TODO how to get the last output string if it bailed?
+                            }
+                            bail!(err);
+                        }
+                    }
+                    break;
+                }
             }
         }
     }
@@ -225,6 +201,84 @@ pub async fn shell_command(
     }
 
     Ok((final_command_output, parsed_exit_code))
+}
+
+fn begin_pty_thread(
+    virsh_cmd: String,
+    timeout: u64,
+    username: String,
+    password: String,
+    shell_user_host_string: String,
+    usr_cmd: String,
+    cmd_log_sender: Sender<String>,
+    run_command: bool,
+) -> JoinHandle<Result<(String, Option<String>), Error>> {
+    // run the rexpect code in a blocking thread (to prevent locking up the server), while sending
+    // logging results in a channel
+    // also return the possible exit code to be parsed at the end to be returned to the caller and
+    // via logging to the user
+    tokio::task::spawn_blocking(move || {
+
+        // get and start a PTY in a usable state
+        let mut pty = start_pty(&virsh_cmd, timeout, &cmd_log_sender)?;
+        // get the PTY into an open shell state
+        pty_state_loop(&mut pty, &username, &password, &shell_user_host_string, &cmd_log_sender)?;
+
+        if run_command {
+            // the shell is open, we can finally run the command
+            cmd_log_sender.blocking_send(format!("Running command ({usr_cmd}) on guest"))?;
+            pty.send_line(&usr_cmd)?;
+        }
+
+        // check if there was a password prompt, otherwise get result
+        let res = pty_state_loop(&mut pty, &username, &password, &shell_user_host_string, &cmd_log_sender)?;
+
+        // grab the command exit code, but prepend a space to not save it in the history
+        cmd_log_sender.blocking_send("Getting command exit code".to_string())?;
+        pty.send_line(" echo $?")?;
+        let exit_code_res = pty.exp_string(&shell_user_host_string)?;
+        // the exit code will include the new terminal line below, so we need to trim that
+        let mut exit_code_lines = exit_code_res.lines();
+        exit_code_lines.next();
+        let exit_code = exit_code_lines.next();
+
+        cmd_log_sender.blocking_send("Sending close command to PTY".to_string())?;
+        pty.send("\x1D")?;
+        pty.process.kill(signal::SIGKILL)?;
+
+        // return both the output of the command and the exit code
+        // need to push the exit code if okay as a string rather than &str
+        let exit_code_string = if exit_code.is_some() {
+            Some(exit_code.unwrap().to_string())
+        } else {
+            None
+        };
+        Ok::<(String, Option<String>), Error>((res, exit_code_string))
+    })
+}
+
+/// Start a pty session
+fn start_pty(
+    virsh_cmd: &String,
+    timeout: u64,
+    cmd_log_sender: &Sender<String>,
+) -> anyhow::Result<PtySession> {
+    // spawn the pty in the expect session
+    let mut pty = rexpect::spawn(&virsh_cmd, Some(timeout))
+        .context("rexpect error")?;
+    // we need to know if virsh will let us open the pty or there is already a connection to it
+    let intial_state = determine_initial_pty_state(&mut pty)
+        .context("getting initial state of tty")?;
+    match intial_state {
+        PtyInitialState::SessionOpen => bail!("there was already a tty session open to the guest, cannot continue"),
+        _ => {}
+    }
+    // we have a connection
+    cmd_log_sender.blocking_send("Successfully opened PTY session to guest".to_string())?;
+    // we send a new line command to dismiss the virsh escape character message
+    pty.send_line("")?;
+
+    Ok(pty)
 }
 
 /// Depending on whether the virsh console is currently in use or not, will determine whether we can
