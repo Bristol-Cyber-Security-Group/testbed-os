@@ -15,7 +15,7 @@ machines:
           expand_gigabytes: 2
           run_script: ./run.sh
           setup_script: ./setup.sh
-          context: ./context/
+#          context: ./context/
           environment:
             MOUNT_ENV_TEST: "123"
 
