@@ -439,16 +439,37 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                     let script_file_name = script_file_name
                         .context("Converting script name into a string")?;
 
+                    // remove any pre-existing setup flag if it exists
+                    let (_, _) = libvirt::shell_command(
+                        vec!["rm", "SETUP_SCRIPT_COMPLETE.txt"],
+                        5000,
+                        &machine_config,
+                        &guest_name,
+                        &common,
+                        logging_sender,
+                        true,
+                        true,
+                    ).await?;
+                    let (_, _) = libvirt::shell_command(
+                        vec!["rm", "SETUP_SCRIPT_FAILED.txt"],
+                        5000,
+                        &machine_config,
+                        &guest_name,
+                        &common,
+                        logging_sender,
+                        true,
+                        true,
+                    ).await?;
+
                     // run the setup script inthe background
                     let (res_str, _) = libvirt::shell_command(
                         // IMPORTANT - we run the script in the background, and also write a complete
                         //  flag once it is done, which we will look for below to signal the command completed
                         vec!["(",
-                             "rm", "SETUP_SCRIPT_COMPLETE.txt", "||", // remove any existing complete flag
-                             "sudo", "bash", format!("/tmp/{script_file_name}").as_str(), "&&",
+                             "sudo", "bash", format!("/tmp/{script_file_name}").as_str(), ">", "setup.log", "&&",
                              "touch", "SETUP_SCRIPT_COMPLETE.txt", // write a complete flag if success
                              "||", "touch", "SETUP_SCRIPT_FAILED.txt", // write fail flag if fail
-                             ")", ">/dev/null 2>&1", "&", "echo", "$! "], // send the background and print PID
+                             ")", "&", "echo", "$! "], // send the background and print PID
                         5000,
                         &machine_config,
                         &guest_name,
