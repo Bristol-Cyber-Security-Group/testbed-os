@@ -105,6 +105,8 @@ pub enum OrchestrationInstruction {
     Edit(Vec<OrchestrationResource>),
     /// Run setup scripts for all guests in the list
     RunSetupScripts(Vec<OrchestrationResource>),
+    /// Execute the run script for all guests in the list
+    ExecuteRunScript(Vec<OrchestrationResource>),
     /// Run snapshot command for one guest
     Snapshot(SnapshotSubCommand),
     /// Run the testbed snapshot command
@@ -186,6 +188,10 @@ impl OrchestrationInstruction {
             }
             OrchestrationInstruction::RunSetupScripts(items) => {
                 instruction.push_str("Running Setup Scripts for ");
+                format_instruction_message(&mut instruction, items);
+            }
+            OrchestrationInstruction::ExecuteRunScript(items) => {
+                instruction.push_str("Executing Run Scripts for ");
                 format_instruction_message(&mut instruction, items);
             }
             OrchestrationInstruction::GenerateArtefacts{ .. } => instruction.push_str("Generate Artefacts"),
@@ -499,6 +505,24 @@ impl OrchestrationInstruction {
 
                 for create in list {
                     futures.push(create.get_run_setup_script_future(orchestration_common.clone(), logging_send));
+                    res_name_list.push(create.name());
+                }
+                // join all futures and collect results
+                let result = join_all(futures).await;
+
+                let mut result_messages = Vec::new();
+                // create message list
+                Self::format_message(result, &mut result_messages, res_name_list);
+
+                // finally return the response
+                OrchestrationProtocolResponse::List(result_messages)
+            }
+            OrchestrationInstruction::ExecuteRunScript(list) => {
+                let mut futures = Vec::new();
+                let mut res_name_list = Vec::new();
+
+                for create in list {
+                    futures.push(create.get_run_run_script_future(orchestration_common.clone(), logging_send));
                     res_name_list.push(create.name());
                 }
                 // join all futures and collect results
@@ -905,6 +929,21 @@ impl OrchestrationResource {
                 match &g.guest_type.guest_type {
                     GuestType::Libvirt(l) => {
                         l.setup_action(orchestration_common, g.clone(), logging_send).await
+                    }
+                    GuestType::Docker(_) => unreachable!(),
+                    GuestType::Android(_) => unreachable!()
+                }
+            }
+            OrchestrationResource::Network(_) => unreachable!(),
+        }
+    }
+
+    pub async fn get_run_run_script_future(&self, orchestration_common: OrchestrationCommon, logging_send: &Sender<OrchestrationLogger>) -> anyhow::Result<()> {
+        match self {
+            OrchestrationResource::Guest(g) => {
+                match &g.guest_type.guest_type {
+                    GuestType::Libvirt(l) => {
+                        l.run_action(orchestration_common, g.clone(), logging_send).await
                     }
                     GuestType::Docker(_) => unreachable!(),
                     GuestType::Android(_) => unreachable!()

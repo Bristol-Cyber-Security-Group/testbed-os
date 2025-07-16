@@ -166,7 +166,7 @@ pub async fn move_pushed_file(
 
     // in case the target destination doesn't exist
     let _ = shell_command(
-        vec!["mkdir", "-p", &transfer.target_path.display().to_string()],
+        vec!["sudo", "mkdir", "-p", &transfer.target_path.display().to_string()],
         5_000,
         guest_data,
         guest_name_with_project,
@@ -179,7 +179,7 @@ pub async fn move_pushed_file(
     // use the destination provided by the user to move the file or folder from the mounted ISO to
     // the target location
     let (output, exit_code) = shell_command(
-        vec!["cp", "-r", "/mnt/filepush/.", &transfer.target_path.display().to_string()],
+        vec!["sudo", "cp", "-r", "/mnt/filepush/.", &transfer.target_path.display().to_string()],
         5_000,
         guest_data,
         guest_name_with_project,

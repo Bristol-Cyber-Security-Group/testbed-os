@@ -179,6 +179,10 @@ impl OrchestrationTask for State {
             tracing::info!("Skipping guest setup scripts as guest have already been provisioned");
         }
 
+        // run scripts should always be run on the guest
+        tracing::info!("Stage: running any guest run scripts");
+        run_guest_run_scripts_stage(&self, sender).await?;
+
         Ok(())
     }
 

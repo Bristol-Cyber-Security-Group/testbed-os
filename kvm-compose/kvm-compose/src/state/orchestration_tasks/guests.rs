@@ -409,8 +409,6 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                 if let Some(script) = setup_script {
                     tracing::info!("running setup script on guest {}", &machine_config.guest_type.name);
 
-                    // TODO - push file to guest using console mechanism
-
                     logging_sender.send(OrchestrationLogger::info("Waiting until guest is up before continuing".to_string())).await?;
                     wait_for_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
                     let local_script_path = parse_path_with_deployment_config(script, &common)?;
@@ -554,11 +552,67 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 
     async fn run_action(
         &self,
-        _common: OrchestrationCommon,
-        _machine_config: StateTestbedGuest,
-        _logging_sender: &Sender<OrchestrationLogger>,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
     ) -> anyhow::Result<()> {
-        todo!()
+        let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
+        match &self.libvirt_type {
+            LibvirtGuestOptions::CloudImage { run_script, .. } => {
+                // if the script exists, we will push the execution into the background
+                if let Some(script) = run_script {
+                    tracing::info!("running setup script on guest {}", &machine_config.guest_type.name);
+
+                    logging_sender.send(OrchestrationLogger::info("Waiting until guest is up before continuing".to_string())).await?;
+                    wait_for_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
+                    let local_script_path = parse_path_with_deployment_config(script, &common)?;
+
+                    logging_sender.send(OrchestrationLogger::info(format!("Pushing {local_script_path:?}"))).await?;
+                    libvirt::push(
+                        &ExecCmdFileTransfer {
+                            source_path: local_script_path.clone(),
+                            target_path: PathBuf::from("/opt"),
+                        },
+                        &machine_config,
+                        &guest_name,
+                        &common,
+                        logging_sender,
+                    ).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Pushed {local_script_path:?}"))).await?;
+
+                    logging_sender.send(OrchestrationLogger::info("Executing run script".to_string())).await?;
+
+                    let script_file_name = {
+                        match local_script_path.file_name() {
+                            None => bail!("The script path given {local_script_path:?} is not a file, likely a directory."),
+                            Some(os_str) => {
+                                os_str.to_str().map(|s| s.to_string())
+                            }
+                        }
+                    };
+                    let script_file_name = script_file_name
+                        .context("Converting script name into a string")?;
+
+                    // run the setup script inthe background
+                    let (_, _) = libvirt::shell_command(
+                        // IMPORTANT - we run the script in the background, and also write a complete
+                        //  flag once it is done, which we will look for below to signal the command completed
+                        vec!["bash", format!("/opt/{script_file_name}").as_str(), "&"],
+                        5000,
+                        &machine_config,
+                        &guest_name,
+                        &common,
+                        logging_sender,
+                        true,
+                        true,
+                    ).await?;
+
+                }
+            }
+            LibvirtGuestOptions::ExistingDisk { .. } => {}
+            LibvirtGuestOptions::IsoGuest { .. } => {}
+        }
+        Ok(())
     }
 
     async fn destroy_action(

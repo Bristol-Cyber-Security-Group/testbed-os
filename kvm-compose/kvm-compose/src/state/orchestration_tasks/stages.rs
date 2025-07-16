@@ -305,3 +305,33 @@ pub async fn run_guest_setup_scripts_stage(
 
     Ok(())
 }
+
+pub async fn run_guest_run_scripts_stage(
+    state: &State,
+    sender: &mut Sender<OrchestrationProtocol>,
+    // receiver: &mut Receiver<OrchestrationProtocol>,
+) -> anyhow::Result<()> {
+    let mut orchestration_resources = Vec::new();
+
+    for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
+        match &guest_data.guest_type.guest_type {
+            GuestType::Libvirt(_) => {
+                orchestration_resources.push(
+                    OrchestrationResource::Guest(guest_data.clone())
+                );
+            }
+            GuestType::Docker(_) => {} // not applicable at this time
+            GuestType::Android(_) => {} // not applicable at this time
+        }
+    }
+    if orchestration_resources.is_empty() {
+        return Ok(());
+    }
+    send_orchestration_instruction_over_channel(
+        sender,
+        // receiver,
+        OrchestrationInstruction::ExecuteRunScript(orchestration_resources),
+    ).await.context("requesting the execution of guest run scripts")?;
+
+    Ok(())
+}
