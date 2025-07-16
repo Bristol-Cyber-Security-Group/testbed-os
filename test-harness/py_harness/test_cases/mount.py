@@ -35,13 +35,13 @@ class MountTestCase(TestCase):
             self.linked_clone_hosts,
             "_check_setup_script_artefact_exists",
         )
-        # context_artefact = run_command(
-        #     "client1",
-        #     "ls context/",
-        #     self.test_case_name,
-        #     self.linked_clone_hosts,
-        #     "_check_context_artefact_exists",
-        # )
+        context_artefact = run_command(
+            "client1",
+            "ls /etc/nocloud/context/",
+            self.test_case_name,
+            self.linked_clone_hosts,
+            "_check_context_artefact_exists",
+        )
         # env_var = run_command(
         #     "client1",
         #     """[ -n "${MOUNT_ENV_TEST}" ] && exit 0 || exit 1""",
@@ -77,7 +77,7 @@ class MountTestCase(TestCase):
             up_result_report,
             run_script_artefact,
             setup_script_artefact,
-            # context_artefact,
+            context_artefact,
             # env_var,
             # env_file_var_docker,
             # env_var_docker,
