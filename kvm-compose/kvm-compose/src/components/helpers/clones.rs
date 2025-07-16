@@ -131,6 +131,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                                         path,
                                         run_script: _,
                                         setup_script: _,
+                                        setup_script_timeout_s: _,
                                         context,
                                         environment,
                                     } => LibvirtGuestOptions::CloudImage {
@@ -139,6 +140,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                                         path: path.clone(),
                                         run_script: clone_run_script,
                                         setup_script: clone_setup_script,
+                                        setup_script_timeout_s: 120,
                                         context: context.clone(),
                                         environment: environment.clone(),
                                     },

@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use futures_util::future::{try_join_all};
@@ -405,7 +405,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         // run any setup
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
         match &self.libvirt_type {
-            LibvirtGuestOptions::CloudImage { setup_script, .. } => {
+            LibvirtGuestOptions::CloudImage { setup_script, setup_script_timeout_s, .. } => {
                 if let Some(script) = setup_script {
                     tracing::info!("running setup script on guest {}", &machine_config.guest_type.name);
 
@@ -440,27 +440,110 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                     };
                     let script_file_name = script_file_name
                         .context("Converting script name into a string")?;
-                    let (res_str, exit_code) = libvirt::shell_command(
-                        vec!["sudo", "bash", format!("/tmp/{script_file_name}").as_str()],
+
+                    // run the setup script inthe background
+                    let (res_str, _) = libvirt::shell_command(
+                        // IMPORTANT - we run the script in the background, and also write a complete
+                        //  flag once it is done, which we will look for below to signal the command completed
+                        vec!["(",
+                             "rm", "SETUP_SCRIPT_COMPLETE.txt", "||", // remove any existing complete flag
+                             "sudo", "bash", format!("/tmp/{script_file_name}").as_str(), "&&",
+                             "touch", "SETUP_SCRIPT_COMPLETE.txt", // write a complete flag if success
+                             "||", "touch", "SETUP_SCRIPT_FAILED.txt", // write fail flag if fail
+                             ")", ">/dev/null 2>&1", "&", "echo", "$! "], // send the background and print PID
                         5000,
                         &machine_config,
                         &guest_name,
                         &common,
                         logging_sender,
                         true,
+                        false,
                     ).await?;
 
-                    let script_output = format!("Script output:\n{res_str:?}");
-                    let script_exit_code = format!("Script finished running with exit code {exit_code:?}");
-                    if exit_code != 0 {
-                        logging_sender.send(OrchestrationLogger::error(script_exit_code)).await?;
-                        logging_sender.send(OrchestrationLogger::error(script_output)).await?;
-                        // we fail the run here, since we assume that it was necessary to work
-                        bail!("Setup script execution failed");
-                    } else {
-                        logging_sender.send(OrchestrationLogger::info(script_exit_code)).await?;
-                        logging_sender.send(OrchestrationLogger::info(script_output)).await?;
+                    // get the pid from the return text, should be the last string
+                    let return_text= res_str.split("\n").collect::<Vec<_>>();
+                    let pid = return_text[return_text.len()-1];
+
+                    let loop_interval = 5;
+                    logging_sender.send(OrchestrationLogger::info(
+                        format!("Got PID ({pid}), waiting for up to ({setup_script_timeout_s}s) \
+                        with an interval check of ({loop_interval}s) before aborting")
+                    )).await?;
+
+                    // with the PID, we can check for it for the given setup script timeout set by
+                    // the user or default timeout setup_script_timeout_s
+                    // if kill -0 pid returns 0 it is still running, if errors then it has finished
+
+                    // in the loop, we wait every 5 seconds to check, but factor in the time it takes
+                    // to run the command
+                    let start_time = Instant::now();
+                    let end_time = start_time + Duration::from_secs(*setup_script_timeout_s as u64);
+                    loop {
+                        if Instant::now() > end_time {
+                            logging_sender.send(OrchestrationLogger::error("Setup script still running but timeout exceeded, continuing without fail".to_string())).await?;
+                            break;
+                        }
+
+                        let loop_start_time = Instant::now();
+
+                        // check if pid is still running
+                        let (_, exit_code) = libvirt::shell_command(
+                            vec!["kill", "-0", pid],
+                            5000,
+                            &machine_config,
+                            &guest_name,
+                            &common,
+                            logging_sender,
+                            true,
+                            false,
+                        ).await?;
+
+                        // if non-zero exit code, then pid finished
+                        if exit_code != 0 {
+                            logging_sender.send(OrchestrationLogger::info("Setup script finished running".to_string())).await?;
+                            // check what the exit code was
+                            let (_, wait_exit_code) = libvirt::shell_command(
+                                vec!["wait", pid],
+                                5000,
+                                &machine_config,
+                                &guest_name,
+                                &common,
+                                logging_sender,
+                                true,
+                                false,
+                            ).await?;
+                            if wait_exit_code == 0 {
+                                logging_sender.send(OrchestrationLogger::info("Setup script was successful".to_string())).await?;
+                            } else {
+                                logging_sender.send(OrchestrationLogger::error(format!("Setup script failed with {wait_exit_code} exit code, will continue"))).await?;
+                            }
+                            break;
+                        }
+
+                        let command_end_time = Instant::now();
+                        let command_duration = command_end_time.duration_since(loop_start_time);
+
+                        // sleep the required amount of time to make it up to the check interval
+                        let desired_interval = Duration::from_secs(loop_interval);
+                        if command_duration < desired_interval {
+                            let sleep_duration = desired_interval - command_duration;
+                            let current_total_time = Instant::now().duration_since(start_time);
+                            logging_sender.send(OrchestrationLogger::info(format!("Command not finished running, waiting for another {sleep_duration:?} before checking again, total loop time ({current_total_time:?}s)"))).await?;
+                            tokio::time::sleep(sleep_duration).await;
+                        }
                     }
+
+                    // let script_output = format!("Script output:\n{res_str:?}");
+                    // let script_exit_code = format!("Script finished running with exit code {exit_code:?}");
+                    // if exit_code != 0 {
+                    //     logging_sender.send(OrchestrationLogger::error(script_exit_code)).await?;
+                    //     logging_sender.send(OrchestrationLogger::error(script_output)).await?;
+                    //     // we fail the run here, since we assume that it was necessary to work
+                    //     bail!("Setup script execution failed");
+                    // } else {
+                    //     logging_sender.send(OrchestrationLogger::info(script_exit_code)).await?;
+                    //     logging_sender.send(OrchestrationLogger::info(script_output)).await?;
+                    // }
                 }
             }
             LibvirtGuestOptions::ExistingDisk { .. } => {}
@@ -1362,6 +1445,7 @@ async fn wait_for_guest_to_be_up(
             common,
             logging_sender,
             true,
+            false,
         ).await;
 
         if counter > attempt_limit && poll_res.is_err() {

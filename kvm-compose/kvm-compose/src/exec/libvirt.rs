@@ -51,6 +51,7 @@ pub async fn shell_command(
     _common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
     suppress_logging: bool,
+    ignore_outcome: bool,
 ) -> anyhow::Result<(String, i32)> {
 
     if !suppress_logging {
@@ -153,6 +154,15 @@ pub async fn shell_command(
         }
     }
 
+    // don't try to parse the outcome if true, this is to allow other systems that will manage their
+    // own completion systems (mainly the setup script and related code paths), as these will poll
+    // for their own completion flags on the system
+    // .. this is only needed because when using this by sending a command to the background, the
+    // command will push text to the terminal which messes up the following code
+    if ignore_outcome {
+        return Ok(("ignored outcome".to_string(), 0));
+    }
+
     // parse the outputs
     let ansi_strip_command_output = strip_ansi_codes(&command_output).to_string();
     let ansi_strip_command_exit_code = if let Some(exit_code) = command_exit_code {
@@ -241,6 +251,9 @@ fn begin_pty_thread(
         let mut exit_code_lines = exit_code_res.lines();
         exit_code_lines.next();
         let exit_code = exit_code_lines.next();
+
+        // cmd_log_sender.blocking_send(format!("Exited with code {:?}", exit_code))?;
+        // cmd_log_sender.blocking_send(format!("res: {}", res))?;
 
         cmd_log_sender.blocking_send("Sending close command to PTY".to_string())?;
         pty.send("\x1D")?;
