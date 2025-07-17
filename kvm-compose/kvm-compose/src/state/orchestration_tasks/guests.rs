@@ -1620,7 +1620,11 @@ async fn wait_for_android_guest_to_be_up(
 
         let poll_res = exec::android::adb_command(
             &namespace,
-            &vec!["ls".to_string(), ".".to_string()],
+            &vec![
+                "wait-for-device".to_string(),
+                "shell".to_string(),
+                "while [[ -z $(getprop sys.boot_completed | tr -d '\r') ]]; do sleep 1; done;".to_string(),
+            ],
             logging_sender,
         ).await;
 

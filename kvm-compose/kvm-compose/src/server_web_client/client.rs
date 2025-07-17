@@ -32,9 +32,18 @@ pub async fn orchestration_action(
         }
     };
 
-    match &deployment.state {
-        DeploymentState::Running => bail!("deployment in Running state, cannot run orchestration command"),
-        _ => {}
+    match opts.sub_command {
+        SubCommand::Up(_) | SubCommand::Down | SubCommand::GenerateArtefacts |
+        SubCommand::ClearArtefacts | SubCommand::Snapshot(_) | SubCommand::TestbedSnapshot(_) => {
+            // these are destructive commands, don't allow running during other destructive cmds
+            match &deployment.state {
+                DeploymentState::Running => bail!("deployment in Running state, cannot run orchestration command"),
+                _ => {}
+            }
+        }
+        _ => {
+            // allow other commands
+        }
     }
 
     let action = get_deployment_action(&opts)?;
