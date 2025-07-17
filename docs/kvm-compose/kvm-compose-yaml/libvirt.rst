@@ -12,7 +12,7 @@ cloud_image
 :environment: some variables that the guest is supplied in a key value store
 :context: a folder that should be mounted into the guest at `/etc/nocloud/context/`
 :setup_script: specify the setup script that will be run on orchestration
-:run_script: specify the run script that will be run at the end of orchestration
+:run_script: specify the run script that will be run when the guest is turned on (after setup_script if defined)
 
 existing_disk
 ~~~~~~~~~~~~~

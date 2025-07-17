@@ -56,7 +56,7 @@ For example, the following are snippets of the relevant parts possible machine d
           gateway: 10.0.0.1
           mac: "00:00:00:00:00:01"
           ip: "10.0.0.10"
-      avd:
+      android:
         ...
 
 Machines - Libvirt
@@ -237,7 +237,34 @@ Further notes:
 
 Machines - AVD
 --------------
-Not yet implemented.
+
+The android section of the schema allows for two types of AVD, either `avd` or `existing_avd`.
+These are basically the same, where `existing_avd` points to an image created elsewhere.
+For `avd`, the testbed will create it for you based on the options given.
+
+For the moment `existing_avd` is unimplemented, this will be implemented in the future.
+
+To define either you must write:
+
+.. code-block:: yaml
+
+    android:
+      avd:
+        ...
+
+.. code-block:: yaml
+
+    android:
+      existing_avd:
+        ...
+
+For `avd` the options are as follows:
+
+:android_api_version: the API version of the operating system supported
+:playstore_enabled: whether the playstore will be installed or not (playstore enables various OS protections preventing tools that need root access)
+:setup_script: an arbritrary script that will be executed one the emulator is ready
+:run_script: an arbritary script that will be executed one the emulator is turned on (after setup_script, if defined)
+
 
 Network
 -------
