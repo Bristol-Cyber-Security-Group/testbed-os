@@ -131,7 +131,7 @@ pub async fn run_guest_exec_cmd(
             match &tool.tool {
                 TestbedTools::ADB(command) => {
                     tracing::info!("ADB arguments = {:?}", command.command);
-                    android::adb_command(&namespace, &command.command, &logging_send).await?;
+                    android::adb_command(&namespace, &command.command, &logging_send, false).await?;
                 }
                 TestbedTools::FridaSetup => {
                     tracing::info!("Running frida tools setup commands");

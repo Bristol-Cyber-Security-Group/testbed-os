@@ -1626,6 +1626,7 @@ async fn wait_for_android_guest_to_be_up(
                 "while [[ -z $(getprop sys.boot_completed | tr -d '\r') ]]; do sleep 1; done;".to_string(),
             ],
             logging_sender,
+            true,
         ).await;
 
         if counter > attempt_limit && poll_res.is_err() {

@@ -24,6 +24,7 @@ pub async fn adb_command(
     namespace: &str,
     command: &Vec<String>,
     logging_send: &Sender<OrchestrationLogger>,
+    suppress_output: bool,
 ) -> anyhow::Result<()> {
 
     let mut args = vec![
@@ -47,7 +48,9 @@ pub async fn adb_command(
     if output.status.success() {
         let log = String::from_utf8_lossy(&output.stdout);
         tracing::info!("ADB output: {:?}", String::from_utf8_lossy(&output.stdout));
-        logging_send.send(OrchestrationLogger::info(log.to_string())).await?;
+        if !suppress_output {
+            logging_send.send(OrchestrationLogger::info(log.to_string())).await?;
+        }
     } else {
         bail!("ADB error: {:?}", String::from_utf8_lossy(&output.stderr));
     }
@@ -86,7 +89,7 @@ pub async fn frida_setup(
     }
 
     // Run adb as root, push frida server to emulator and make it executable
-    let res = adb_command(namespace, &vec!["root".to_string()], &logging_send).await;
+    let res = adb_command(namespace, &vec!["root".to_string()], &logging_send, false).await;
     match res {
         Ok(_) => {}
         Err(e) => {
@@ -103,12 +106,12 @@ pub async fn frida_setup(
     tracing::info!("waiting to give a chance for rooting to complete before continuing ...");
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    adb_command(namespace, &vec!["push".to_string(), "/var/lib/testbedos/tools/frida-server-16.1.4-android-x86".to_string(), "/data/local/tmp".to_string()], &logging_send).await?;
-    adb_command(namespace, &vec!["shell".to_string(), "chmod".to_string(), "755".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86".to_string()], &logging_send).await?;
+    adb_command(namespace, &vec!["push".to_string(), "/var/lib/testbedos/tools/frida-server-16.1.4-android-x86".to_string(), "/data/local/tmp".to_string()], &logging_send, false).await?;
+    adb_command(namespace, &vec!["shell".to_string(), "chmod".to_string(), "755".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86".to_string()], &logging_send, false).await?;
 
     // Added -D to daemonize and -C to ignore crashes, which seems to prevent frida from holding
     // up the terminal so it exits - unclear if this is causing side effects yet
-    let res = adb_command(namespace, &vec!["shell".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86 -D -C".to_string()], &logging_send).await;
+    let res = adb_command(namespace, &vec!["shell".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86 -D -C".to_string()], &logging_send, false).await;
     match res {
         Ok(_) => {}
         Err(e) => {
