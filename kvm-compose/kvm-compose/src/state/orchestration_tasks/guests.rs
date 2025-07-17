@@ -410,11 +410,12 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                 if let Some(script) = setup_script {
                     tracing::info!("running setup script on guest {}", &machine_config.guest_type.name);
 
-                    logging_sender.send(OrchestrationLogger::info("Waiting until guest is up before continuing".to_string())).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Waiting until guest {guest_name} is up before continuing"))).await?;
+
                     wait_for_libvirt_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
                     let local_script_path = parse_path_with_deployment_config(script, &common)?;
 
-                    logging_sender.send(OrchestrationLogger::info(format!("Pushing {local_script_path:?}"))).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Pushing {local_script_path:?} to {guest_name}"))).await?;
                     libvirt::push(
                         &ExecCmdFileTransfer {
                             source_path: local_script_path.clone(),
@@ -425,9 +426,9 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                         &common,
                         logging_sender,
                     ).await?;
-                    logging_sender.send(OrchestrationLogger::info(format!("Pushed {local_script_path:?}"))).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Pushed {local_script_path:?} to {guest_name}"))).await?;
 
-                    logging_sender.send(OrchestrationLogger::info("Running setup script".to_string())).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Running setup script on {guest_name}"))).await?;
 
                     let script_file_name = {
                         match local_script_path.file_name() {
@@ -500,7 +501,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                     let end_time = start_time + Duration::from_secs(*setup_script_timeout_s as u64);
                     loop {
                         if Instant::now() > end_time {
-                            logging_sender.send(OrchestrationLogger::error("Setup script still running but timeout exceeded, continuing without fail".to_string())).await?;
+                            logging_sender.send(OrchestrationLogger::error(format!("Setup script still running on {guest_name} but timeout exceeded, continuing without fail"))).await?;
                             break;
                         }
 
@@ -520,7 +521,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 
                         // if non-zero exit code, then pid finished
                         if exit_code != 0 {
-                            logging_sender.send(OrchestrationLogger::info("Setup script finished running".to_string())).await?;
+                            logging_sender.send(OrchestrationLogger::info(format!("Setup script finished running on {guest_name}"))).await?;
                             // check what the exit code was
                             let (_, wait_exit_code) = libvirt::shell_command(
                                 vec!["wait", pid],
@@ -533,9 +534,9 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                                 false,
                             ).await?;
                             if wait_exit_code == 0 {
-                                logging_sender.send(OrchestrationLogger::info("Setup script was successful".to_string())).await?;
+                                logging_sender.send(OrchestrationLogger::info(format!("Setup script was successful on {guest_name}"))).await?;
                             } else {
-                                logging_sender.send(OrchestrationLogger::error(format!("Setup script failed with {wait_exit_code} exit code, will continue"))).await?;
+                                logging_sender.send(OrchestrationLogger::error(format!("Setup script failed on {guest_name} with {wait_exit_code} exit code, will continue"))).await?;
                             }
                             break;
                         }
@@ -548,7 +549,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                         if command_duration < desired_interval {
                             let sleep_duration = desired_interval - command_duration;
                             let current_total_time = Instant::now().duration_since(start_time);
-                            logging_sender.send(OrchestrationLogger::info(format!("Command not finished running, waiting for another {sleep_duration:?} before checking again, total loop time ({current_total_time:?}s)"))).await?;
+                            logging_sender.send(OrchestrationLogger::info(format!("Command not finished running on {guest_name}, waiting for another {sleep_duration:?} before checking again, total loop time ({current_total_time:?}s)"))).await?;
                             tokio::time::sleep(sleep_duration).await;
                         }
                     }
@@ -585,11 +586,11 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                 if let Some(script) = run_script {
                     tracing::info!("running setup script on guest {}", &machine_config.guest_type.name);
 
-                    logging_sender.send(OrchestrationLogger::info("Waiting until guest is up before continuing".to_string())).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Waiting until guest {guest_name} is up before continuing"))).await?;
                     wait_for_libvirt_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
                     let local_script_path = parse_path_with_deployment_config(script, &common)?;
 
-                    logging_sender.send(OrchestrationLogger::info(format!("Pushing {local_script_path:?}"))).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Pushing {local_script_path:?} to {guest_name}"))).await?;
                     libvirt::push(
                         &ExecCmdFileTransfer {
                             source_path: local_script_path.clone(),
@@ -600,9 +601,9 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                         &common,
                         logging_sender,
                     ).await?;
-                    logging_sender.send(OrchestrationLogger::info(format!("Pushed {local_script_path:?}"))).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Pushed {local_script_path:?} to {guest_name}"))).await?;
 
-                    logging_sender.send(OrchestrationLogger::info("Executing run script".to_string())).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Executing run script on {guest_name}"))).await?;
 
                     let script_file_name = {
                         match local_script_path.file_name() {
@@ -1407,10 +1408,11 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
         machine_config: StateTestbedGuest,
         logging_sender: &Sender<OrchestrationLogger>,
     ) -> anyhow::Result<()> {
+        let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
         match &self.avd_type {
             AVDGuestOptions::Avd { setup_script, .. } => {
                 if let Some(script) = setup_script {
-                    logging_sender.send(OrchestrationLogger::info("Waiting until guest is up before continuing".to_string())).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Waiting until guest {guest_name} is up before continuing"))).await?;
                     wait_for_android_guest_to_be_up(
                         &common,
                         &machine_config,
@@ -1430,9 +1432,9 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
                         .await?;
 
                     if run_setup_script.status.success() {
-                        logging_sender.send(OrchestrationLogger::info("Setup script ran successfully".to_string())).await?;
+                        logging_sender.send(OrchestrationLogger::info(format!("Setup script ran successfully for {guest_name}"))).await?;
                     } else {
-                        logging_sender.send(OrchestrationLogger::error("Setup script did not run successfully, continuing".to_string())).await?;
+                        logging_sender.send(OrchestrationLogger::error(format!("Setup script did not run successfully for {guest_name}, continuing"))).await?;
                     }
 
                 }
@@ -1449,10 +1451,11 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
         machine_config: StateTestbedGuest,
         logging_sender: &Sender<OrchestrationLogger>,
     ) -> anyhow::Result<()> {
+        let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
         match &self.avd_type {
             AVDGuestOptions::Avd { run_script, .. } => {
                 if let Some(script) = run_script {
-                    logging_sender.send(OrchestrationLogger::info("Waiting until guest is up before continuing".to_string())).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Waiting until guest {guest_name} is up before continuing"))).await?;
                     wait_for_android_guest_to_be_up(
                         &common,
                         &machine_config,
@@ -1470,9 +1473,9 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
                         .await?;
 
                     if run_setup_script.status.success() {
-                        logging_sender.send(OrchestrationLogger::info("Run script ran successfully".to_string())).await?;
+                        logging_sender.send(OrchestrationLogger::info(format!("Setup script ran successfully for {guest_name}"))).await?;
                     } else {
-                        logging_sender.send(OrchestrationLogger::error("Run script did not run successfully, continuing".to_string())).await?;
+                        logging_sender.send(OrchestrationLogger::error(format!("Setup script did not run successfully for {guest_name}, continuing"))).await?;
                     }
 
                 }
