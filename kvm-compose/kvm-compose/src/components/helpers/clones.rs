@@ -242,10 +242,14 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                                 avd_type: match &avd_guest.avd_type {
                                     AVDGuestOptions::Avd {
                                         android_api_version,
-                                        playstore_enabled
+                                        playstore_enabled,
+                                        setup_script,
+                                        run_script,
                                     } => AVDGuestOptions::Avd {
                                         android_api_version: android_api_version.clone(),
                                         playstore_enabled: playstore_enabled.clone(),
+                                        setup_script: setup_script.clone(),
+                                        run_script: run_script.clone(),
                                     },
                                     AVDGuestOptions::ExistingAvd { .. } => {
                                         // need to create copies

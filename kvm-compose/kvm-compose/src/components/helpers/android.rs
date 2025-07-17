@@ -45,7 +45,7 @@ pub fn get_sdk_string(
     let mut package_string = "system-images;".to_string();
 
     match avdguest_options {
-        AVDGuestOptions::Avd { android_api_version, playstore_enabled } => {
+        AVDGuestOptions::Avd { android_api_version, playstore_enabled, .. } => {
             package_string.push_str(&format!("android-{android_api_version};"));
 
             if *playstore_enabled {

@@ -931,7 +931,9 @@ impl OrchestrationResource {
                         l.setup_action(orchestration_common, g.clone(), logging_send).await
                     }
                     GuestType::Docker(_) => unreachable!(),
-                    GuestType::Android(_) => unreachable!()
+                    GuestType::Android(a) => {
+                        a.setup_action(orchestration_common, g.clone(), logging_send).await
+                    }
                 }
             }
             OrchestrationResource::Network(_) => unreachable!(),
@@ -946,7 +948,9 @@ impl OrchestrationResource {
                         l.run_action(orchestration_common, g.clone(), logging_send).await
                     }
                     GuestType::Docker(_) => unreachable!(),
-                    GuestType::Android(_) => unreachable!()
+                    GuestType::Android(a) => {
+                        a.run_action(orchestration_common, g.clone(), logging_send).await
+                    }
                 }
             }
             OrchestrationResource::Network(_) => unreachable!(),

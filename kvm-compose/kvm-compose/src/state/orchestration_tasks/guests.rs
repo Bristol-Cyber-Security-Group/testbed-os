@@ -8,11 +8,12 @@ use glob::{glob};
 use nix::unistd::{Gid, Uid};
 use tokio::sync::mpsc::Sender;
 use kvm_compose_schemas::exec::ExecCmdFileTransfer;
-use kvm_compose_schemas::kvm_compose_yaml::machines::avd::ConfigAVDMachine;
+use kvm_compose_schemas::kvm_compose_yaml::machines::avd::{AVDGuestOptions, ConfigAVDMachine};
 use kvm_compose_schemas::kvm_compose_yaml::machines::docker::ConfigDockerMachine;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::{ConfigLibvirtMachine, LibvirtGuestOptions};
 use crate::components::get_guest_interface_name;
+use crate::exec;
 use crate::exec::{libvirt};
 use crate::orchestration::{is_main_testbed, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail};
 use crate::orchestration::api::OrchestrationLogger;
@@ -410,7 +411,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                     tracing::info!("running setup script on guest {}", &machine_config.guest_type.name);
 
                     logging_sender.send(OrchestrationLogger::info("Waiting until guest is up before continuing".to_string())).await?;
-                    wait_for_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
+                    wait_for_libvirt_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
                     let local_script_path = parse_path_with_deployment_config(script, &common)?;
 
                     logging_sender.send(OrchestrationLogger::info(format!("Pushing {local_script_path:?}"))).await?;
@@ -585,7 +586,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                     tracing::info!("running setup script on guest {}", &machine_config.guest_type.name);
 
                     logging_sender.send(OrchestrationLogger::info("Waiting until guest is up before continuing".to_string())).await?;
-                    wait_for_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
+                    wait_for_libvirt_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
                     let local_script_path = parse_path_with_deployment_config(script, &common)?;
 
                     logging_sender.send(OrchestrationLogger::info(format!("Pushing {local_script_path:?}"))).await?;
@@ -1402,20 +1403,84 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
 
     async fn setup_action(
         &self,
-        _common: OrchestrationCommon,
-        _machine_config: StateTestbedGuest,
-        _logging_sender: &Sender<OrchestrationLogger>,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
     ) -> anyhow::Result<()> {
-        todo!()
+        match &self.avd_type {
+            AVDGuestOptions::Avd { setup_script, .. } => {
+                if let Some(script) = setup_script {
+                    logging_sender.send(OrchestrationLogger::info("Waiting until guest is up before continuing".to_string())).await?;
+                    wait_for_android_guest_to_be_up(
+                        &common,
+                        &machine_config,
+                        &logging_sender,
+                    ).await?;
+
+                    let local_script_path = parse_path_with_deployment_config(script, &common)?;
+
+                    // now that the guest is up, we can run the setup script that has been provided
+                    // which can run arbitrary things but at least runs when the guest is available
+
+                    // we will run this from the project working directory
+                    let run_setup_script = tokio::process::Command::new("bash")
+                        .arg(local_script_path)
+                        .current_dir(common.project_working_dir)
+                        .output()
+                        .await?;
+
+                    if run_setup_script.status.success() {
+                        logging_sender.send(OrchestrationLogger::info("Setup script ran successfully".to_string())).await?;
+                    } else {
+                        logging_sender.send(OrchestrationLogger::error("Setup script did not run successfully, continuing".to_string())).await?;
+                    }
+
+                }
+            }
+            AVDGuestOptions::ExistingAvd { .. } => {}
+        }
+
+        Ok(())
     }
 
     async fn run_action(
         &self,
-        _common: OrchestrationCommon,
-        _machine_config: StateTestbedGuest,
-        _logging_sender: &Sender<OrchestrationLogger>,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
     ) -> anyhow::Result<()> {
-        todo!()
+        match &self.avd_type {
+            AVDGuestOptions::Avd { run_script, .. } => {
+                if let Some(script) = run_script {
+                    logging_sender.send(OrchestrationLogger::info("Waiting until guest is up before continuing".to_string())).await?;
+                    wait_for_android_guest_to_be_up(
+                        &common,
+                        &machine_config,
+                        &logging_sender,
+                    ).await?;
+
+                    let local_script_path = parse_path_with_deployment_config(script, &common)?;
+
+                    // we will run this from the project working directory
+                    let run_setup_script = tokio::process::Command::new("bash")
+                        .arg(local_script_path)
+                        .arg("&")
+                        .current_dir(common.project_working_dir)
+                        .output()
+                        .await?;
+
+                    if run_setup_script.status.success() {
+                        logging_sender.send(OrchestrationLogger::info("Run script ran successfully".to_string())).await?;
+                    } else {
+                        logging_sender.send(OrchestrationLogger::error("Run script did not run successfully, continuing".to_string())).await?;
+                    }
+
+                }
+            }
+            AVDGuestOptions::ExistingAvd { .. } => {}
+        }
+
+        Ok(())
     }
 
     async fn destroy_action(
@@ -1496,7 +1561,7 @@ fn get_xml_path(
     format!("{local_image_parent_path}/{domain_xml_name}")
 }
 
-async fn wait_for_guest_to_be_up(
+async fn wait_for_libvirt_guest_to_be_up(
     common: &OrchestrationCommon,
     machine_config: &StateTestbedGuest,
     command: Vec<&str>,
@@ -1521,6 +1586,42 @@ async fn wait_for_guest_to_be_up(
             logging_sender,
             true,
             false,
+        ).await;
+
+        if counter > attempt_limit && poll_res.is_err() {
+            // we waited 12 times with a wait, the command didnt work so this has failed
+            bail!("could not connect to guest {}-{} to check if it is up, might not have booted successfully", &common.project_name, &machine_config.guest_type.name);
+        } else if poll_res.is_ok() {
+            // successful connection, return ok
+            break;
+        }
+        tracing::info!("attempt {counter}/{attempt_limit} guest {guest_name} not up yet, waiting 5s and trying again");
+        counter += 1;
+        tokio::time::sleep(Duration::from_secs(wait_time_in_seconds)).await;
+
+    }
+    Ok(())
+}
+
+async fn wait_for_android_guest_to_be_up(
+    common: &OrchestrationCommon,
+    machine_config: &StateTestbedGuest,
+    logging_sender: &Sender<OrchestrationLogger>,
+) -> anyhow::Result<()> {
+    // we will poll the guest with the given command in a loop, for a number of attempts in a time
+    // limit
+    let attempt_limit = 24;
+    let wait_time_in_seconds = 5;
+    let guest_name = &machine_config.guest_type.name;
+    let namespace = format!("{}-{}-nmspc", &common.project_name, guest_name);
+    let mut counter = 0;
+    loop {
+        tracing::info!("trying to poll guest {guest_name} to see if it is up ...");
+
+        let poll_res = exec::android::adb_command(
+            &namespace,
+            &vec!["ls".to_string(), ".".to_string()],
+            logging_sender,
         ).await;
 
         if counter > attempt_limit && poll_res.is_err() {

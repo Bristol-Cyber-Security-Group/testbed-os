@@ -70,7 +70,7 @@ pub async fn run_guest_exec_cmd(
     guest_name: &String,
     guest_data: &StateTestbedGuest,
     exec_cmd: &ExecCmdType,
-    state: &State,
+    _state: &State,
     orchestration_common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<bool> {
@@ -127,7 +127,7 @@ pub async fn run_guest_exec_cmd(
         }
         ExecCmdType::Tool(tool) => {
             tracing::info!("running tool on guest {guest_name_with_project}");
-            let namespace = format!("{}-{}-nmspc", state.project_name, guest_name_with_project);
+            let namespace = format!("{}-nmspc", guest_name_with_project);
             match &tool.tool {
                 TestbedTools::ADB(command) => {
                     tracing::info!("ADB arguments = {:?}", command.command);

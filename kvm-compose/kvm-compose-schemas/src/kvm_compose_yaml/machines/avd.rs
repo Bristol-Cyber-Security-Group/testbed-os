@@ -21,9 +21,12 @@ pub enum AVDGuestOptions {
     Avd {
         android_api_version: u8,
         playstore_enabled: bool,
+        setup_script: Option<PathBuf>,
+        run_script: Option<PathBuf>,
     },
     ExistingAvd {
         path: PathBuf,
+        run_script: Option<PathBuf>,
     }
 }
 

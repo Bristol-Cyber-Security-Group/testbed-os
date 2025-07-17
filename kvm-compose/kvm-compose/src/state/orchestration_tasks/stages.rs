@@ -291,7 +291,11 @@ pub async fn run_guest_setup_scripts_stage(
                 );
             }
             GuestType::Docker(_) => {} // not applicable at this time
-            GuestType::Android(_) => {} // not applicable at this time
+            GuestType::Android(_) => {
+                orchestration_resources.push(
+                    OrchestrationResource::Guest(guest_data.clone())
+                );
+            }
         }
     }
     if orchestration_resources.is_empty() {
@@ -321,7 +325,11 @@ pub async fn run_guest_run_scripts_stage(
                 );
             }
             GuestType::Docker(_) => {} // not applicable at this time
-            GuestType::Android(_) => {} // not applicable at this time
+            GuestType::Android(_) => {
+                orchestration_resources.push(
+                    OrchestrationResource::Guest(guest_data.clone())
+                );
+            }
         }
     }
     if orchestration_resources.is_empty() {
