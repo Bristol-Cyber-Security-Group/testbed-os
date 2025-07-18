@@ -154,15 +154,6 @@ pub async fn shell_command(
         }
     }
 
-    // don't try to parse the outcome if true, this is to allow other systems that will manage their
-    // own completion systems (mainly the setup script and related code paths), as these will poll
-    // for their own completion flags on the system
-    // .. this is only needed because when using this by sending a command to the background, the
-    // command will push text to the terminal which messes up the following code
-    if ignore_outcome {
-        return Ok(("ignored outcome".to_string(), 0));
-    }
-
     // parse the outputs
     let ansi_strip_command_output = strip_ansi_codes(&command_output).to_string();
     let ansi_strip_command_exit_code = if let Some(exit_code) = command_exit_code {
@@ -178,13 +169,6 @@ pub async fn shell_command(
     let ansi_strip_command_output = ansi_strip_command_output.replace("\r", "");
     let ansi_strip_command_exit_code = ansi_strip_command_exit_code.replace("\r", "");
 
-    // make sure exit code was a number
-    let maybe_int_exit_code = ansi_strip_command_exit_code.parse::<i32>();
-    let parsed_exit_code = match maybe_int_exit_code {
-        Ok(ok) => ok,
-        Err(_) => bail!("the command did not return an exit code: {:?}", maybe_int_exit_code),
-    };
-
     // the command output will also have the first line as the command input, as a side effect of
     // using expect - we need to remove it as we did for the exit code
     let mut command_output_lines = ansi_strip_command_output.lines();
@@ -196,6 +180,25 @@ pub async fn shell_command(
     if final_command_output.ends_with("\n") {
         final_command_output = final_command_output[0..final_command_output.len() - 1].to_string();
     }
+
+    // don't try to parse the outcome if true, this is to allow other systems that will manage their
+    // own completion systems (mainly the setup script and related code paths), as these will poll
+    // for their own completion flags on the system
+    // .. this is only needed because when using this by sending a command to the background, the
+    // command will push text to the terminal which messes up the following code
+    if ignore_outcome {
+        return Ok((final_command_output, 0));
+    }
+
+    // make sure exit code was a number
+    let maybe_int_exit_code = ansi_strip_command_exit_code.parse::<i32>();
+    let parsed_exit_code = match maybe_int_exit_code {
+        Ok(ok) => ok,
+        Err(_) => {
+            logging_send.send(OrchestrationLogger::error(format!("Output from script:\n{final_command_output}"))).await?;
+            bail!("the command did not return an exit code: {:?}", maybe_int_exit_code)
+        }
+    };
 
     // log the output depending on if the command worked or not
     if !suppress_logging {

@@ -478,7 +478,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                         &common,
                         logging_sender,
                         true,
-                        false,
+                        true,
                     ).await?;
 
                     // get the pid from the return text, should be the last string
