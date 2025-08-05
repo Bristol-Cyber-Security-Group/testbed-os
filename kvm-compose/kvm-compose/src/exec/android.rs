@@ -25,7 +25,7 @@ pub async fn adb_command(
     command: &Vec<String>,
     logging_send: &Sender<OrchestrationLogger>,
     suppress_output: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<String> {
 
     let mut args = vec![
         "ip".to_string(),
@@ -47,16 +47,15 @@ pub async fn adb_command(
 
     if output.status.success() {
         let log = String::from_utf8_lossy(&output.stdout);
-        tracing::info!("ADB output: {:?}", String::from_utf8_lossy(&output.stdout));
+        tracing::info!("ADB output: {:?}", log);
         if !suppress_output {
             logging_send.send(OrchestrationLogger::info(log.to_string())).await?;
         }
+        Ok(log.to_string())
     } else {
         bail!("ADB error: {:?}", String::from_utf8_lossy(&output.stderr));
     }
 
-
-    Ok(())
 }
 
 pub async fn frida_setup(
@@ -64,12 +63,27 @@ pub async fn frida_setup(
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
 
+    // we need to know if the emulator is x86 or x86_64, we can use an adb command to do this
+    let res = adb_command(
+        namespace,
+        &vec!["shell".to_string(), "getprop".to_string(), "ro.product.cpu.abi".to_string()],
+        &logging_send,
+        true,
+    ).await;
+    let abi = match res {
+        Ok(ok) => ok,
+        Err(e) => bail!("could not determine the abi version for the emulator: {e:#}"),
+    };
+
+    // remove whitespaces and newlines
+    let abi = abi.trim().to_string();
+
     // Install frida server if it doesn't exist
-    if !Path::new("/var/lib/testbedos/tools/frida-server-16.1.4-android-x86").exists() {
+    if !Path::new(&format!("/var/lib/testbedos/tools/frida-server-16.1.4-android-{abi}")).exists() {
         tracing::info!("Installing frida server");
         let output = Command::new("sudo")
             .arg("wget")
-            .arg("https://github.com/frida/frida/releases/download/16.1.4/frida-server-16.1.4-android-x86.xz")
+            .arg(format!("https://github.com/frida/frida/releases/download/16.1.4/frida-server-16.1.4-android-{abi}.xz"))
             .arg("-P")
             .arg("/var/lib/testbedos/tools/")
             .output()
@@ -82,7 +96,7 @@ pub async fn frida_setup(
 
         Command::new("sudo")
             .arg("unxz")
-            .arg("/var/lib/testbedos/tools/frida-server-16.1.4-android-x86.xz")
+            .arg(format!("/var/lib/testbedos/tools/frida-server-16.1.4-android-{abi}.xz"))
             .output()
             .await
             .context("Failed to extract server")?;
@@ -106,12 +120,12 @@ pub async fn frida_setup(
     tracing::info!("waiting to give a chance for rooting to complete before continuing ...");
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    adb_command(namespace, &vec!["push".to_string(), "/var/lib/testbedos/tools/frida-server-16.1.4-android-x86".to_string(), "/data/local/tmp".to_string()], &logging_send, false).await?;
-    adb_command(namespace, &vec!["shell".to_string(), "chmod".to_string(), "755".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86".to_string()], &logging_send, false).await?;
+    adb_command(namespace, &vec!["push".to_string(), format!("/var/lib/testbedos/tools/frida-server-16.1.4-android-{abi}"), "/data/local/tmp".to_string()], &logging_send, false).await?;
+    adb_command(namespace, &vec!["shell".to_string(), "chmod".to_string(), "755".to_string(), format!("/data/local/tmp/frida-server-16.1.4-android-{abi}")], &logging_send, false).await?;
 
     // Added -D to daemonize and -C to ignore crashes, which seems to prevent frida from holding
     // up the terminal so it exits - unclear if this is causing side effects yet
-    let res = adb_command(namespace, &vec!["shell".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86 -D -C".to_string()], &logging_send, false).await;
+    let res = adb_command(namespace, &vec!["shell".to_string(), format!("/data/local/tmp/frida-server-16.1.4-android-{abi} -D -C")], &logging_send, false).await;
     match res {
         Ok(_) => {}
         Err(e) => {
