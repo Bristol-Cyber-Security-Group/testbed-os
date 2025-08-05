@@ -7,6 +7,7 @@ use rexpect::session::PtySession;
 use tokio::sync::mpsc::{Sender};
 use tokio::sync::{mpsc};
 use console::strip_ansi_codes;
+use rexpect::reader::Regex;
 use tokio::task::JoinHandle;
 use tokio::time;
 use kvm_compose_schemas::exec::ExecCmdFileTransfer;
@@ -30,7 +31,6 @@ const ACTIVE_SESSION: &str = "Active console session exists for this domain";
 const SESSION_READY: &str = "(Ctrl + ])";
 const LOGIN_USER: &str = " login:";
 const LOGIN_PASSWORD: &str = "Password:";
-const SHELL: &str = ":~$";
 
 /// Enum to define the different states the PTY could be in during use, after we have passed the
 /// initial check to be able to open the PTY. The PTY could be in a few different states, depending
@@ -84,7 +84,8 @@ pub async fn shell_command(
 
     // the final line of a shell will usually have the username@hostname, so we will use this to
     // 'expect' at the end of a command - this will not be then included in the output
-    let shell_user_host_string = format!("{}@{}{}", &username, guest_name_with_project, SHELL);
+    // .. we are using a regex here as the hostname may not be set by the testbed
+    let shell_user_host_string = format!(r"{username}@(.+):~\$");
 
     // set up a channel to send logging from the command running
     let (cmd_log_sender, mut cmd_log_receiver) = mpsc::channel(16);
@@ -249,9 +250,9 @@ fn begin_pty_thread(
         // grab the command exit code, but prepend a space to not save it in the history
         cmd_log_sender.blocking_send("Getting command exit code".to_string())?;
         pty.send_line(" echo $?")?;
-        let exit_code_res = pty.exp_string(&shell_user_host_string)?;
+        let (output, _) = pty.exp_regex(&shell_user_host_string)?;
         // the exit code will include the new terminal line below, so we need to trim that
-        let mut exit_code_lines = exit_code_res.lines();
+        let mut exit_code_lines = output.lines();
         exit_code_lines.next();
         let exit_code = exit_code_lines.next();
 
@@ -373,14 +374,22 @@ fn determine_pty_state(
 ) -> anyhow::Result<PtyState> {
     // set up the password test prompt
     let pass_prompt = format!("password for {username}:");
+    let regex = Regex::new(after_command)?; // TODO move regex init to first caller
     // start: text before the 'until' match, end: is the matched string
     let (start, end) = pty.exp_any(vec![
         ReadUntil::String(LOGIN_USER.to_string()),
         ReadUntil::String(LOGIN_PASSWORD.to_string()),
         // ReadUntil::String(SHELL.to_string()),
-        ReadUntil::String(after_command.clone()),
+        ReadUntil::Regex(regex.clone()),
         ReadUntil::String(pass_prompt.clone()),
     ])?;
+
+    // re-check that the string that rexpect matched on was the regex, since we need to validate
+    // the match based on the regex specifically, as the match above this could have been on any
+    // of the other String based expects
+    if regex.is_match(&end.trim()) {
+        return Ok(PtyState::ShellOpen(start));
+    }
 
     let end_str = end.as_str();
     // separate match for strings only known at runtime
