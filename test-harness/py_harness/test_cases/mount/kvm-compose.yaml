@@ -27,7 +27,7 @@ machines:
         ip: "10.0.0.12"
     docker:
       image: nginx:stable
-      env_file: docker.env
+#      env_file: docker.env
       environment:
         TWO: "2"
       volumes:

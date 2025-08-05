@@ -16,7 +16,7 @@ use tokio_tungstenite::tungstenite::Message;
 use kvm_compose_schemas::deployment_models::Deployment;
 use kvm_compose_schemas::settings::TestbedClusterConfig;
 use crate::components::LogicalTestbed;
-use crate::orchestration::api::OrchestrationProtocol;
+use crate::orchestration::api::{OrchestrationLogger, OrchestrationProtocol};
 use crate::orchestration::ssh::SSHClient;
 use crate::parse_config;
 use crate::state::{State, StateNetwork, StateTestbedGuest, StateTestbedGuestList, StateTestbedGuestSharedConfig, StateTestbedHost};
@@ -87,7 +87,7 @@ impl Default for OrchestrationCommon {
 pub trait OrchestrationTask {
     // These two are for creating resources all in one get
     async fn create_action(&self, common: &OrchestrationCommon) -> anyhow::Result<()>;
-    async fn destroy_action(&self, common: &OrchestrationCommon) -> anyhow::Result<()>;
+    async fn destroy_action(&self, common: &OrchestrationCommon, logging_sender: &Sender<OrchestrationLogger>) -> anyhow::Result<()>;
 
     // These two are for the client to request the server to create
     async fn request_create_action(&self, common: &OrchestrationCommon, sender: &mut Sender<OrchestrationProtocol>) -> anyhow::Result<()>;
@@ -103,15 +103,61 @@ pub trait OrchestrationTask {
 #[async_trait]
 pub trait OrchestrationGuestTask {
     // TODO - since were not using parallel tasks, we can revert back to just using references and remove usage of .clone()
-    async fn setup_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()>;
-    async fn push_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()>;
-    async fn pull_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()>;
-    async fn rebase_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest, guest_list: StateTestbedGuestList) -> anyhow::Result<()>;
-    async fn create_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()>;
-    async fn setup_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()>;
-    async fn run_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()>;
-    async fn destroy_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()>;
-    async fn is_up(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<bool>;
+    async fn setup_image_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()>;
+    async fn push_image_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()>;
+    async fn pull_image_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()>;
+    async fn rebase_image_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        guest_list: StateTestbedGuestList,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()>;
+    async fn create_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()>;
+    async fn setup_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()>;
+    async fn run_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()>;
+    async fn destroy_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()>;
+    async fn is_up(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<bool>;
 }
 
 /// Helper method to run sub commands since there is a lot of boilerplate. Also due to the need to

@@ -1,25 +1,35 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
 use futures_util::future::{try_join_all};
 use glob::{glob};
 use nix::unistd::{Gid, Uid};
-use kvm_compose_schemas::kvm_compose_yaml::machines::avd::ConfigAVDMachine;
+use tokio::sync::mpsc::Sender;
+use kvm_compose_schemas::exec::ExecCmdFileTransfer;
+use kvm_compose_schemas::kvm_compose_yaml::machines::avd::{AVDGuestOptions, ConfigAVDMachine};
 use kvm_compose_schemas::kvm_compose_yaml::machines::docker::ConfigDockerMachine;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::{ConfigLibvirtMachine, LibvirtGuestOptions};
 use crate::components::get_guest_interface_name;
+use crate::exec;
+use crate::exec::{libvirt};
 use crate::orchestration::{is_main_testbed, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail};
+use crate::orchestration::api::OrchestrationLogger;
 use crate::orchestration::ssh::SSHClient;
 use crate::ovn::components::logical_switch_port::LogicalSwitchPortType;
 use crate::state::{State, StateNetwork, StateTestbedGuest, StateTestbedGuestList};
-
+use crate::state::orchestration_tasks::parse_path_with_deployment_config;
 
 #[async_trait]
 impl OrchestrationGuestTask for ConfigLibvirtMachine {
-    async fn setup_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn setup_image_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         // we need to make a distinction between a backing image, a clone of a backing image and
         // a normal libvirt image that should be deployed
 
@@ -29,7 +39,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
             // if the clone has a shared_setup script, then boot, run script then turn it off
             // otherwise just create the image
             // the backing image guest definition will have a scaling option
-            if let Some(shared_setup) = self.scaling.clone().context("getting scaling config for libvirt guest")?.shared_setup {
+            if let Some(_shared_setup) = self.scaling.clone().context("getting scaling config for libvirt guest")?.shared_setup {
                 tracing::info!("setting up backing image guest {} as it has a shared setup script", &guest_name);
                 // there is a shared setup script
                 // artefact generation has already created a domain xml with the interface set to
@@ -38,32 +48,9 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                 tracing::info!("starting base backing image guest {guest_name} to run share setup script");
                 match self.libvirt_type {
                     LibvirtGuestOptions::CloudImage { .. } => {
-                        // cloud images will have the testbed guest public key pushed so we can
-                        // use ssh
-                        self.create_action(common.clone(), machine_config.clone()).await?;
-                        // wait for guest to be up
-                        tracing::info!("waiting for guest {guest_name} to start");
-                        // TODO - observed the guest's ssh server may not start, why? and cant restart manually
-                        wait_for_guest_to_be_up(&common, &machine_config, vec!["ls"]).await?;
-                        tracing::info!("running shared setup script on guest {guest_name}");
-                        let shared_setup_script = shared_setup.to_str().context("getting shared setup script path")?;
-                        let path_to_shared_setup_script = format!("{}/{}", &common.project_working_dir.to_str().context("getting project working dir")?, shared_setup_script);
-                        SSHClient::push_file_to_guest(
-                            &common,
-                            &path_to_shared_setup_script,
-                            &"/tmp".to_string(),
-                            &self.username.as_ref().unwrap(),
-                            &guest_name,
-                        ).await?;
-                        SSHClient::run_guest_command(
-                            &common,
-                            vec!["sudo", "bash", format!("/tmp/{shared_setup_script}").as_str()],
-                            &machine_config,
-                            false,
-                        ).await?;
-                        // turn off guest
-                        tracing::info!("turning off guest {guest_name} now shared setup script has finished running");
-                        self.destroy_action(common.clone(), machine_config).await?;
+                        // TODO - this needs to be reworked to use exec cmd, no more SSHClient ..
+                        //  see code that was here previously for guidance on re-implementing
+                        unimplemented!();
                     }
                     LibvirtGuestOptions::ExistingDisk { .. } => unimplemented!(),
                     LibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
@@ -134,7 +121,12 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         Ok(())
     }
 
-    async fn push_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn push_image_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
 
         let mut futures = Vec::new();
 
@@ -223,7 +215,12 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         Ok(())
     }
 
-    async fn pull_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn pull_image_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         let target_testbed = machine_config.testbed_host.as_ref().unwrap();
         let guest_name = format!("{}", &machine_config.guest_type.name);
         if is_main_testbed(&common, target_testbed) {
@@ -249,7 +246,13 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         }
     }
 
-    async fn rebase_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest, guest_list: StateTestbedGuestList) -> anyhow::Result<()> {
+    async fn rebase_image_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        guest_list: StateTestbedGuestList,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         tracing::info!("rebasing image for guest {}", &machine_config.guest_type.name);
         let target_testbed = machine_config.testbed_host.as_ref().unwrap();
         if is_main_testbed(&common, target_testbed) {
@@ -282,7 +285,12 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         Ok(())
     }
 
-    async fn create_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn create_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         tracing::info!("deploying guest {}", &machine_config.guest_type.name);
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
         let project_path = if is_main_testbed(&common, testbed_host) {
@@ -389,28 +397,174 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         Ok(())
     }
 
-    async fn setup_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn setup_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         // run any setup
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
         match &self.libvirt_type {
-            LibvirtGuestOptions::CloudImage { setup_script, .. } => {
+            LibvirtGuestOptions::CloudImage { setup_script, setup_script_timeout_s, .. } => {
                 if let Some(script) = setup_script {
                     tracing::info!("running setup script on guest {}", &machine_config.guest_type.name);
-                    wait_for_guest_to_be_up(&common, &machine_config, vec!["ls"]).await?;
-                    let local_script_path = script.to_str().unwrap().to_string();
-                    SSHClient::push_file_to_guest(
-                        &common,
-                        &local_script_path,
-                        &"/tmp".to_string(),
-                        &self.username.as_ref().unwrap(),
-                        &guest_name,
-                    ).await?;
-                    SSHClient::run_guest_command(
-                        &common,
-                        vec!["sudo", "bash", format!("/tmp/{local_script_path}").as_str()],
+
+                    logging_sender.send(OrchestrationLogger::info(format!("Waiting until guest {guest_name} is up before continuing"))).await?;
+
+                    wait_for_libvirt_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
+                    let local_script_path = parse_path_with_deployment_config(script, &common)?;
+
+                    logging_sender.send(OrchestrationLogger::info(format!("Pushing {local_script_path:?} to {guest_name}"))).await?;
+                    libvirt::push(
+                        &ExecCmdFileTransfer {
+                            source_path: local_script_path.clone(),
+                            target_path: PathBuf::from("/tmp"),
+                        },
                         &machine_config,
-                        false,
+                        &guest_name,
+                        &common,
+                        logging_sender,
                     ).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Pushed {local_script_path:?} to {guest_name}"))).await?;
+
+                    logging_sender.send(OrchestrationLogger::info(format!("Running setup script on {guest_name}"))).await?;
+
+                    let script_file_name = {
+                        match local_script_path.file_name() {
+                            None => bail!("The script path given {local_script_path:?} is not a file, likely a directory."),
+                            Some(os_str) => {
+                                os_str.to_str().map(|s| s.to_string())
+                            }
+                        }
+                    };
+                    let script_file_name = script_file_name
+                        .context("Converting script name into a string")?;
+
+                    // remove any pre-existing setup flag if it exists
+                    let (_, _) = libvirt::shell_command(
+                        vec!["rm", "SETUP_SCRIPT_COMPLETE.txt"],
+                        5000,
+                        &machine_config,
+                        &guest_name,
+                        &common,
+                        logging_sender,
+                        true,
+                        true,
+                    ).await?;
+                    let (_, _) = libvirt::shell_command(
+                        vec!["rm", "SETUP_SCRIPT_FAILED.txt"],
+                        5000,
+                        &machine_config,
+                        &guest_name,
+                        &common,
+                        logging_sender,
+                        true,
+                        true,
+                    ).await?;
+
+                    // run the setup script inthe background
+                    let (res_str, _) = libvirt::shell_command(
+                        // IMPORTANT - we run the script in the background, and also write a complete
+                        //  flag once it is done, which we will look for below to signal the command completed
+                        vec!["(",
+                             "sudo", "bash", format!("/tmp/{script_file_name}").as_str(), ">", "setup.log", "&&",
+                             "touch", "SETUP_SCRIPT_COMPLETE.txt", // write a complete flag if success
+                             "||", "touch", "SETUP_SCRIPT_FAILED.txt", // write fail flag if fail
+                             ")", "&", "echo", "$! "], // send the background and print PID
+                        5000,
+                        &machine_config,
+                        &guest_name,
+                        &common,
+                        logging_sender,
+                        true,
+                        true,
+                    ).await?;
+
+                    // get the pid from the return text, should be the last string
+                    let return_text= res_str.split("\n").collect::<Vec<_>>();
+                    let pid = return_text[return_text.len()-1];
+
+                    let loop_interval = 5;
+                    logging_sender.send(OrchestrationLogger::info(
+                        format!("Got PID ({pid}), waiting for up to ({setup_script_timeout_s}s) \
+                        with an interval check of ({loop_interval}s) before aborting")
+                    )).await?;
+
+                    // with the PID, we can check for it for the given setup script timeout set by
+                    // the user or default timeout setup_script_timeout_s
+                    // if kill -0 pid returns 0 it is still running, if errors then it has finished
+
+                    // in the loop, we wait every 5 seconds to check, but factor in the time it takes
+                    // to run the command
+                    let start_time = Instant::now();
+                    let end_time = start_time + Duration::from_secs(*setup_script_timeout_s as u64);
+                    loop {
+                        if Instant::now() > end_time {
+                            logging_sender.send(OrchestrationLogger::error(format!("Setup script still running on {guest_name} but timeout exceeded, continuing without fail"))).await?;
+                            break;
+                        }
+
+                        let loop_start_time = Instant::now();
+
+                        // check if pid is still running
+                        let (_, exit_code) = libvirt::shell_command(
+                            vec!["kill", "-0", pid],
+                            5000,
+                            &machine_config,
+                            &guest_name,
+                            &common,
+                            logging_sender,
+                            true,
+                            false,
+                        ).await?;
+
+                        // if non-zero exit code, then pid finished
+                        if exit_code != 0 {
+                            logging_sender.send(OrchestrationLogger::info(format!("Setup script finished running on {guest_name}"))).await?;
+                            // check what the exit code was
+                            let (_, wait_exit_code) = libvirt::shell_command(
+                                vec!["wait", pid],
+                                5000,
+                                &machine_config,
+                                &guest_name,
+                                &common,
+                                logging_sender,
+                                true,
+                                false,
+                            ).await?;
+                            if wait_exit_code == 0 {
+                                logging_sender.send(OrchestrationLogger::info(format!("Setup script was successful on {guest_name}"))).await?;
+                            } else {
+                                logging_sender.send(OrchestrationLogger::error(format!("Setup script failed on {guest_name} with {wait_exit_code} exit code, will continue"))).await?;
+                            }
+                            break;
+                        }
+
+                        let command_end_time = Instant::now();
+                        let command_duration = command_end_time.duration_since(loop_start_time);
+
+                        // sleep the required amount of time to make it up to the check interval
+                        let desired_interval = Duration::from_secs(loop_interval);
+                        if command_duration < desired_interval {
+                            let sleep_duration = desired_interval - command_duration;
+                            let current_total_time = Instant::now().duration_since(start_time);
+                            logging_sender.send(OrchestrationLogger::info(format!("Command not finished running on {guest_name}, waiting for another {sleep_duration:?} before checking again, total loop time ({current_total_time:?}s)"))).await?;
+                            tokio::time::sleep(sleep_duration).await;
+                        }
+                    }
+
+                    // let script_output = format!("Script output:\n{res_str:?}");
+                    // let script_exit_code = format!("Script finished running with exit code {exit_code:?}");
+                    // if exit_code != 0 {
+                    //     logging_sender.send(OrchestrationLogger::error(script_exit_code)).await?;
+                    //     logging_sender.send(OrchestrationLogger::error(script_output)).await?;
+                    //     // we fail the run here, since we assume that it was necessary to work
+                    //     bail!("Setup script execution failed");
+                    // } else {
+                    //     logging_sender.send(OrchestrationLogger::info(script_exit_code)).await?;
+                    //     logging_sender.send(OrchestrationLogger::info(script_output)).await?;
+                    // }
                 }
             }
             LibvirtGuestOptions::ExistingDisk { .. } => {}
@@ -419,11 +573,77 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         Ok(())
     }
 
-    async fn run_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<()> {
-        todo!()
+    async fn run_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
+        let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
+        match &self.libvirt_type {
+            LibvirtGuestOptions::CloudImage { run_script, .. } => {
+                // if the script exists, we will push the execution into the background
+                if let Some(script) = run_script {
+                    tracing::info!("running setup script on guest {}", &machine_config.guest_type.name);
+
+                    logging_sender.send(OrchestrationLogger::info(format!("Waiting until guest {guest_name} is up before continuing"))).await?;
+                    wait_for_libvirt_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
+                    let local_script_path = parse_path_with_deployment_config(script, &common)?;
+
+                    logging_sender.send(OrchestrationLogger::info(format!("Pushing {local_script_path:?} to {guest_name}"))).await?;
+                    libvirt::push(
+                        &ExecCmdFileTransfer {
+                            source_path: local_script_path.clone(),
+                            target_path: PathBuf::from("/opt"),
+                        },
+                        &machine_config,
+                        &guest_name,
+                        &common,
+                        logging_sender,
+                    ).await?;
+                    logging_sender.send(OrchestrationLogger::info(format!("Pushed {local_script_path:?} to {guest_name}"))).await?;
+
+                    logging_sender.send(OrchestrationLogger::info(format!("Executing run script on {guest_name}"))).await?;
+
+                    let script_file_name = {
+                        match local_script_path.file_name() {
+                            None => bail!("The script path given {local_script_path:?} is not a file, likely a directory."),
+                            Some(os_str) => {
+                                os_str.to_str().map(|s| s.to_string())
+                            }
+                        }
+                    };
+                    let script_file_name = script_file_name
+                        .context("Converting script name into a string")?;
+
+                    // run the setup script inthe background
+                    let (_, _) = libvirt::shell_command(
+                        // IMPORTANT - we run the script in the background, and also write a complete
+                        //  flag once it is done, which we will look for below to signal the command completed
+                        vec!["bash", format!("/opt/{script_file_name}").as_str(), "&"],
+                        5000,
+                        &machine_config,
+                        &guest_name,
+                        &common,
+                        logging_sender,
+                        true,
+                        true,
+                    ).await?;
+
+                }
+            }
+            LibvirtGuestOptions::ExistingDisk { .. } => {}
+            LibvirtGuestOptions::IsoGuest { .. } => {}
+        }
+        Ok(())
     }
 
-    async fn destroy_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn destroy_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         let guest_name = format!("{}-{}", common.project_name, &machine_config.guest_type.name);
         if machine_config.is_golden_image {
             tracing::info!("making sure backing image guest {} is off", &guest_name);
@@ -461,7 +681,12 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         Ok(())
     }
 
-    async fn is_up(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<bool> {
+    async fn is_up(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<bool> {
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
 
@@ -487,11 +712,21 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 
 #[async_trait]
 impl OrchestrationGuestTask for ConfigDockerMachine {
-    async fn setup_image_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn setup_image_action(
+        &self,
+        _common: OrchestrationCommon,
+        _machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         todo!()
     }
 
-    async fn push_image_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn push_image_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
 
         let mut futures = Vec::new();
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
@@ -539,15 +774,31 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
         Ok(())
     }
 
-    async fn pull_image_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn pull_image_action(
+        &self,
+        _common: OrchestrationCommon,
+        _machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         todo!()
     }
 
-    async fn rebase_image_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest, _guest_list: StateTestbedGuestList) -> anyhow::Result<()> {
+    async fn rebase_image_action(
+        &self,
+        _common: OrchestrationCommon,
+        _machine_config: StateTestbedGuest,
+        _guest_list: StateTestbedGuestList,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         todo!()
     }
 
-    async fn create_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn create_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
 
         tracing::info!("deploying guest {}", &machine_config.guest_type.name);
 
@@ -851,15 +1102,30 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
         Ok(())
     }
 
-    async fn setup_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn setup_action(
+        &self,
+        _common: OrchestrationCommon,
+        _machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         todo!()
     }
 
-    async fn run_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn run_action(
+        &self,
+        _common: OrchestrationCommon,
+        _machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         todo!()
     }
 
-    async fn destroy_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn destroy_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         tracing::info!("turning off guest {}", &machine_config.guest_type.name);
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
@@ -916,30 +1182,60 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
         Ok(())
     }
 
-    async fn is_up(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<bool> {
+    async fn is_up(
+        &self,
+        _common: OrchestrationCommon,
+        _machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<bool> {
         todo!()
     }
 }
 
 #[async_trait]
 impl OrchestrationGuestTask for ConfigAVDMachine {
-    async fn setup_image_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn setup_image_action(
+        &self, _common: OrchestrationCommon,
+        _machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         todo!()
     }
 
-    async fn push_image_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn push_image_action(
+        &self,
+        _common: OrchestrationCommon,
+        _machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         todo!()
     }
 
-    async fn pull_image_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn pull_image_action(
+        &self,
+        _common: OrchestrationCommon,
+        _machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         todo!()
     }
 
-    async fn rebase_image_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest, _guest_list: StateTestbedGuestList) -> anyhow::Result<()> {
+    async fn rebase_image_action(
+        &self,
+        _common: OrchestrationCommon,
+        _machine_config: StateTestbedGuest,
+        _guest_list: StateTestbedGuestList,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         todo!()
     }
 
-    async fn create_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn create_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
 
         tracing::info!("deploying guest {}", &machine_config.guest_type.name);
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
@@ -1106,15 +1402,96 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
         Ok(())
     }
 
-    async fn setup_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<()> {
-        todo!()
+    async fn setup_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
+        let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
+        match &self.avd_type {
+            AVDGuestOptions::Avd { setup_script, .. } => {
+                if let Some(script) = setup_script {
+                    logging_sender.send(OrchestrationLogger::info(format!("Waiting until guest {guest_name} is up before continuing"))).await?;
+                    wait_for_android_guest_to_be_up(
+                        &common,
+                        &machine_config,
+                        &logging_sender,
+                    ).await?;
+
+                    let local_script_path = parse_path_with_deployment_config(script, &common)?;
+
+                    // now that the guest is up, we can run the setup script that has been provided
+                    // which can run arbitrary things but at least runs when the guest is available
+
+                    // we will run this from the project working directory
+                    let run_setup_script = tokio::process::Command::new("bash")
+                        .arg(local_script_path)
+                        .current_dir(common.project_working_dir)
+                        .output()
+                        .await?;
+
+                    if run_setup_script.status.success() {
+                        logging_sender.send(OrchestrationLogger::info(format!("Setup script ran successfully for {guest_name}"))).await?;
+                    } else {
+                        logging_sender.send(OrchestrationLogger::error(format!("Setup script did not run successfully for {guest_name}, continuing"))).await?;
+                    }
+
+                }
+            }
+            AVDGuestOptions::ExistingAvd { .. } => {}
+        }
+
+        Ok(())
     }
 
-    async fn run_action(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<()> {
-        todo!()
+    async fn run_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
+        let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
+        match &self.avd_type {
+            AVDGuestOptions::Avd { run_script, .. } => {
+                if let Some(script) = run_script {
+                    logging_sender.send(OrchestrationLogger::info(format!("Waiting until guest {guest_name} is up before continuing"))).await?;
+                    wait_for_android_guest_to_be_up(
+                        &common,
+                        &machine_config,
+                        &logging_sender,
+                    ).await?;
+
+                    let local_script_path = parse_path_with_deployment_config(script, &common)?;
+
+                    // we will run this from the project working directory
+                    let run_setup_script = tokio::process::Command::new("bash")
+                        .arg(local_script_path)
+                        .arg("&")
+                        .current_dir(common.project_working_dir)
+                        .output()
+                        .await?;
+
+                    if run_setup_script.status.success() {
+                        logging_sender.send(OrchestrationLogger::info(format!("Setup script ran successfully for {guest_name}"))).await?;
+                    } else {
+                        logging_sender.send(OrchestrationLogger::error(format!("Setup script did not run successfully for {guest_name}, continuing"))).await?;
+                    }
+
+                }
+            }
+            AVDGuestOptions::ExistingAvd { .. } => {}
+        }
+
+        Ok(())
     }
 
-    async fn destroy_action(&self, common: OrchestrationCommon, machine_config: StateTestbedGuest) -> anyhow::Result<()> {
+    async fn destroy_action(
+        &self,
+        common: OrchestrationCommon,
+        machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<()> {
         tracing::info!("turning off guest {}", &machine_config.guest_type.name);
         let guest_name = machine_config.guest_type.name;
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
@@ -1160,7 +1537,12 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
         Ok(())
     }
 
-    async fn is_up(&self, _common: OrchestrationCommon, _machine_config: StateTestbedGuest) -> anyhow::Result<bool> {
+    async fn is_up(
+        &self,
+        _common: OrchestrationCommon,
+        _machine_config: StateTestbedGuest,
+        _logging_sender: &Sender<OrchestrationLogger>,
+    ) -> anyhow::Result<bool> {
         todo!()
     }
 }
@@ -1182,10 +1564,11 @@ fn get_xml_path(
     format!("{local_image_parent_path}/{domain_xml_name}")
 }
 
-async fn wait_for_guest_to_be_up(
+async fn wait_for_libvirt_guest_to_be_up(
     common: &OrchestrationCommon,
     machine_config: &StateTestbedGuest,
     command: Vec<&str>,
+    logging_sender: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
     // we will poll the guest with the given command in a loop, for a number of attempts in a time
     // limit
@@ -1195,12 +1578,60 @@ async fn wait_for_guest_to_be_up(
     let mut counter = 0;
     loop {
         tracing::info!("trying to poll guest {guest_name} to see if it is up ...");
-        let poll_res = SSHClient::run_guest_command(
-            common,
+
+        // this could succeed but the command fails with a non-zero exit code
+        let poll_res = libvirt::shell_command(
             command.clone(),
+            5000,
             machine_config,
+            &format!("{}-{}", common.project_name, guest_name),
+            common,
+            logging_sender,
+            true,
             false,
         ).await;
+
+        if counter > attempt_limit && poll_res.is_err() {
+            // we waited 12 times with a wait, the command didnt work so this has failed
+            bail!("could not connect to guest {}-{} to check if it is up, might not have booted successfully", &common.project_name, &machine_config.guest_type.name);
+        } else if poll_res.is_ok() {
+            // successful connection, return ok
+            break;
+        }
+        tracing::info!("attempt {counter}/{attempt_limit} guest {guest_name} not up yet, waiting 5s and trying again");
+        counter += 1;
+        tokio::time::sleep(Duration::from_secs(wait_time_in_seconds)).await;
+
+    }
+    Ok(())
+}
+
+async fn wait_for_android_guest_to_be_up(
+    common: &OrchestrationCommon,
+    machine_config: &StateTestbedGuest,
+    logging_sender: &Sender<OrchestrationLogger>,
+) -> anyhow::Result<()> {
+    // we will poll the guest with the given command in a loop, for a number of attempts in a time
+    // limit
+    let attempt_limit = 24;
+    let wait_time_in_seconds = 5;
+    let guest_name = &machine_config.guest_type.name;
+    let namespace = format!("{}-{}-nmspc", &common.project_name, guest_name);
+    let mut counter = 0;
+    loop {
+        tracing::info!("trying to poll guest {guest_name} to see if it is up ...");
+
+        let poll_res = exec::android::adb_command(
+            &namespace,
+            &vec![
+                "wait-for-device".to_string(),
+                "shell".to_string(),
+                "while [[ -z $(getprop sys.boot_completed | tr -d '\r') ]]; do sleep 1; done;".to_string(),
+            ],
+            logging_sender,
+            true,
+        ).await;
+
         if counter > attempt_limit && poll_res.is_err() {
             // we waited 12 times with a wait, the command didnt work so this has failed
             bail!("could not connect to guest {}-{} to check if it is up, might not have booted successfully", &common.project_name, &machine_config.guest_type.name);

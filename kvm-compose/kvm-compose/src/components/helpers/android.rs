@@ -45,7 +45,7 @@ pub fn get_sdk_string(
     let mut package_string = "system-images;".to_string();
 
     match avdguest_options {
-        AVDGuestOptions::Avd { android_api_version, playstore_enabled } => {
+        AVDGuestOptions::Avd { android_api_version, playstore_enabled, .. } => {
             package_string.push_str(&format!("android-{android_api_version};"));
 
             if *playstore_enabled {
@@ -55,7 +55,11 @@ pub fn get_sdk_string(
             }
 
             // always use x86 for now
-            package_string.push_str("x86");
+            if *android_api_version < 31 {
+                package_string.push_str("x86");
+            } else {
+                package_string.push_str("x86_64");
+            }
 
         }
         AVDGuestOptions::ExistingAvd { .. } => bail!("Existing AVD not yet implemented"),

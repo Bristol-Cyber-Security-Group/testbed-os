@@ -137,7 +137,7 @@ impl OrchestrationTask for StateNetwork {
         Ok(())
     }
 
-    async fn destroy_action(&self, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    async fn destroy_action(&self, common: &OrchestrationCommon, _logging_send: &Sender<OrchestrationLogger>) -> anyhow::Result<()> {
         tracing::info!("destroying OVN components");
 
         // destroy all OVN resources

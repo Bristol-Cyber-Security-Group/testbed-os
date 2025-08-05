@@ -63,6 +63,13 @@ Currently, the emulator can act as a client to the other guests in the network i
 However, we currently don't support the emulator acting as a server to other guests - this may be supported in the future.
 You may have some success by utilising ADB to enable port forwards to the device or by editing the deploy script and adding Qemu options.
 
+NOTE: below is an explanation of how to manually connect to the emulator, the `kvm-compose` cli offers the following:
+```shell
+kvm-compose exec <guest name> adb <adb command>
+```
+To allow you to run commands on the emulator, without having to work out the namespaces etc.
+Make sure you are running this from the root of the project files (where the kvm-compose.yaml file lives).
+
 It is possible to utilise ADB to control the android guest remotely, however note that due to the emulator being in the namespace as mentioned above, the ADB server will also run inside the namespace and accept connections through the namespace's localhost.
 This only means any ADB commands must be executed using the namespace command, for example:
 

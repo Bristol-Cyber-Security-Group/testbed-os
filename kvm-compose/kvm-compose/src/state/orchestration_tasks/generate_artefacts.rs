@@ -15,6 +15,7 @@ use crate::components::helpers::cloud_init::{create_meta_data, create_network_co
 use crate::components::helpers::xml::render_libvirt_domain_xml;
 use crate::orchestration::{OrchestrationCommon, run_testbed_orchestration_command};
 use crate::state::{State, StateTestbedGuest};
+use crate::state::orchestration_tasks::parse_path_with_deployment_config;
 
 /// This is the generate artefacts version for State rather than Logical testbed
 pub async fn generate_artefacts(
@@ -498,6 +499,10 @@ async fn cloud_init_setup(
                 None => {}
                 Some(context) => {
                     let context_dest = PathBuf::from(format!("{}/context.tar", &project_artefacts_folder));
+
+                    // the context folder given, if relative, must be made absolute
+                    let context = parse_path_with_deployment_config(context, common)?;
+
                     serialisation::tar_cf(&context_dest, &context).await?;
                     cloud_init_inputs.push(context_dest);
                 }

@@ -12,10 +12,8 @@ use crate::components::helpers::xml::render_libvirt_network_xml;
 use crate::components::LogicalTestbed;
 use crate::get_project_folder_user_group;
 use crate::orchestration::*;
-use crate::orchestration::api::{OrchestrationInstruction, OrchestrationProtocol};
-use crate::orchestration::ssh::SSHClient;
+use crate::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationProtocol};
 use crate::orchestration::websocket::{send_orchestration_instruction_over_channel};
-use crate::state::orchestration_tasks::guests::*;
 use crate::state::{State, StateTestbedGuestList};
 use crate::state::orchestration_tasks::stages::*;
 
@@ -61,211 +59,23 @@ pub async fn get_orchestration_common(
 /// in `State` rather than re-calculating `LogicalTestbed` then using that `State`.
 #[async_trait]
 impl OrchestrationTask for State {
-    async fn create_action(&self, common: &OrchestrationCommon) -> anyhow::Result<()> {
-        tracing::info!("running create action for testbed State");
-
-        check_if_testbed_hosts_up(&common).await?;
-
-        create_remote_project_folders(&common).await?;
-
-        // we separate creating the network into creating interfaces, then connecting them
-
-        // this will run either OVN or OVS implementation
-        self.network.create_action(common).await?;
-
-        // guest section, we collect futures and await them together here so that we can push images
-        // in parallel as it is an io blocking set of tasks
-
-        if !self.state_provisioning.guests_provisioned || common.force_provisioning {
-            tracing::info!("Stage: setting up any libvirt backing image guests");
-            // setup backing image guests
-            // setup clone backing images, the images are already made in artefact generation but if
-            // necessary, the next check deploys, runs shared setup and turns off ready to make clones
-            let mut backing_image_futures = Vec::new();
-
-            // check if we need to provision a temporary network for backing image guests that have
-            // a shared setup script
-            let net_provision = check_provision_temporary_network(&self.testbed_guests);
-            if net_provision {
-                tracing::info!("turning on temporary network for backing images with shared setup scripts");
-                turn_on_temporary_network(
-                    &common.project_name,
-                    &common.project_working_dir.to_str().context("getting project path")?.to_string(),
-                    common,
-                ).await?;
-            }
-
-            for (_guest_name, guest_data) in self.testbed_guests.0.iter() {
-                if guest_data.is_golden_image {
-                    match &guest_data.guest_type.guest_type {
-                        GuestType::Libvirt(libvirt) => {
-                            if guest_data.is_golden_image {
-                                backing_image_futures.push(
-                                    libvirt.setup_image_action(common.clone(), guest_data.clone())
-                                );
-                            }
-                        }
-                        GuestType::Docker(_) => unimplemented!(), // build from Dockerfile
-                        GuestType::Android(_) => unimplemented!(), // create AVD
-                    }
-                }
-            }
-            try_join_all(backing_image_futures).await?;
-            if net_provision {
-                tracing::info!("turning off temporary network for backing images with shared setup scripts");
-                turn_off_temporary_network(
-                    &common.project_name,
-                    &common.project_working_dir.to_str().context("getting project path")?.to_string()
-                ).await?;
-            }
-
-            tracing::info!("Stage: creating any libvirt clones of backing image guests");
-            // now backing images are created, we can loop again and create the linked clones
-            // setup linked clones
-            let mut clone_image_futures = Vec::new();
-            for (_guest_name, guest_data) in self.testbed_guests.0.iter() {
-                match &guest_data.guest_type.guest_type {
-                    GuestType::Libvirt(libvirt) => {
-                        if libvirt.is_clone_of.is_some() {
-                            clone_image_futures.push(
-                                libvirt.setup_image_action(common.clone(), guest_data.clone())
-                            );
-                        }
-                    }
-                    GuestType::Docker(_) => {} // not applicable
-                    GuestType::Android(_) => {} // not applicable
-                }
-            }
-            try_join_all(clone_image_futures).await?;
-        } else {
-            tracing::info!("skipping setting up backing image and creating clones as they have already been provisioned");
-        }
-
-        // if already been provisioned previously, this will only check if the images exist on the
-        // remote
-        tracing::info!("Stage: pushing guest images to remote testbed hosts");
-        // push normal and backing images to remote testbeds
-        let mut push_image_futures = Vec::new();
-        // push images for remote guests
-        for (_guest_name, guest_data) in self.testbed_guests.0.iter() {
-            match &guest_data.guest_type.guest_type {
-                GuestType::Libvirt(libvirt) => {
-                    push_image_futures.push(
-                        libvirt.push_image_action(common.clone(), guest_data.clone())
-                    );
-                }
-                GuestType::Docker(docker) => {
-                    push_image_futures.push(
-                        docker.push_image_action(common.clone(), guest_data.clone())
-                    );
-                }
-                GuestType::Android(_) => {} // Android guests currently only supported on main testbed host
-            }
-        }
-        // push backing images where necessary
-        let images_to_push = calculate_backing_images_to_push(&self, &common).await?;
-        for (backing_guest_name, target_testbed) in images_to_push.into_iter() {
-            // from the images_to_push set, work out the local path on main and the remote path
-            // on the target testbed host
-            let local_src = get_backing_image_local_path(
-                &self.testbed_guests,
-                &backing_guest_name)?;
-            let backing_image_remote_path = get_backing_image_remote_path(
-                &common,
-                &self.testbed_guests,
-                &backing_guest_name,
-                &target_testbed)?;
-            // remove the filename so we have just the parent folder
-            let remote_dst = PathBuf::from(backing_image_remote_path)
-                .parent().context("getting parent for backing image folder path")?
-                .to_str().context("converting parent folder to string")?
-                .to_string();
-
-            let target_testbed_host = target_testbed.clone();
-            push_image_futures.push(Box::pin(SSHClient::push_file_to_remote_testbed(&common, target_testbed_host, local_src, remote_dst, false)));
-        }
-        try_join_all(push_image_futures).await?;
-
-        // rebase clones on remote testbeds to point to the backing image we pushed
-        tracing::info!("Stage: rebasing clones on remote testbed hosts");
-        let mut rebase_futures = Vec::new();
-        for (_guest_name, guest_data) in self.testbed_guests.0.iter() {
-            // only rebase on remote testbeds
-            if !guest_data.testbed_host.as_ref().unwrap().eq(&get_main_testbed_name(&common)) {
-                match &guest_data.guest_type.guest_type {
-                    GuestType::Libvirt(libvirt) => {
-                        if libvirt.is_clone_of.is_some() {
-                            rebase_futures.push(libvirt.rebase_image_action(
-                                common.clone(),
-                                guest_data.clone(),
-                                self.testbed_guests.clone(),
-                            ));
-                        }
-                    }
-                    _ => {} // no rebasing for docker or android
-                }
-            }
-        }
-        try_join_all(rebase_futures).await?;
-
-        tracing::info!("Stage: deploying guests");
-        // deploy guests
-        let mut guest_deploy_futures = Vec::new();
-        for (_guest_name, guest_data) in self.testbed_guests.0.iter() {
-            match &guest_data.guest_type.guest_type {
-                GuestType::Libvirt(libvirt) => {
-                    // only deploy non backing images
-                    if !guest_data.is_golden_image {
-                        guest_deploy_futures.push(
-                            libvirt.create_action(common.clone(), guest_data.clone())
-                        );
-                    }
-                }
-                GuestType::Docker(docker) => {
-                    // only deploy definitions for scaled or normal definitions
-                    if docker.scaling.is_none() {
-                        guest_deploy_futures.push(
-                            docker.create_action(common.clone(), guest_data.clone())
-                        );
-                    }
-                }
-                GuestType::Android(android) => {
-                    if android.scaling.is_none() {
-                        guest_deploy_futures.push(
-                            android.create_action(common.clone(), guest_data.clone())
-                        );
-                    }
-                }
-            }
-        }
-        try_join_all(guest_deploy_futures).await?;
-
-        // if the guest has a setup script, execute it
-        if !self.state_provisioning.guests_provisioned || common.force_rerun_scripts {
-            // only run setup scripts if either forcing provisioning or state never been provisioned
-            tracing::info!("Stage: running any guest setup scripts");
-            let mut guest_setup_futures = Vec::new();
-            for (_guest_name, guest_data) in self.testbed_guests.0.iter() {
-                match &guest_data.guest_type.guest_type {
-                    GuestType::Libvirt(libvirt) => {
-                        guest_setup_futures.push(
-                            libvirt.setup_action(common.clone(), guest_data.clone())
-                        );
-                    }
-                    GuestType::Docker(_) => {} // not applicable at this time
-                    GuestType::Android(_) => {} // not applicable at this time
-                }
-            }
-            try_join_all(guest_setup_futures).await?;
-        } else {
-            tracing::info!("Skipping guest setup scripts as guest have already been provisioned");
-        }
-
-
-        Ok(())
+    async fn create_action(&self, _common: &OrchestrationCommon) -> anyhow::Result<()> {
+        // This create action function is not used for state anymore due to changes in the way
+        // the testbed deploys, now using the request_create_action which allows for the communication
+        // of logging back to the caller client.
+        // Realistically, this OrchestrationTask trait abstraction has not been totally used, it has
+        // only also been implemented for StateNetwork, so we should re-evaluate if we still need
+        // it or at least in this form i.e. with the redundant functions - this is due to changes
+        // in the testbed architecture moving to this client server model with bi-directional
+        // communication. We may need this trait for future implementations i.e. provisioning
+        // network interfaces on the host etc.
+        unimplemented!();
     }
 
-    async fn destroy_action(&self, common: &OrchestrationCommon) -> anyhow::Result<()> {
+    async fn destroy_action(&self, common: &OrchestrationCommon, logging_send: &Sender<OrchestrationLogger>) -> anyhow::Result<()> {
+        // TODO this is only used in the clear artefacts function, which could be changed to use
+        //  request_destroy_action - needs testing, as this also sends data back to client ..
+        //  see above create_action for more details
         tracing::info!("running destroy action for testbed State");
 
         check_if_testbed_hosts_up(&common).await?;
@@ -275,13 +85,13 @@ impl OrchestrationTask for State {
         for (_guest_name, guest_data) in self.testbed_guests.0.iter() {
             match &guest_data.guest_type.guest_type {
                 GuestType::Libvirt(libvirt) => {
-                    guest_destroy_futures.push(libvirt.destroy_action(common.clone(), guest_data.clone()));
+                    guest_destroy_futures.push(libvirt.destroy_action(common.clone(), guest_data.clone(), logging_send));
                 }
                 GuestType::Docker(docker) => {
-                    guest_destroy_futures.push(docker.destroy_action(common.clone(), guest_data.clone()));
+                    guest_destroy_futures.push(docker.destroy_action(common.clone(), guest_data.clone(), logging_send));
                 }
                 GuestType::Android(android) => {
-                    guest_destroy_futures.push(android.destroy_action(common.clone(), guest_data.clone()));
+                    guest_destroy_futures.push(android.destroy_action(common.clone(), guest_data.clone(), logging_send));
                 }
             }
         }
@@ -295,7 +105,7 @@ impl OrchestrationTask for State {
             &common.project_working_dir.to_str().context("getting project path")?.to_string()
         ).await?;
 
-        self.network.destroy_action(common).await?;
+        self.network.destroy_action(common, logging_send).await?;
 
         Ok(())
     }
@@ -369,6 +179,10 @@ impl OrchestrationTask for State {
             tracing::info!("Skipping guest setup scripts as guest have already been provisioned");
         }
 
+        // run scripts should always be run on the guest
+        tracing::info!("Stage: running any guest run scripts");
+        run_guest_run_scripts_stage(&self, sender).await?;
+
         Ok(())
     }
 
@@ -405,10 +219,11 @@ impl OrchestrationTask for State {
 pub async fn clear_artefacts(
     state: &State,
     common: &OrchestrationCommon,
+    logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
     let project_name = &common.project_name;
     // make sure testbed is down
-    state.destroy_action(&common).await?;
+    state.destroy_action(&common, logging_send).await?;
     // special case for android
     for (guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
@@ -636,3 +451,22 @@ pub async fn turn_off_temporary_network(
 //
 //     Ok(())
 // }
+
+/// Take in a path, if the path is an absolute path, then return as is, otherwise append the project
+/// directory as we will assume the path of the file specified in the yaml is relative to the
+/// project root.
+pub fn parse_path_with_deployment_config(
+    path: &PathBuf,
+    common: &OrchestrationCommon,
+) -> anyhow::Result<PathBuf> {
+
+    let path: &Path = &path;
+
+    let absolute_path = if path.is_absolute() {
+        path.canonicalize()?
+    } else {
+        common.project_working_dir.join(path).canonicalize()?
+    };
+
+    Ok(absolute_path)
+}

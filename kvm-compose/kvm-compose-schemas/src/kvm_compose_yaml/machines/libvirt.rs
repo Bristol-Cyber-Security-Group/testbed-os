@@ -39,6 +39,8 @@ pub enum LibvirtGuestOptions {
         path: Option<PathBuf>,
         run_script: Option<PathBuf>,
         setup_script: Option<PathBuf>,
+        #[serde(default = "default_setup_script_timeout")]
+        setup_script_timeout_s: u16,
         // TODO validate
         // #[validate(custom = "validate_context")]
         context: Option<PathBuf>,
@@ -70,6 +72,9 @@ pub enum LibvirtGuestOptions {
         readonly: bool,
     },
 }
+
+/// A default of 120 seconds for the timeout on running setup scripts, if user doesn't set their own
+fn default_setup_script_timeout() -> u16 {120}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
