@@ -31,7 +31,6 @@ const ACTIVE_SESSION: &str = "Active console session exists for this domain";
 const SESSION_READY: &str = "(Ctrl + ])";
 const LOGIN_USER: &str = " login:";
 const LOGIN_PASSWORD: &str = "Password:";
-const SHELL: &str = ":~$";
 
 /// Enum to define the different states the PTY could be in during use, after we have passed the
 /// initial check to be able to open the PTY. The PTY could be in a few different states, depending
