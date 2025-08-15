@@ -1,4 +1,4 @@
-RELEASE_VERSION=27d98fab34c17e7537b539f6bc5fb0dd84f0fbbb
+RELEASE_VERSION=ff9c43d271cc696795c35fdd69b8a33ef9b10466
 
 echo "installing Frida-Tools repo"
 cd /var/lib/testbedos/tools/
