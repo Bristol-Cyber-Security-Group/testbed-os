@@ -79,11 +79,11 @@ pub async fn frida_setup(
     let abi = abi.trim().to_string();
 
     // Install frida server if it doesn't exist
-    if !Path::new(&format!("/var/lib/testbedos/tools/frida-server-16.1.4-android-{abi}")).exists() {
+    if !Path::new(&format!("/var/lib/testbedos/tools/frida-server-17.2.15-android-{abi}")).exists() {
         tracing::info!("Installing frida server");
         let output = Command::new("sudo")
             .arg("wget")
-            .arg(format!("https://github.com/frida/frida/releases/download/16.1.4/frida-server-16.1.4-android-{abi}.xz"))
+            .arg(format!("https://github.com/frida/frida/releases/download/17.2.15/frida-server-17.2.15-android-{abi}.xz"))
             .arg("-P")
             .arg("/var/lib/testbedos/tools/")
             .output()
@@ -96,7 +96,7 @@ pub async fn frida_setup(
 
         Command::new("sudo")
             .arg("unxz")
-            .arg(format!("/var/lib/testbedos/tools/frida-server-16.1.4-android-{abi}.xz"))
+            .arg(format!("/var/lib/testbedos/tools/frida-server-17.2.15-android-{abi}.xz"))
             .output()
             .await
             .context("Failed to extract server")?;
@@ -120,12 +120,12 @@ pub async fn frida_setup(
     tracing::info!("waiting to give a chance for rooting to complete before continuing ...");
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    adb_command(namespace, &vec!["push".to_string(), format!("/var/lib/testbedos/tools/frida-server-16.1.4-android-{abi}"), "/data/local/tmp".to_string()], &logging_send, false).await?;
-    adb_command(namespace, &vec!["shell".to_string(), "chmod".to_string(), "755".to_string(), format!("/data/local/tmp/frida-server-16.1.4-android-{abi}")], &logging_send, false).await?;
+    adb_command(namespace, &vec!["push".to_string(), format!("/var/lib/testbedos/tools/frida-server-17.2.15-android-{abi}"), "/data/local/tmp".to_string()], &logging_send, false).await?;
+    adb_command(namespace, &vec!["shell".to_string(), "chmod".to_string(), "755".to_string(), format!("/data/local/tmp/frida-server-17.2.15-android-{abi}")], &logging_send, false).await?;
 
     // Added -D to daemonize and -C to ignore crashes, which seems to prevent frida from holding
     // up the terminal so it exits - unclear if this is causing side effects yet
-    let res = adb_command(namespace, &vec!["shell".to_string(), format!("/data/local/tmp/frida-server-16.1.4-android-{abi} -D -C")], &logging_send, false).await;
+    let res = adb_command(namespace, &vec!["shell".to_string(), format!("/data/local/tmp/frida-server-17.2.15-android-{abi} -D -C")], &logging_send, false).await;
     match res {
         Ok(_) => {}
         Err(e) => {
