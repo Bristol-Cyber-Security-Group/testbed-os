@@ -73,7 +73,7 @@ pub async fn orchestration_action(
             success
         }
         Err(err) => {
-            tracing::error!("there was a problem in the orchestration, will stop");
+            tracing::error!("there was a problem in the command running, will stop");
             err.chain().for_each(|cause| tracing::error!("because: {}", cause));
             false
         }

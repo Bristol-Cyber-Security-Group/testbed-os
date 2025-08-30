@@ -1,9 +1,11 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 use anyhow::{anyhow, bail, Context};
 use futures_util::future::join_all;
 use nix::unistd::{Gid, Uid};
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::Mutex;
 use kvm_compose_schemas::cli_models::{AnalysisToolsCmd, AnalysisToolsSubCmd, SnapshotSubCommand};
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use kvm_compose_schemas::exec::ExecCmd;
@@ -49,8 +51,14 @@ pub struct OrchestrationProtocol {
 
 impl OrchestrationProtocol {
     /// Run all instructions in this protocol
-    pub async fn run(&self, state: &State, common: &OrchestrationCommon, logging_send: &Sender<OrchestrationLogger>) -> anyhow::Result<OrchestrationProtocolResponse> {
-        self.instruction.run(state, common, &logging_send).await
+    pub async fn run(
+        &self,
+        state: &State,
+        common: &OrchestrationCommon,
+        logging_send: &Sender<OrchestrationLogger>,
+        cancel_token_recv: Arc<Mutex<Receiver<()>>>,
+    ) -> anyhow::Result<OrchestrationProtocolResponse> {
+        self.instruction.run(state, common, &logging_send, cancel_token_recv).await
     }
 
     /// Run only for init without state
@@ -239,7 +247,8 @@ impl OrchestrationInstruction {
         &self,
         state: &State,
         orchestration_common: &OrchestrationCommon,
-        logging_send: &Sender<OrchestrationLogger>
+        logging_send: &Sender<OrchestrationLogger>,
+        cancel_token_recv: Arc<Mutex<Receiver<()>>>,
     ) -> anyhow::Result<OrchestrationProtocolResponse> {
         let protocol_response = match self {
             OrchestrationInstruction::Init { .. } => bail!("Sent an Init instruction after an Init has already been sent"),
@@ -571,7 +580,7 @@ impl OrchestrationInstruction {
             OrchestrationInstruction::AnalysisTool(at) => {
                 let analysis_tool_res = match at.tool {
                     AnalysisToolsSubCmd::TcpDump { .. } => {
-                        packet_capture(at).await
+                        packet_capture(at, cancel_token_recv).await
                     }
                 };
                 match analysis_tool_res {
@@ -588,7 +597,14 @@ impl OrchestrationInstruction {
             }
             OrchestrationInstruction::Exec(exec_cmd) => {
 
-                match prepare_guest_exec_command(&orchestration_common.project_name, exec_cmd, &state, &orchestration_common, &logging_send).await {
+                match prepare_guest_exec_command(
+                    &orchestration_common.project_name,
+                    exec_cmd,
+                    &state,
+                    &orchestration_common,
+                    &logging_send,
+                    cancel_token_recv,
+                ).await {
                     Ok(success) => {
                         let message = if success {
                             format!("Exec command {:?} succeeded", exec_cmd.command_type)

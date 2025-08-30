@@ -1,9 +1,12 @@
 use tokio::time::Duration;
 use tokio::process::{Command};
-use std::process::Output;
 use anyhow::{bail, Context};
 use std::path::Path;
-use tokio::sync::mpsc::Sender;
+use std::process::Stdio;
+use std::sync::Arc;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::Mutex;
 use crate::orchestration::api::{OrchestrationLogger};
 use crate::orchestration::OrchestrationCommon;
 use crate::state::StateTestbedGuest;
@@ -149,13 +152,7 @@ pub async fn test_permissions(
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
 
-    // Get path of poetry venv
-    let output = get_frida_tools_env().await?;
-
-    let venv = String::from_utf8_lossy(&output.stdout);
-    let venv_path = format!("{}/bin/python", venv.trim_end());
-
-    tracing::info!("Poetry env is {}", venv_path);
+    let venv_path = format!("/var/lib/testbedos/tools/frida_tools_venv/bin/python");
 
     let mut args = vec![
         "ip".to_string(),
@@ -192,15 +189,10 @@ pub async fn tls_intercept(
     namespace: &str,
     command: &Vec<String>,
     logging_send: &Sender<OrchestrationLogger>,
+    cancel_token_recv: Arc<Mutex<Receiver<()>>>,
 ) -> anyhow::Result<()> {
 
-    // Get path of poetry venv
-    let output = get_frida_tools_env().await?;
-
-    let venv = String::from_utf8_lossy(&output.stdout);
-    let venv_path = format!("{}/bin/python", venv.trim_end());
-
-    tracing::info!("Poetry env is {}", venv_path);
+    let venv_path = format!("/var/lib/testbedos/tools/frida_tools_venv/bin/python");
 
     let mut args = vec![
         "ip".to_string(),
@@ -216,19 +208,79 @@ pub async fn tls_intercept(
 
     tracing::info!("Running command: sudo {}", args.join(" "));
 
-    let output = Command::new("sudo")
-        .args(&args)
-        .output()
-        .await
-        .context("Failed to execute intercept command")?;
+    // TODO - how to fix relative paths given to the CLI/GUI and then what the script sees, so
+    //  currently a relative path will try to put the output in the Frida-Tools folder
 
-    if output.status.success() {
-        let log = String::from_utf8_lossy(&output.stdout);
-        tracing::info!("output: {:?}", log);
-        logging_send.send(OrchestrationLogger::info(log.to_string())).await?;
-    } else {
-        bail!("error: {:?}", String::from_utf8_lossy(&output.stderr));
+    let mut child = Command::new("sudo")
+        .args(&args)
+        .current_dir("/var/lib/testbedos/tools/Frida-Tools")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("Spawning tls intercept command")?;
+
+    let stdout = child.stdout.take().context("Child did not have stdout")?;
+    let stderr = child.stderr.take().context("Child did not have stderr")?;
+    let mut stdout_reader = BufReader::new(stdout).lines();
+    let mut stderr_reader = BufReader::new(stderr).lines();
+
+    let pid = child.id().context("getting tls intercept pid")?;
+    tracing::info!("Got tls intercept pid {}", pid);
+
+    let mut recv_lock = cancel_token_recv.lock().await;
+
+    logging_send.send(OrchestrationLogger::info("The following is tls-interceptor logs ========".to_string())).await?;
+
+    // loop here on the tokio select! as we will be sending back to the client the logging from
+    loop {
+        tokio::select! {
+            output = child.wait() => {
+                // this will run if the command exits by itself
+                let status = output?;
+                if status.success() {
+                    logging_send.send(OrchestrationLogger::info("tls-interceptor exited successfully".to_string())).await?;
+                    break;
+                } else {
+                    bail!("tls-interceptor did not exit successfully");
+                }
+            }
+            cancel = recv_lock.recv() => {
+                // this will run if a cancel token is received
+                tracing::info!("received cancel token in tls intercept");
+                if let Some(token) = cancel {
+                    // kill the process
+                    // let result = nix::sys::signal::kill(
+                    //     nix::unistd::Pid::from_raw(pid as i32),
+                    //     nix::sys::signal::Signal::SIGKILL,
+                    // );
+
+                    // TODO why is the pid always 2 below the actual pid - this isn't killing the tls-intercept
+                    //  maybe run it as a shell?
+
+                    let _ = child.kill().await?;
+
+                    break;
+                }
+            }
+            // the following two branches are for the live logging from the command
+            stdout_line = stdout_reader.next_line() => {
+                match stdout_line {
+                    Ok(Some(line)) => logging_send.send(OrchestrationLogger::info(line)).await?,
+                    Ok(None) => {},
+                    Err(err) => logging_send.send(OrchestrationLogger::error(err.to_string())).await?,
+                }
+            }
+            stderr_line = stderr_reader.next_line() => {
+                match stderr_line {
+                    Ok(Some(line)) => logging_send.send(OrchestrationLogger::error(line)).await?,
+                    Ok(None) => {},
+                    Err(err) => logging_send.send(OrchestrationLogger::error(err.to_string())).await?,
+                }
+            }
+        }
     }
+
+    logging_send.send(OrchestrationLogger::info("End of tls-interceptor logging ========".to_string())).await?;
 
     Ok(())
 }
@@ -267,16 +319,4 @@ pub async fn test_privacy(
     }
 
     Ok(())
-}
-
-async fn get_frida_tools_env() -> anyhow::Result<Output> {
-    Command::new("sudo")
-        .arg("/var/lib/testbedos/tools/frida_tools_venv/bin/poetry")
-        .arg("env")
-        .arg("info")
-        .arg("-p")
-        .current_dir("/var/lib/testbedos/tools/Frida-Tools")
-        .output()
-        .await
-        .context("Failed to get python environment for frida tools, is it installed at '/var/lib/testbedos/tools/Frida-Tools'?")
 }

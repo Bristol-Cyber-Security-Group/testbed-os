@@ -4,6 +4,7 @@ use axum::extract::ws::{CloseFrame, Message, Utf8Bytes, WebSocket};
 use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::SplitSink;
 use tokio::sync::{mpsc, Mutex};
+use tokio::sync::mpsc::{Receiver};
 use tokio::task::JoinHandle;
 use kvm_compose_lib::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationProtocol, OrchestrationProtocolResponse};
 use kvm_compose_lib::orchestration::{OrchestrationCommon};
@@ -192,61 +193,149 @@ async fn run(
         tracing::info!("starting the orchestration listen loop");
 
 
-        loop {
+        // DEBUG
 
-            // make copies (new ref as it's an Arc) in the loop so that we can move them
-            let loop_state = state.clone();
-            let loop_common = common.clone();
-            let loop_sender = sender.clone();
-            let loop_sender_cancel = sender.clone();
+        // channel for the client listener loop to place the instructions for processing
+        let (instruction_send_channel, mut instruction_recv_channel) = mpsc::channel(32);
+        // channel to control cancellation, to be read at the point of where the commands are being run
+        let (cancel_send_channel, cancel_recv_channel) = mpsc::channel(32);
+        let safe_cancel_recv_channel = Arc::new(Mutex::new(cancel_recv_channel));
 
-            // get message from server
-            let raw_msg = receiver.next().await;
-            // make sure it is ok and not empty
-            if let Some(Ok(msg)) = raw_msg {
+        // server listener loop, handling the instructions sent from the client, which then checks
+        // to run an instruction, cancel or close the connection
+        let server_listener_handler_sender = sender.clone();
+        let server_listener_handler: JoinHandle<anyhow::Result<_>> = tokio::spawn(async move {
+            loop {
 
-                // now we want to execute a command based on this message, but we might also receive
-                // a cancellation token ... the receiver must be free to listen to this command ...
-                // we also do not expect any other message over the socket from the client while a
-                // command is running
+                // get message from server
+                let raw_msg = receiver.next().await;
+                if let Some(Ok(msg)) = raw_msg {
 
-                // if this errors, it is either due to orchestration failure or non cancellation
-                // token was received
-                let close_connection_bool_result = tokio::select! {
-                    // process client instruction and return whether we continue
-                    close = process_client_instruction(msg, loop_sender, loop_state, loop_common) => close,
-                    // process potential cancelation token
-                    Some(Ok(maybe_cancel_token)) = receiver.next() => process_potential_cancel_token(maybe_cancel_token, loop_sender_cancel.clone()).await
-                };
+                    tracing::info!("got message {:?}", msg);
 
-                // TODO if this result is an Err, then websocket isn't closed?
-                let close_connection_bool = close_connection_bool_result
-                    .context("determining if the orchestration loop should continue")?;
+                    // get the instruction from the message, or handle a close web socket message
+                    match process_message(msg).await.context("getting instruction from client message")? {
+                        Some(instruction) => {
+                            // we got an instruction
 
-                // got a close result, exit loop
-                if close_connection_bool {
-                    tracing::info!("close connection true in orchestration websocket");
+                            // send the instruction to the other thread or process cancel
+                            match instruction.instruction {
+                                OrchestrationInstruction::Cancel => {
+                                    cancel_send_channel.send(()).await.context("sending cancel signal")?;
+                                    // exit this loop as we will not be receiving any more messages from client
+                                    break;
+                                }
+                                _ => {
+                                    instruction_send_channel.send(Some(instruction)).await.context("sending cancel instruction")?;
+                                }
+                            }
+                        }
+                        None => {
+                            // we got a websocket close message
+                            tracing::info!("close connection true in orchestration websocket");
 
-                    // normal close
-                    // connection might already be closed by client so don't handle error with ?
-                    let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
-                        code: 1000,
-                        reason: Utf8Bytes::from("Last command received, connection closed"),
-                    }))).await.context("sending close to client websocket"); // TODO - need ? here?
+                            // tell the instruction channel to close up
+                            instruction_send_channel.send(None).await.context("sending close signal to instruction_send_channel")?;
+
+                            // TODO - this following code errors because the connection is already closed on the client's side
+                            //  do we leave this in for robustness?
+
+                            // normal close
+                            // connection might already be closed by client so don't handle error with ?
+                            let _ = server_listener_handler_sender.lock().await.send(Message::Close(Some(CloseFrame {
+                                code: 1000,
+                                reason: Utf8Bytes::from("Last command received, connection closed"),
+                            }))).await.context("sending close to client websocket"); // TODO - need ? here?
+
+                            break;
+                        }
+                    }
+
+                } else {
+                    let _ = server_listener_handler_sender.lock().await.send(Message::Close(Some(CloseFrame {
+                        code: 1011,
+                        reason: Utf8Bytes::from("The server could not process the last message, connection closed"),
+                    }))).await.context("sending close to client websocket")?;
 
                     break;
                 }
 
-            } else {
-                // message from client was not Ok
-                let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
-                    code: 1011,
-                    reason: Utf8Bytes::from("The server could not process the last message, connection closed"),
-                }))).await.context("sending close to client websocket")?;
-
-                break;
             }
-        }
+            Ok(())
+        });
+
+        // server instruction handler loop, processing the instructions parsed by the server listener loop
+        let server_instruction_handler_sender = sender.clone();
+        let server_instruction_handler: JoinHandle<anyhow::Result<_>> = tokio::spawn(async move {
+
+            // loop through all the messages sent to the channel, placed by the future working with
+            // the websocket to the client ... this will acknowledge the instruction back to the
+            // client and then run the command. Since the channel will only have one instruction
+            // at a time due to the protocol from the client-server only processing one instruction
+            // at a time, then when the cancel token is placed in the queue it will be immediately
+            // consumed, so that will trigger the cancel immediately
+            loop {
+                tokio::select! {
+                    Some(instruction) = instruction_recv_channel.recv() => {
+                        match instruction {
+                            Some(instruction) => {
+                                // send acknowledgement back to client
+                                let _ = server_instruction_handler_sender.lock().await.send(Message::Text("Receiving instruction OK".into()))
+                                    .await
+                                    .context("sending acknowledgement")?;
+
+                                let run_instruction_res = get_instruction_result(
+                                    instruction,
+                                    &state,
+                                    &common,
+                                    server_instruction_handler_sender.clone(),
+                                    safe_cancel_recv_channel.clone(),
+                                ).await.context("getting result for instruction execution and ws sender")?;
+
+                                // send to client the result
+                                let serialised_response = serde_json::to_string(&run_instruction_res)?;
+                                let _ = server_instruction_handler_sender.lock().await.send(Message::Text(serialised_response.into()))
+                                    .await
+                                    .context("sending instruction result")?;
+
+                                if !run_instruction_res.is_success()? {
+                                    bail!("there was a failed orchestration instruction, {run_instruction_res:?}");
+                                }
+
+                            }
+                            None => {
+                                // we got a message, but it was None, meaning there is nothing left to
+                                // send from instruction_recv_channel
+                                break;
+                            }
+                        }
+                    }
+                    // cancel_response = cancel_response_recv_channel.recv() => {
+                    //     // if there was a cancel, then there will be a response with the cancel state
+                    //     if let Some(response) = cancel_response {
+                    //
+                    //     } else {
+                    //
+                    //     }
+                    // }
+                    else => bail!("there was a problem in getting the message from the instruction_recv_channel"),
+                }
+                // if let Ok(instruction) = instruction_recv_channel.recv().await.context("receiving instruction message") {
+                //
+                //
+                // } else {
+                //     // instruction over channel was not Ok
+                //     bail!("there was a problem in getting the message from the instruction_recv_channel")
+                // }
+
+            }
+
+            Ok(())
+        });
+
+        // await on both so that we don't continue before both have finished
+        let _ = tokio::try_join!(server_listener_handler, server_instruction_handler)?;
+
         tracing::info!("end of orchestration connection");
 
         Ok(())
@@ -324,8 +413,9 @@ async fn get_instruction_result(
     instruction: OrchestrationProtocol,
     state: &State,
     common: &OrchestrationCommon,
-    ws_sender: Arc<Mutex<SplitSink<WebSocket, Message>>>
-) -> anyhow::Result<(OrchestrationProtocolResponse, Arc<Mutex<SplitSink<WebSocket, Message>>>)> {
+    ws_sender: Arc<Mutex<SplitSink<WebSocket, Message>>>,
+    cancel_token_recv: Arc<Mutex<Receiver<()>>>,
+) -> anyhow::Result<OrchestrationProtocolResponse> {
     // set up channel
     let (logging_send, mut logging_recv) = mpsc::channel(32);
 
@@ -358,16 +448,15 @@ async fn get_instruction_result(
     // await for the instruction, which will send an end token at the end of the function:
     // OrchestrationInstruction::run(
     // so that the logging task will close itself, rather than needing us to cancel it
-    let instruction_result = instruction.run(&state, &common, &logging_send)
+    let instruction_result = instruction.run(&state, &common, &logging_send, cancel_token_recv)
         .await
         .context("getting instruction result")?;
-    let ws_sender = logging_task
+    let _ = logging_task
         .await
         .context("joining on command logging task")?
         .context("getting back websocket sender from logging task")?;
 
-
-    Ok((instruction_result, ws_sender))
+    Ok(instruction_result)
 }
 
 async fn get_init_protocol(
@@ -378,97 +467,23 @@ async fn get_init_protocol(
 }
 
 
-async fn process_client_instruction(
+/// Get the `OrchestrationProtocol` from the message. If the message was a websocket close then we
+/// return a `None` but this was still a successful message. If we receive anything else, then that
+/// is an error.
+async fn process_message(
     msg: Message,
-    loop_sender: Arc<Mutex<SplitSink<WebSocket, Message>>>,
-    loop_state: Arc<State>,
-    loop_common: OrchestrationCommon
-) -> anyhow::Result<bool> {
+) -> anyhow::Result<Option<OrchestrationProtocol>> {
     match msg {
         Message::Binary(b) => {
             // deserialise
             let instruction: OrchestrationProtocol = serde_json::from_slice(&b)?;
             tracing::info!("orchestration got instruction: {:?}", &instruction.instruction);
 
-            let _ = loop_sender.lock().await.send(Message::Text("Receiving instruction OK".into()))
-                .await
-                .context("sending acknowledgement")?;
-
-            // run the instruction, if the mpsc channel returns a message from the instruction
-            // while it is running, process that and then resume waiting for the instruction to run
-            // ... this will also handle sending any important log messages during the
-            // execution of the instruction to the client, that aren't the final state of
-            // the instruction result, as seen below `serialised_response`
-            let (run_instruction_res, loop_sender) = get_instruction_result(
-                instruction,
-                &loop_state,
-                &loop_common,
-                loop_sender.clone(),
-            ).await.context("getting result for instruction execution and ws sender")?;
-
-            // send to client the result
-            let serialised_response = serde_json::to_string(&run_instruction_res)?;
-            let _ = loop_sender.lock().await.send(Message::Text(serialised_response.into()))
-                .await
-                .context("sending instruction result")?;
-
-            if !run_instruction_res.is_success()? {
-                bail!("there was a failed orchestration instruction, {run_instruction_res:?}");
-            }
-
-            // dont close
-            Ok(false)
-
+            Ok(Some(instruction))
         }
         Message::Close(_) => {
-            return Ok(true);
+            Ok(None)
         }
-        _ => Ok(true), // TODO - unexpected message?
-    }
-}
-
-async fn process_potential_cancel_token(
-    maybe_cancel_token: Message,
-    loop_sender_cancel: Arc<Mutex<SplitSink<WebSocket, Message>>>,
-) -> anyhow::Result<bool> {
-
-    match maybe_cancel_token {
-        Message::Binary(b) => {
-
-            let instruction: OrchestrationProtocol = serde_json::from_slice(&b)?;
-            tracing::info!("orchestration got instruction in cancellation listener: {:?}", &instruction.instruction);
-
-            match instruction.instruction {
-                OrchestrationInstruction::Cancel => {}
-                _ => {
-                    // was not cancellation token, for now we will throw an error and kill the
-                    // command running as the following commands will be out of order for the
-                    // orchestration protocol
-                    // there is a strict order of commands from the client to the server
-                    bail!("got a non cancellation token in the cancellation listener, killing orchestration")
-                }
-            }
-
-            // as this is processing the cancel request during an instruction, rather than being
-            // processed between, we should send the client back the same response
-            let serialised_response = serde_json::to_string(&OrchestrationProtocolResponse::Generic {
-                is_success: false,
-                message: "Cancel request".to_string(),
-            })?;
-            let _ = loop_sender_cancel.lock().await.send(Message::Text(serialised_response.into()))
-                .await
-                .context("sending instruction result")?;
-
-            tracing::info!("client has sent a cancellation token, closing connection");
-            let _ = loop_sender_cancel.lock().await.send(Message::Close(Some(CloseFrame {
-                code: 1000,
-                reason: Utf8Bytes::from("The client sent a cancellation token, connection closed"),
-            }))).await.context("sending close to client websocket")?;
-            Ok(true)
-        }
-        Message::Close(_) => {
-            return Ok(true);
-        }
-        _ => Ok(true), // TODO - unexpected message?
+        _ => bail!("unsupported message type"),
     }
 }

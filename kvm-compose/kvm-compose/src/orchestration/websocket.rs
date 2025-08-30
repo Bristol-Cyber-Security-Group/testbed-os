@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 use anyhow::{bail, Context, Error};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
@@ -15,10 +16,6 @@ use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationLoggerLevel, OrchestrationProtocol, OrchestrationProtocolResponse};
 use crate::orchestration::orchestrator::{run_orchestration, CommandResult};
 
-struct WebsocketContainer {
-    pub sender: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
-    pub receiver: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
-}
 
 /// This function completely handles the orchestration command from the client side by sending instructions to the
 /// server. We pass the websocket sink and stream to the orchestration function, and depending on the orchestration
@@ -49,9 +46,13 @@ pub async fn ws_orchestration_client(
     let (sender, receiver) = ws_stream.split();
     // since we move this sender and received into the futures below, we need to wrap these in a thread safe
     // container so that we can clone the container and re-use it later
-    let websocket_container = Arc::new(Mutex::new(WebsocketContainer { sender, receiver }));
+    let safe_sender = Arc::new(Mutex::new(sender));
+    let safe_receiver = Arc::new(Mutex::new(receiver));
     // make a copy for the futures
-    let websocket_container_clone = websocket_container.clone();
+    let websocket_container_sender_clone = safe_sender.clone();
+    let websocket_container_receiver_clone = safe_receiver.clone();
+
+    let cancellation_future_ws_sender_clone = safe_sender.clone();
 
     // when using MPSC channel, the sender will wait until the buffer is read, so it shouldn't
     // matter if the sender works faster than the receiver and therefore the size of the buffer
@@ -106,9 +107,12 @@ pub async fn ws_orchestration_client(
                         }
                         _ => {}
                     }
-                    // send protocol to server on websocket
+                    // send protocol to server on websocket, this will then wait for the
+                    // acknowledgement of receipt, any logging and then the instruction complete
+                    // response
                     send_orchestration_instruction(
-                        websocket_container_clone.clone(), // this is cloned every loop...
+                        websocket_container_sender_clone.clone(), // this is cloned every loop...
+                        websocket_container_receiver_clone.clone(),
                         protocol,
                     ).await?;
                     
@@ -126,6 +130,21 @@ pub async fn ws_orchestration_client(
             let _ = tokio::signal::ctrl_c().await;
 
             tracing::info!("captured ctrl + C, gracefully stopping command");
+
+            // create and send the cancel token to the server, before this exits in the future loop
+            // which will abort the other tasks
+            let cancel = serde_json::to_vec(&OrchestrationProtocol {
+                instruction: OrchestrationInstruction::Cancel,
+            }).context("serializing cancel instruction")?;
+
+            cancellation_future_ws_sender_clone
+                .lock()
+                .await
+                .send(Message::Binary(cancel.into()))
+                .await
+                .context("sending serialised OrchestrationProtocol")?;
+
+            tokio::time::sleep(Duration::from_secs(5)).await;
 
             bail!("orchestration was interrupted by user")
 
@@ -149,9 +168,8 @@ pub async fn ws_orchestration_client(
 
         // close websocket
         tracing::debug!("closing websocket");
-        let _ = websocket_container.lock()
+        let _ = safe_sender.lock()
                 .await
-                .sender
                 .send(Message::Close(Some(CloseFrame {
             code: CloseCode::Normal,
             reason: Utf8Bytes::from("End of orchestration"),
@@ -196,12 +214,21 @@ pub async fn future_loop(
     orchestration_message_cmd_receiver_thread: JoinHandle<Result<(), Error>>,
     orchestration_interrupt_listener: JoinHandle<Result<(), Error>>
 ) -> anyhow::Result<CommandResult> {
+    // TODO - remove the loop and change to something more CPU friendly ... so this would be
+    //  orchestration_cmd_generation_thread & orchestration_message_cmd_receiver_thread in a
+    //  spawn() so that we can then use select! to join on either
+    //  orchestration_interrupt_listener or the new spawn that combines the two
     loop {
         if orchestration_interrupt_listener.is_finished() {
             // caught interrupt, abort the others
             orchestration_cmd_generation_thread.abort();
-            orchestration_message_cmd_receiver_thread.abort();
             orchestration_interrupt_listener.abort();
+
+            orchestration_message_cmd_receiver_thread
+                .await
+                .context("waiting for server to process close request")?
+                .context("orchestration message thread exited")?;
+
             bail!("orchestration interrupted");
         }
         if orchestration_cmd_generation_thread.is_finished() && orchestration_message_cmd_receiver_thread.is_finished() {
@@ -242,7 +269,8 @@ pub async fn send_orchestration_instruction_over_channel(
 /// server to process. This protocol is split into three parts on the client side: 1) send 2) receive acknowledgement
 /// 3) wait for response of outcome of instruction. The outcome may or may not have been successful.
 async fn send_orchestration_instruction(
-    websocket_container: Arc<Mutex<WebsocketContainer>>,
+    websocket_sender: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>,
+    websocket_receiver: Arc<Mutex<SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>>>,
     orchestration_protocol: OrchestrationProtocol,
 ) -> anyhow::Result<()> {
 
@@ -251,19 +279,17 @@ async fn send_orchestration_instruction(
     // need to serialise the instruction to binary format
     let serialised_instruction = serde_json::to_vec(&orchestration_protocol)
         .context("serialising OrchestrationProtocol")?;
-    let _ = websocket_container
+    let _ = websocket_sender
         .lock()
         .await
-        .sender
         .send(Message::Binary(serialised_instruction.into()))
         .await
         .context("sending serialised OrchestrationProtocol")?;
 
     // get acknowledgement
-    if let Some(response) = websocket_container
+    if let Some(response) = websocket_receiver
         .lock()
         .await
-        .receiver
         .next()
         .await {
         let response = response
@@ -295,10 +321,9 @@ async fn send_orchestration_instruction(
     loop {
 
         // wait for response
-        if let Some(response) = websocket_container
+        if let Some(response) = websocket_receiver
             .lock()
             .await
-            .receiver
             .next().await {
             let response = response
                 .context("getting instruction outcome response")?;
