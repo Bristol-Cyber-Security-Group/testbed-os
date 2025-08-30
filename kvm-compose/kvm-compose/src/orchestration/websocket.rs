@@ -214,39 +214,40 @@ pub async fn future_loop(
     orchestration_message_cmd_receiver_thread: JoinHandle<Result<(), Error>>,
     orchestration_interrupt_listener: JoinHandle<Result<(), Error>>
 ) -> anyhow::Result<CommandResult> {
-    // TODO - remove the loop and change to something more CPU friendly ... so this would be
-    //  orchestration_cmd_generation_thread & orchestration_message_cmd_receiver_thread in a
-    //  spawn() so that we can then use select! to join on either
-    //  orchestration_interrupt_listener or the new spawn that combines the two
-    loop {
-        if orchestration_interrupt_listener.is_finished() {
-            // caught interrupt, abort the others
-            orchestration_cmd_generation_thread.abort();
-            orchestration_interrupt_listener.abort();
 
-            orchestration_message_cmd_receiver_thread
-                .await
-                .context("waiting for server to process close request")?
-                .context("orchestration message thread exited")?;
+    // Here we join together the cmd generation and cmd receiver handles into a single future.
+    // This means we can await for both inside this future, and then wait on this single future
+    // in the select! macro. So we can test for if both have finished, or the cancel interrupt
+    // handler has finished first.
+
+    let both_handlers = tokio::spawn(async {
+        let (res, _) = tokio::join!(orchestration_cmd_generation_thread, orchestration_message_cmd_receiver_thread);
+        res?
+    });
+    let both_handlers_abort_handle = both_handlers.abort_handle();
+    let orchestration_interrupt_listener_abort_handle = orchestration_interrupt_listener.abort_handle();
+
+    tokio::select! {
+        _ = orchestration_interrupt_listener => {
+            // caught interrupt, abort the others
+            both_handlers_abort_handle.abort();
 
             bail!("orchestration interrupted");
         }
-        if orchestration_cmd_generation_thread.is_finished() && orchestration_message_cmd_receiver_thread.is_finished() {
+        result = both_handlers => {
             // orchestration is finished and we have finished sending messages to the server,
             // abort the interrupt listener
             tracing::debug!("cmd gen and msg gen finished, aborting interrupt listener");
-            orchestration_interrupt_listener.abort();
-            tracing::debug!("awaiting on cmd gen");
-            let result = orchestration_cmd_generation_thread.await?;
-            tracing::debug!("awaiting on msg gen");
-            let cmd_run_result = orchestration_message_cmd_receiver_thread.await?;
-            cmd_run_result?;
-            return result;
-        }
-        // TODO - what if either orchestration_cmd_generation_thread or orchestration_message_cmd_receiver_thread never finishes?
+            orchestration_interrupt_listener_abort_handle.abort();
 
-        // TODO - what if the CMD generation thread has not finished generating?
+            result?
+        }
     }
+
+    // TODO - what if either orchestration_cmd_generation_thread or orchestration_message_cmd_receiver_thread never finishes?
+
+    // TODO - what if the CMD generation thread has not finished generating?
+
 }
 
 pub async fn send_orchestration_instruction_over_channel(
