@@ -67,6 +67,10 @@ pub async fn frida_setup(
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
 
+    adb_command(namespace, &vec!["start-server".to_string()], &logging_send, false)
+        .await
+        .context("making sure adb server is running on device")?;
+
     // we need to know if the emulator is x86 or x86_64, we can use an adb command to do this
     let res = adb_command(
         namespace,
@@ -192,6 +196,10 @@ pub async fn tls_intercept(
     logging_send: &Sender<OrchestrationLogger>,
     cancel_token_recv: Arc<Mutex<Receiver<()>>>,
 ) -> anyhow::Result<()> {
+
+    adb_command(namespace, &vec!["start-server".to_string()], &logging_send, false)
+        .await
+        .context("making sure adb server is running on device")?;
 
     let venv_path = format!("/var/lib/testbedos/tools/frida_tools_venv/bin/python");
 
