@@ -1,3 +1,4 @@
+use std::fmt::format;
 use std::sync::Arc;
 use anyhow::{bail, Context};
 use axum::extract::ws::{CloseFrame, Message, Utf8Bytes, WebSocket};
@@ -156,9 +157,10 @@ async fn run(
     let deployment_command_copy = deployment_command.clone();
     let deployment_copy = deployment.clone();
     let db_config_copy = db_config.clone();
+    let sender_clone = sender.clone();
 
     // in this loop, we wait for instructions until the client sends a close
-    let orchestration_task: anyhow::Result<()> = tokio::spawn(async move {
+    let orchestration_task: anyhow::Result<anyhow::Result<bool>> = tokio::spawn(async move {
 
         tracing::info!("getting project state");
         // get some of the deployment specific data to be used later
@@ -192,8 +194,8 @@ async fn run(
 
         tracing::info!("starting the orchestration listen loop");
 
-
-        // DEBUG
+        // we record whether an instruction was cancelled, to be handled later
+        let mut cancelled = false;
 
         // channel for the client listener loop to place the instructions for processing
         let (instruction_send_channel, mut instruction_recv_channel) = mpsc::channel(32);
@@ -206,8 +208,8 @@ async fn run(
 
         // server listener loop, handling the instructions sent from the client, which then checks
         // to run an instruction, cancel or close the connection
-        let server_listener_handler_sender = sender.clone();
-        let server_listener_handler: JoinHandle<anyhow::Result<_>> = tokio::spawn(async move {
+        let server_listener_handler_sender = sender_clone.clone();
+        let server_listener_handler: JoinHandle<anyhow::Result<bool>> = tokio::spawn(async move {
             loop {
 
                 // get message from server
@@ -225,11 +227,23 @@ async fn run(
                             match instruction.instruction {
                                 OrchestrationInstruction::Cancel => {
                                     cancel_send_channel.send(()).await.context("sending cancel signal")?;
+                                    // set cancel bool to true to change outcome of run
+                                    cancelled = true;
                                     // exit this loop as we will not be receiving any more messages from client
                                     break;
                                 }
+                                OrchestrationInstruction::End => {
+                                    instruction_send_channel
+                                        .send(Some(instruction))
+                                        .await
+                                        .context("sending end instruction")?;
+                                    break;
+                                }
                                 _ => {
-                                    instruction_send_channel.send(Some(instruction)).await.context("sending cancel instruction")?;
+                                    instruction_send_channel
+                                        .send(Some(instruction))
+                                        .await
+                                        .context("sending instruction")?;
                                 }
                             }
                         }
@@ -255,6 +269,7 @@ async fn run(
                     }
 
                 } else {
+                    tracing::error!("Could not process the clients instruction, ending command running");
                     let _ = server_listener_handler_sender.lock().await.send(Message::Close(Some(CloseFrame {
                         code: 1011,
                         reason: Utf8Bytes::from("The server could not process the last message, connection closed"),
@@ -264,11 +279,11 @@ async fn run(
                 }
 
             }
-            Ok(())
+            Ok(cancelled)
         });
 
         // server instruction handler loop, processing the instructions parsed by the server listener loop
-        let server_instruction_handler_sender = sender.clone();
+        let server_instruction_handler_sender = sender_clone.clone();
         let server_instruction_handler: JoinHandle<anyhow::Result<_>> = tokio::spawn(async move {
 
             // loop through all the messages sent to the channel, placed by the future working with
@@ -337,74 +352,140 @@ async fn run(
         });
 
         // await on both so that we don't continue before both have finished
-        let _ = tokio::try_join!(server_listener_handler, server_instruction_handler)?;
+        let (cancelled, _) = tokio::try_join!(server_listener_handler, server_instruction_handler)?;
 
-        tracing::info!("end of orchestration connection");
+        tracing::info!("end of command running");
 
-        Ok(())
+        Ok(cancelled)
 
     }).await.context("could not join on job task")?;
 
     // TODO - is there a chance of a race condition between this running and the client checking for the outcome?
     //  it would be in "running" state if the client checks before the server gets a chance
 
-    // determine the outcome of the job
-    match orchestration_task {
-        Ok(_) => {
-            // get deployment config and set to success for whatever the command was
-            match deployment_command {
-                DeploymentCommand::Up { .. } => {
-                    deployment.state = DeploymentState::Up;
-                    db_config.deployment_config_db
-                        .write()
-                        .await
-                        .update_deployment(deployment.name.clone(), deployment)
-                        .await
-                        .context("updating deployment to up state")?;
+    tracing::info!("end of command running, now determining if it was successful");
+
+    // determine the outcome of the job, first we need to check if we managed to join on the job
+    let was_cancelled = match orchestration_task {
+        Ok(job_result) => {
+            // job was okay, now process the result which contains whether it was cancelled or not
+            match job_result {
+                Ok(cancelled) => {
+                    // get deployment config and set to success for whatever the command was
+                    match deployment_command {
+                        DeploymentCommand::Up { .. } => {
+                            deployment.state = if cancelled {
+                                DeploymentState::Failed(deployment_command)
+                            } else {
+                                DeploymentState::Up
+                            };
+                            deployment = db_config.deployment_config_db
+                                .write()
+                                .await
+                                .update_deployment(deployment.name.clone(), deployment)
+                                .await
+                                .context("updating deployment to up state")?;
+                        }
+                        DeploymentCommand::Down => {
+                            deployment.state = if cancelled {
+                                DeploymentState::Failed(deployment_command)
+                            } else {
+                                DeploymentState::Down
+                            };
+                            deployment = db_config.deployment_config_db
+                                .write()
+                                .await
+                                .update_deployment(deployment.name.clone(), deployment)
+                                .await
+                                .context("updating deployment to down state")?;
+                        }
+                        DeploymentCommand::ClearArtefacts => {
+                            // should be down due to clear artefacts implementation
+                            deployment.state = if cancelled {
+                                DeploymentState::Failed(deployment_command)
+                            } else {
+                                DeploymentState::Down
+                            };
+                            deployment = db_config.deployment_config_db
+                                .write()
+                                .await
+                                .update_deployment(deployment.name.clone(), deployment)
+                                .await
+                                .context("updating deployment to down state")?;
+                        }
+                        _ => {
+                            // set to previous state
+                            deployment.state = previous_state;
+                            deployment = db_config.deployment_config_db
+                                .write()
+                                .await
+                                .update_deployment(deployment.name.clone(), deployment)
+                                .await
+                                .context("updating deployment to previous state")?;
+                        }
+                    }
+                    // return whether it was cancelled or not
+                    Some(cancelled)
                 }
-                DeploymentCommand::Down => {
-                    deployment.state = DeploymentState::Down;
-                    db_config.deployment_config_db
+                Err(err) => {
+                    // we could join on the job, but there was an error in the run
+                    tracing::error!("the job did not finish successfully: {err:#}");
+                    deployment.state = DeploymentState::Failed(deployment_command);
+                    deployment = db_config.deployment_config_db
                         .write()
                         .await
                         .update_deployment(deployment.name.clone(), deployment)
                         .await
-                        .context("updating deployment to down state")?;
-                }
-                DeploymentCommand::ClearArtefacts => {
-                    // should be down due to clear artefacts implementation
-                    deployment.state = DeploymentState::Down;
-                    db_config.deployment_config_db
-                        .write()
-                        .await
-                        .update_deployment(deployment.name.clone(), deployment)
-                        .await
-                        .context("updating deployment to down state")?;
-                }
-                _ => {
-                    // set to previous state
-                    deployment.state = previous_state;
-                    db_config.deployment_config_db
-                        .write()
-                        .await
-                        .update_deployment(deployment.name.clone(), deployment)
-                        .await
-                        .context("updating deployment to previous state")?;
+                        .context("updating deployment to failed state")?;
+                    None
                 }
             }
         }
         Err(err) => {
+            // we could not join on the job, so there was a significant error
             tracing::error!("error in orchestration websocket: {err:#}");
             // set state to failed with the deployment command attempted
             deployment.state = DeploymentState::Failed(deployment_command);
-            db_config.deployment_config_db
+            deployment = db_config.deployment_config_db
                 .write()
                 .await
                 .update_deployment(deployment.name.clone(), deployment)
                 .await
                 .context("updating deployment to failed state")?;
+            None
         }
-    }
+    };
+
+    let cancelled = match was_cancelled {
+        None => "".to_string(),
+        Some(some) => if some {
+            " and was cancelled".to_string()
+        } else {
+            "".to_string()
+        }
+    };
+    let final_response = match deployment.state {
+        DeploymentState::Failed(_) => {
+            OrchestrationProtocolResponse::Generic {
+                is_success: false,
+                message: format!("The command failed{cancelled}"),
+            }
+        }
+        _ => {
+            OrchestrationProtocolResponse::Generic {
+                is_success: true,
+                message: format!("The command was successful{cancelled}"),
+            }
+        }
+    };
+    let serialised_response = serde_json::to_string(&final_response)?;
+
+    tracing::info!("sending final message to client with result");
+
+    // finally send to the client the result
+    let _ = sender.lock().await.send(Message::Text(serialised_response.into()))
+        .await
+        .context("sending instruction result")?;
 
     Ok(())
 }

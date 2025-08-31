@@ -60,7 +60,7 @@ pub async fn ws_orchestration_client(
     let (orchestration_send, mut orchestration_recv) = mpsc::channel(32);
 
     // start orchestration task
-    let run_orchestration_res = tokio::spawn(async move {
+    let run_orchestration_res: anyhow::Result<anyhow::Result<bool>> = tokio::spawn(async move {
 
         let local_deployment = deployment.clone();
         // let mut orchestration_recv_resub = orchestration_recv.resubscribe();
@@ -103,6 +103,14 @@ pub async fn ws_orchestration_client(
                             // if command generation end is matched, then we can stop checking for
                             // more commands and continue to wait for the server to finish if the
                             // last sent command is long-running and/or will send more logging
+
+                            // we need to send the End command still
+                            send_orchestration_instruction(
+                                websocket_container_sender_clone.clone(), // this is cloned every loop...
+                                websocket_container_receiver_clone.clone(),
+                                protocol,
+                            ).await?;
+
                             break;
                         }
                         _ => {}
@@ -144,8 +152,6 @@ pub async fn ws_orchestration_client(
                 .await
                 .context("sending serialised OrchestrationProtocol")?;
 
-            tokio::time::sleep(Duration::from_secs(5)).await;
-
             bail!("orchestration was interrupted by user")
 
         });
@@ -154,28 +160,32 @@ pub async fn ws_orchestration_client(
         // but we need to make sure to abort all the futures once we are done.
 
         // this will check each of the three async tasks to see which has finished first
-        let deployment_result = tokio::spawn(future_loop(
+        let clientside_cmd_result = tokio::spawn(future_loop(
             orchestration_cmd_generation_thread,
             orchestration_message_cmd_receiver_thread,
             orchestration_interrupt_listener,
         )).await.context("running parallel tasks to manage command running state")?;
-        let success = match deployment_result {
+        // this checks whether the client side was successful or not i.e. the command generation
+        // and/or sending to the server could have worked or failed, but this is separate to
+        // whether the commands actually worked on the server - we need to get this state back from
+        // the server next
+        let client_success = match clientside_cmd_result {
+            // the command didn't error but the command could be success: true or false
             Ok(cmd_res) => cmd_res.command_success,
             Err(err) => {
-                bail!(err); // TODO - we should close the websocket before bailing
+                tracing::error!("command error: {}", err);
+                false
             },
         };
 
-        // close websocket
-        tracing::debug!("closing websocket");
-        let _ = safe_sender.lock()
-                .await
-                .send(Message::Close(Some(CloseFrame {
-            code: CloseCode::Normal,
-            reason: Utf8Bytes::from("End of orchestration"),
-        }))).await.context("sending close message to orchestration worker")?;
+        // TODO - wait for state of completion of the command from server, if nothing comes back
+        //  in X amount of time, then we give this result to the user as well
 
-        Ok(success)
+        tracing::debug!("waiting for server final response");
+        let server_success = final_server_response(safe_receiver).await?;
+
+        // both must be successful
+        Ok(client_success && server_success)
     })
         .await
         .context("spawning send receive task for client");
@@ -398,4 +408,52 @@ async fn send_orchestration_instruction(
 
 
     Ok(())
+}
+
+async fn final_server_response(
+    safe_receiver: Arc<Mutex<SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>>>
+) -> anyhow::Result<bool> {
+
+    let message = safe_receiver
+        .lock()
+        .await
+        .next()
+        .await;
+
+    if let Some(Ok(final_response)) = message {
+        match final_response {
+            Message::Text(b) => {
+                let response_result: Result<OrchestrationProtocolResponse, serde_json::Error> = serde_json::from_str(&b);
+                if let Ok(ref response) = response_result {
+                    let result_messages = response.get_result_messages()?;
+                    if let Some(success) = result_messages.success_message {
+                        for msg in success {
+                            tracing::info!("Server response: {}", msg);
+                        }
+                        return Ok(true);
+                    }
+                    if let Some(fail) = result_messages.fail_message {
+                        // tracing::error!("Instruction completed with the following failures: {}", fail);
+                        for msg in fail {
+                            tracing::error!("Server response: {}", msg);
+                        }
+                        return Ok(false);
+                    }
+                    // TODO - logic here can be improved, this doesn't correspond to anything
+                    Ok(false)
+                } else {
+                    // we couldn't get the final response
+                    tracing::error!("could not deserialise the last response from the server");
+                    Ok(false)
+                }
+            }
+            _ => {
+                tracing::error!("received unexpected response format from server when waiting for final message");
+                Ok(false)
+            }
+        }
+    } else {
+        tracing::error!("received unexpected response from server when waiting for final message");
+        Ok(false)
+    }
 }

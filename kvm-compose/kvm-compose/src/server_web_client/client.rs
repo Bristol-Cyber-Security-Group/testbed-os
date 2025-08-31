@@ -86,15 +86,20 @@ pub async fn orchestration_action(
     // TODO - make sure the database update matches result?
     tracing::debug!("deployment is now in {:?} state", &check_deployment.state);
 
-    // only bail if the command wasn't successful, despite the state of the deployment being failed
-    // .. this is because not all commands impact the deployment state i.e. exec commands
-    if !success {
-        // return the result of this command
-        get_result(&check_deployment.state)
-            .context("getting orchestration result")?;
+    // // only bail if the command wasn't successful, despite the state of the deployment being failed
+    // // .. this is because not all commands impact the deployment state i.e. exec commands
+    // if !success {
+    //     // return the result of this command
+    //     get_result(&check_deployment.state)
+    //         .context("getting orchestration result")?;
+    // }
+
+    if success {
+        Ok(())
+    } else {
+        bail!("Server reported command failure")
     }
 
-    Ok(())
 }
 
 pub fn get_deployment_action(
