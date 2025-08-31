@@ -7,7 +7,9 @@ use tokio::sync::{mpsc, Mutex};
 use tokio::sync::mpsc::{Sender};
 use tokio::task::JoinHandle;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
-use tokio_tungstenite::tungstenite::{Message};
+use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
+use tokio_tungstenite::tungstenite::protocol::CloseFrame;
+use tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode;
 use kvm_compose_schemas::cli_models::Opts;
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationLoggerLevel, OrchestrationProtocol, OrchestrationProtocolResponse};
@@ -115,11 +117,12 @@ pub async fn ws_orchestration_client(
                     // send protocol to server on websocket, this will then wait for the
                     // acknowledgement of receipt, any logging and then the instruction complete
                     // response
-                    send_orchestration_instruction(
+                    let instruction_res = send_orchestration_instruction(
                         websocket_container_sender_clone.clone(), // this is cloned every loop...
                         websocket_container_receiver_clone.clone(),
                         protocol,
-                    ).await?;
+                    ).await;
+                    instruction_res?;
                     
                 } else {
                     bail!("exiting socket send loop, message not Ok");
@@ -178,8 +181,22 @@ pub async fn ws_orchestration_client(
         // TODO - wait for state of completion of the command from server, if nothing comes back
         //  in X amount of time, then we give this result to the user as well
 
+        // if we had a client failure, then we need to tell the server to stop because the client
+        // will not be continuing with this command running session
+        if !client_success {
+            tracing::info!("Client experienced an error, closing connection to server");
+            // to stop we send a close message, which will be handled by the
+            // `server_listener_handler` and `process_message` on the server-side
+            let _ = safe_sender.lock().await.send(Message::Close(Some(CloseFrame {
+                code: CloseCode::Error, // this is error
+                reason: Utf8Bytes::from("Could not deserialise the Init instruction"),
+            }))).await.context("sending close to client websocket")?;
+            return Ok(false);
+        }
         tracing::debug!("waiting for server final response");
         let server_success = final_server_response(safe_receiver).await?;
+
+        tracing::debug!("server_success: {server_success:?}");
 
         // both must be successful
         Ok(client_success && server_success)
@@ -217,8 +234,8 @@ pub async fn ws_orchestration_client(
 /// the command running. The command running consists of the command generator and the command
 /// sender.
 pub async fn future_loop(
-    orchestration_cmd_generation_thread: JoinHandle<Result<CommandResult, Error>>,
-    orchestration_message_cmd_receiver_thread: JoinHandle<Result<(), Error>>,
+    mut orchestration_cmd_generation_thread: JoinHandle<Result<CommandResult, Error>>,
+    mut orchestration_message_cmd_receiver_thread: JoinHandle<Result<(), Error>>,
     orchestration_interrupt_listener: JoinHandle<Result<(), Error>>
 ) -> anyhow::Result<CommandResult> {
 
@@ -228,8 +245,59 @@ pub async fn future_loop(
     // handler has finished first.
 
     let both_handlers = tokio::spawn(async {
-        let (res, _) = tokio::join!(orchestration_cmd_generation_thread, orchestration_message_cmd_receiver_thread);
-        res?
+        // Here we have a mildly complicated set of exit conditions, because the command generation
+        // will finish before the other one naturally. However, if the command runner future fails
+        // then we want to abort command generation. If command generation fails, then we want to
+        // abort the command running (lets be on the safe side). So we need to poll both and check
+        // for their outcomes.
+
+        tokio::select! {
+            cmd_gen_result = &mut orchestration_cmd_generation_thread => {
+                match cmd_gen_result {
+                    Ok(Ok(cmd_res)) => {
+                        // cmd gen finished, just wait for cmd run to finish
+                        tracing::info!("Command generation finished");
+                        orchestration_message_cmd_receiver_thread.await??;
+                        Ok(cmd_res)
+                    },
+                    Ok(Err(err)) => {
+                        // cmd gen failed, so we abort cmd run
+                        tracing::error!("Command generation finished due to error: {err:#}");
+                        orchestration_message_cmd_receiver_thread.abort();
+                        // TODO - send cancel token?
+                        Err(err)
+                    }
+                    Err(join_err) => {
+                        // cmd gen (outer) future panicked, so also abort cmd run
+                        tracing::error!("Command generation failed due to error {join_err:#}");
+                        orchestration_message_cmd_receiver_thread.abort();
+                        Err(join_err.into())
+                    }
+                }
+            }
+            cmd_run_result = &mut orchestration_message_cmd_receiver_thread => {
+                match cmd_run_result {
+                    Ok(Ok(_)) => {
+                        // cmd running finished, we expect cmd gen to have already finished
+                        let cmd_res = orchestration_cmd_generation_thread.await??;
+                        tracing::info!("Command running finished");
+                        Ok(cmd_res)
+                    }
+                    Ok(Err(err)) => {
+                        // cmd running aborted due to error, so kill cmd gen
+                        tracing::error!("Command running finished due to error: {err:#}");
+                        orchestration_cmd_generation_thread.abort();
+                        Err(err)
+                    }
+                    Err(join_err) => {
+                        // cmd run failed to join due to a panic, fail everything
+                        tracing::error!("Command running failed due to error {join_err:#}");
+                        orchestration_cmd_generation_thread.abort();
+                        Err(join_err.into())
+                    }
+                }
+            }
+        }
     });
     let both_handlers_abort_handle = both_handlers.abort_handle();
     let orchestration_interrupt_listener_abort_handle = orchestration_interrupt_listener.abort_handle();

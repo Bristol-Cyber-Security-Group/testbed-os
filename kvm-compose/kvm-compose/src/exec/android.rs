@@ -4,6 +4,7 @@ use anyhow::{bail, Context};
 use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
+use command_group::AsyncCommandGroup;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Mutex;
@@ -216,11 +217,13 @@ pub async fn tls_intercept(
         .current_dir("/var/lib/testbedos/tools/Frida-Tools")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn()
+        .group_spawn()
         .context("Spawning tls intercept command")?;
 
-    let stdout = child.stdout.take().context("Child did not have stdout")?;
-    let stderr = child.stderr.take().context("Child did not have stderr")?;
+    let inner = child.inner();
+
+    let stdout = inner.stdout.take().context("Child did not have stdout")?;
+    let stderr = inner.stderr.take().context("Child did not have stderr")?;
     let mut stdout_reader = BufReader::new(stdout).lines();
     let mut stderr_reader = BufReader::new(stderr).lines();
 
