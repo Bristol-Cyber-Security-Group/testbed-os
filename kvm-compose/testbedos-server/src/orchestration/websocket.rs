@@ -1,4 +1,3 @@
-use std::fmt::format;
 use std::sync::Arc;
 use anyhow::{bail, Context};
 use axum::extract::ws::{CloseFrame, Message, Utf8Bytes, WebSocket};
