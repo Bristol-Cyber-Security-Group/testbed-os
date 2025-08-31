@@ -102,7 +102,7 @@ pub async fn parse_command(opts: Opts) -> anyhow::Result<()> {
     // we will capture a ctrl+c here in case the command gets stuck, as there is a possibility that
     // we could get stuck after the command is run (where we also have another ctrl+c listener)
     // ... when this exits, this will close the websocket connection so the server should tear down
-    // the running command 
+    // the running command
 
     let command_block = tokio::spawn(async move {
         let sub_command = match &opts.sub_command {
@@ -127,8 +127,13 @@ pub async fn parse_command(opts: Opts) -> anyhow::Result<()> {
     });
 
     tokio::select! {
-        _ = command_block => {}
-        _ = interrupt_block => {}
+        result = command_block => {
+            // propagate if there was a failure in the command executed
+            result??;
+        }
+        _ = interrupt_block => {
+            bail!("exiting interrupted kvm-compose");
+        }
     }
 
     Ok(())

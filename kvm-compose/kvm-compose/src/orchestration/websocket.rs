@@ -188,8 +188,8 @@ pub async fn ws_orchestration_client(
             // to stop we send a close message, which will be handled by the
             // `server_listener_handler` and `process_message` on the server-side
             let _ = safe_sender.lock().await.send(Message::Close(Some(CloseFrame {
-                code: CloseCode::Error, // this is error
-                reason: Utf8Bytes::from("Could not deserialise the Init instruction"),
+                code: CloseCode::Error,
+                reason: Utf8Bytes::from("There was an error in command running"),
             }))).await.context("sending close to client websocket")?;
             return Ok(false);
         }
