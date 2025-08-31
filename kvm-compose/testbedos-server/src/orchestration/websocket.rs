@@ -198,6 +198,9 @@ async fn run(
         // channel for the client listener loop to place the instructions for processing
         let (instruction_send_channel, mut instruction_recv_channel) = mpsc::channel(32);
         // channel to control cancellation, to be read at the point of where the commands are being run
+        // ... this is mostly important for implementing custom cancel behaviours, beyond stop
+        // accepting any further instructions. since most of the testbed instructions are short
+        // we can accept when we cancel, the current command will finish
         let (cancel_send_channel, cancel_recv_channel) = mpsc::channel(32);
         let safe_cancel_recv_channel = Arc::new(Mutex::new(cancel_recv_channel));
 
