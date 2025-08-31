@@ -250,18 +250,8 @@ pub async fn tls_intercept(
             cancel = recv_lock.recv() => {
                 // this will run if a cancel token is received
                 tracing::info!("received cancel token in tls intercept");
-                if let Some(token) = cancel {
-                    // kill the process
-                    // let result = nix::sys::signal::kill(
-                    //     nix::unistd::Pid::from_raw(pid as i32),
-                    //     nix::sys::signal::Signal::SIGKILL,
-                    // );
-
-                    // TODO why is the pid always 2 below the actual pid - this isn't killing the tls-intercept
-                    //  maybe run it as a shell?
-
+                if let Some(_) = cancel {
                     let _ = child.kill().await?;
-
                     break;
                 }
             }
