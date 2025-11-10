@@ -1,4 +1,10 @@
-[testbedos]
-localhost
-[testbedos:vars]
-ansible_connection=local
+[singleton]
+localhost ansible_connection=local
+
+[manager]
+
+[worker]
+
+[all:children]
+manager
+worker
