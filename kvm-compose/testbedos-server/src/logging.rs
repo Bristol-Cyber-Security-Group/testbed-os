@@ -72,7 +72,7 @@ pub async fn setup_orchestration_log_cleanup(
         Job::new_async("1/10 * * * * *", |_uuid, _l| Box::pin( async move {
 
             tracing::debug!("running orchestration log cleanup");
-            let log_folder = format!("{TESTBED_SETTINGS_FOLDER}/log/orchestration/");
+            let log_folder = format!("{TESTBED_SETTINGS_FOLDER}/log/");
             let paths = match std::fs::read_dir(Path::new(&log_folder)) {
                 Ok(ok) => ok,
                 Err(err) => {
@@ -80,38 +80,38 @@ pub async fn setup_orchestration_log_cleanup(
                     return;
                 }
             };
-            let file_names = paths.filter_map(|entry| {
+            let files: Vec<_> = paths.filter_map(|entry| {
                 // check if file name read was successful, then get the filename and convert to String
-                entry.ok().and_then(|e| {
-                    e.path().file_name().and_then(|n| n.to_str().map(|s| String::from(s)))
-                })
-            }).collect::<Vec<String>>();
+                let entry = entry.ok()?;
+                let filename = entry.file_name();
+                let metadata = entry.metadata().ok()?;
+                let modified = metadata.modified().ok()?;
+                let datetime: DateTime<Utc> = modified.into();
+                Some((filename, datetime))
+            }).collect();
             // with the file names, extract datetime and check if old enough to delete
-            let re = Regex::new(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{9}\+\d{2}:\d{2})").unwrap();
-            for log_file in file_names {
+            let re = Regex::new(r"(\d{4}-\d{2}-\d{2})").unwrap();
+            for (log_filename, mod_time) in files {
                 // if it does not have a datetime in string, ignore it
-                if let Some(datetime) = re.captures(&log_file) {
-                    let found_log_file_timestamp = datetime.get(1).unwrap().as_str();
-                    tracing::debug!("found log file: {}", found_log_file_timestamp);
+                let log_filename: String = log_filename.to_str().unwrap().into();
+                if let Some(_) = re.captures(&log_filename) {
+                    tracing::debug!("found log file: {}", log_filename);
                     // check if it is old enough to delete
-                    let datetime = DateTime::parse_from_str(found_log_file_timestamp, "%Y-%m-%dT%H:%M:%S%.f%:z")
-                        .expect("Failed to parse datetime")
-                        .with_timezone(&Utc);
                     let one_week_ago = Utc::now() - Duration::weeks(1);
-                    if datetime < one_week_ago {
-                        tracing::info!("log file {} over a week old, deleting..", &log_file);
-                        match std::fs::remove_file(format!("{TESTBED_SETTINGS_FOLDER}/log/orchestration/{log_file}")) {
+                    if mod_time < one_week_ago {
+                        tracing::info!("log file {} over a week old, deleting..", &log_filename);
+                        match std::fs::remove_file(format!("{TESTBED_SETTINGS_FOLDER}/log/{log_filename}")) {
                             Ok(_) => {}
                             Err(err) => {
-                                tracing::error!("could not delete {log_file} with err: {err:#}");
+                                tracing::error!("could not delete {log_filename} with err: {err:#}");
                             }
                         }
                     } else {
-                        tracing::debug!("log file {} under a week old, will not delete", &log_file);
+                        tracing::debug!("log file {} under a week old, will not delete", &log_filename);
                     }
 
                 } else {
-                    tracing::warn!("orchestration log file did not match regex: {}", &log_file);
+                    tracing::warn!("orchestration log file did not match regex: {}", &log_filename);
                 }
             }
 
