@@ -11,7 +11,7 @@
       eval "$(pyenv init -)"
       poetry run which sphinx-build
     args:
-      chdir: "../.."
+      chdir: "/tmp/testbed-os"
     register: poetry_check_install
     ignore_errors: yes
 
@@ -26,7 +26,7 @@
       poetry env use 3.10.5
       poetry install
     args:
-      chdir: "../.."
+      chdir: "/tmp/testbed-os"
     when:  not poetry_check_install.rc == 0
 
   - name: Confirm if Poetry has been installed

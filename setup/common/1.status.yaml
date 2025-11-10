@@ -173,14 +173,18 @@
       group_contains_desired: "{{ qemu_content.content | b64decode | regex_search('group = \"' + user_group + '\"') is not none}}"
     when: qemu_present.stat.exists
 
-
+  - name: Check for supported OS
+    set_fact:
+      is_debian_12: "{{ ansible_distribution == 'Debian' and ansible_distribution_major_version == '12' }}"
 
   - name: Status
     ansible.builtin.debug:
       msg:
         - "| Component                     |Status|"
         - "|-------------------------------|------|"
+        - "| Base OS is Debian 12          | {{is_debian_12}} |"
         - "| Internet is Available         | {{ default_ipv4_available }} |"
+        - "|-------------------------------|------|"
         - "| LibVirt Installed             | {{ libvrt_check.stat.exists }} |"
         - "| OVS Installed                 | {{ ovs_check.stat.exists }} |"
         - "| OVN Installed                 | {{ ovn_check.stat.exists }} |"

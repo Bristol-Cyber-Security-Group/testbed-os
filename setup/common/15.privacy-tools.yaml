@@ -11,7 +11,7 @@
     shell: |
       ./setup.sh
     args:
-      chdir: "../../util/privacy_tools/"
+      chdir: "/tmp/testbed-os/util/privacy_tools/"
       creates: /var/lib/testbedos/tools/frida_tools_venv
       executable: /bin/bash
     environment:

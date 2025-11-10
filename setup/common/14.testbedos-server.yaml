@@ -11,7 +11,7 @@
     shell: |
       ./install.sh
     args:
-      chdir: "../../kvm-compose/testbedos-server/"
+      chdir: "/tmp/testbed-os/kvm-compose/testbedos-server/"
       creates: /usr/local/bin/testbedos-server
       executable: /bin/bash
     environment:
@@ -21,7 +21,7 @@
 
   - name: Clean Up the Build Directory
     ansible.builtin.file:
-      path: "../../build"
+      path: "/tmp/testbed-os/build"
       state: absent
     become: yes
     when:  server_check.stat.exists

@@ -17,7 +17,7 @@
 
   - name: Copy TUI.py to TUI directory
     copy:
-      src: "{{ playbook_dir }}/../../util/tui/TUI.py"
+      src: "/tmp/testbed-os/util/tui/TUI.py"
       dest: "{{ lookup('env', 'HOME') }}/.local/share/kvm-ui-tui/TUI.py"
     when:  not tui_check.stat.exists
 
@@ -37,7 +37,7 @@
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ lookup('env', 'HOME') }}/.pyenv/shims:{{ lookup('env', 'HOME') }}/.pyenv/bin"
     args:
-      chdir: "../../util/tui/"
+      chdir: "/tmp/testbed-os/util/tui/"
     when:  not tui_check.stat.exists
 
   - name: Update the shebang in the kvm-ui-tui script

@@ -2,7 +2,7 @@
   hosts: all
   tasks:
   - name: Include variables based on OS
-    include_vars: "{{ lookup('first_found', {'files': ['../vars/{{ ansible_distribution }}/{{ ansible_distribution_major_version }}/main.yaml'], 'paths': ['.']}) }}"
+    include_vars: "{{ lookup('first_found', {'files': ['/tmp/testbed-os/setup/vars/{{ ansible_distribution }}/{{ ansible_distribution_major_version }}/main.yaml'], 'paths': ['.']}) }}"
 
   - name: Check if sdkmanager is installed
     stat:

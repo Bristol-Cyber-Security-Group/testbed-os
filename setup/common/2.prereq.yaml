@@ -2,11 +2,25 @@
 - name: Install Pre-Requisites and Libvirt
   hosts: all
   become: true
+  vars:
+    repo_branch: develop #Pass a different variable based on the branch being used. Example `ansipble-playbook main.yml --ask-become-pass --extra-vars "repo_branch=release-1.0"`
   tasks:
-  - name: Include variables based on OS
-    include_vars: "{{ lookup('first_found', {'files': ['../vars/{{ ansible_distribution }}/{{ ansible_distribution_major_version }}/main.yaml'], 'paths': ['.']}) }}"
+  - name: Make sure that git is installed
+    ansible.builtin.package:
+      name: git
+      state: latest
+      update_cache: yes 
 
-  - name: Install packages
+  - name: Clone respository
+    ansible.builtin.git:
+      repo: 'https://github.com/Bristol-Cyber-Security-Group/testbed-os.git'
+      dest: /tmp/testbed-os
+      version: '{{repo_branch}}'
+
+  - name: Include variables based on OS
+    include_vars: "{{ lookup('first_found', {'files': ['/tmp/testbed-os/setup/vars/{{ ansible_distribution }}/{{ ansible_distribution_major_version }}/main.yaml'], 'paths': ['.']}) }}"
+
+  - name: Install pre-requisite packages
     ansible.builtin.package:
       name: "{{prereq_packages}}"
       state: latest

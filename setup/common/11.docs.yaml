@@ -31,7 +31,7 @@
 
         - name: Create build directory
           file:
-            path: build
+            path: /tmp/testbed-os/build
             state: directory
             mode: '0755'
           become: yes
@@ -40,7 +40,7 @@
           shell: | 
             "{{ poetry_venv_path.stdout }}/bin/sphinx-build" -M man docs build
           args:
-            chdir: "../.."
+            chdir: "/tmp/testbed-os"
             executable: /bin/bash
           become: yes
 
@@ -48,7 +48,7 @@
           shell: | 
             "{{ poetry_venv_path.stdout }}/bin/sphinx-build" -M html docs build
           args:
-            chdir: "../.."
+            chdir: "/tmp/testbed-os"
             executable: /bin/bash
           become: yes
 
@@ -62,7 +62,7 @@
 
         - name: Copy HTML documentation to target directory
           copy:
-            src: ../../build/html/
+            src: /tmp/testbed-os/build/html/
             dest: /var/lib/testbedos/assets/documentation/
             owner: root
             group: root
