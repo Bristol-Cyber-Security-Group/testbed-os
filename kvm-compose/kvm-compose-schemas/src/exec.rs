@@ -84,6 +84,8 @@ pub enum TestbedTools {
     /// Run an adb command against an android guest
     ADB(Command),
     FridaSetup,
+    /// Install an Android app from an APK file
+    InstallApk(Command),
     TestPermissions(Command),
     TestPrivacy(Command),
     TLSIntercept(Command),

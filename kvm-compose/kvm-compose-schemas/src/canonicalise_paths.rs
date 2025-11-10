@@ -49,6 +49,7 @@ pub fn cli_canonicalise_all_paths(
                     match &mut tool.tool {
                         TestbedTools::ADB(_) => {}
                         TestbedTools::FridaSetup => {}
+                        TestbedTools::InstallApk(_) => {}
                         TestbedTools::TestPermissions(_) => {}
                         TestbedTools::TestPrivacy(_) => {}
                         TestbedTools::TLSIntercept(_) => {}

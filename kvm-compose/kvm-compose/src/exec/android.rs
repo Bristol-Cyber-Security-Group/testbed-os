@@ -59,6 +59,32 @@ pub async fn adb_command(
     Ok(())
 }
 
+pub async fn install_apk(
+    namespace: &str,
+    command: &Vec<String>,
+    logging_send: &Sender<OrchestrationLogger>,
+    suppress_output: bool,
+) -> anyhow::Result<()> {
+    tracing::info!("Installing APK");
+
+    let mut args = vec![
+        "install".to_string(),
+    ];
+    args.extend_from_slice(command);
+
+    let res = adb_command(namespace, &args, &logging_send, false).await;
+
+    match res {
+        Ok(_) => {}
+        Err(e) => { bail!(e); }
+    }
+
+    tracing::info!("APK Installation complete");
+
+    Ok(())
+}
+
+
 pub async fn frida_setup(
     namespace: &str,
     logging_send: &Sender<OrchestrationLogger>,
