@@ -1255,7 +1255,10 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
             .context("getting guest network in android create action")?;
 
         // checking if the Android emulator is already running
-        let cmd = vec!["ps", "aux",];
+        let cmd = vec![
+            "ps", 
+            "aux",
+        ];
         let cmd_result = run_testbed_orchestration_command_allow_fail(
                 &common,
                 testbed_host,
@@ -1264,158 +1267,160 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
                 false,
                 None,
             ).await?;
-        let existing_androidEmulator = cmd_result.contains("/opt/android-sdk/emulator/emulator");
+        let process_name = format!("sudo ip netns exec {} /opt/android-sdk/emulator/emulator -avd {}", namespace, guest_project_name);
+        let existing_android_emulator = cmd_result.contains(&process_name);
         
-        if !existing_androidEmulator {
-            tracing::info!("The Android Emulator is not already running. Proceeding to deploy the Android guest");
-            if !net.is_empty() {
-                // only one interface allowed
-                let guest_interface = get_guest_interface_name(&common.project_name, machine_config.guest_id, 0);
-                let lsp_name = format!("{}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
-                let mac = match &common.network {
-                    StateNetwork::Ovn(ovn) => {
-                        let lsp = ovn.switch_ports.get(&lsp_name)
-                            .context(format!("Getting LSP for android guest {}", &guest_name))?;
-                        match &lsp.port_type {
-                            LogicalSwitchPortType::Internal { mac_address, .. } => mac_address.address.clone(),
-                            _ => unreachable!(),
-                        }
+        if existing_android_emulator {
+            tracing::info!("The Android Emulator is already running. Skipping the deployment of the Android guest");
+            return Ok(());
+        }
+
+        tracing::info!("The Android Emulator is not already running. Proceeding to deploy the Android guest");
+        if !net.is_empty() {
+            // only one interface allowed
+            let guest_interface = get_guest_interface_name(&common.project_name, machine_config.guest_id, 0);
+            let lsp_name = format!("{}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
+            let mac = match &common.network {
+                StateNetwork::Ovn(ovn) => {
+                    let lsp = ovn.switch_ports.get(&lsp_name)
+                        .context(format!("Getting LSP for android guest {}", &guest_name))?;
+                    match &lsp.port_type {
+                        LogicalSwitchPortType::Internal { mac_address, .. } => mac_address.address.clone(),
+                        _ => unreachable!(),
                     }
-                    StateNetwork::Ovs(_) => unimplemented!(),
-                };
-                let gateway = &net[0].gateway.as_ref()
-                    .context("android guest was not given a gateway")?;
+                }
+                StateNetwork::Ovs(_) => unimplemented!(),
+            };
+            let gateway = &net[0].gateway.as_ref()
+                .context("android guest was not given a gateway")?;
 
-                // create port for android guest
-                let iface_id = format!("external_ids:iface-id={}", &lsp_name);
-                let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
-                    .unwrap().ovn.bridge;
-                let cmd = vec![
-                    "ovs-vsctl", "--may-exist", "add-port", integration_bridge, &guest_interface,
-                    "--", "set", "Interface", &guest_interface, "type=internal",
-                    "--", "set", "Interface", &guest_interface, &iface_id,
-                ];
-                run_testbed_orchestration_command_allow_fail(
-                    &common,
-                    testbed_host,
-                    "sudo",
-                    cmd,
-                    false,
-                    None,
-                ).await?;
-
-
-                // create namespace
-                let cmd = vec!["ip", "netns", "add", &namespace];
-                run_testbed_orchestration_command_allow_fail(
-                    &common,
-                    testbed_host,
-                    "sudo",
-                    cmd,
-                    false,
-                    None,
-                ).await?;
-                // make sure loopback is up
-                let cmd = vec!["ip", "netns", "exec", &namespace, "ip", "link", "set", "dev", "lo", "up"];
-                run_testbed_orchestration_command_allow_fail(
-                    &common,
-                    testbed_host,
-                    "sudo",
-                    cmd,
-                    false,
-                    None,
-                ).await?;
-                // put ovs port into namespace
-                let cmd = vec![
-                    "ip", "link", "set", &guest_interface, "netns", &namespace,
-                ];
-                run_testbed_orchestration_command_allow_fail(
-                    &common,
-                    testbed_host,
-                    "sudo",
-                    cmd,
-                    false,
-                    None,
-                ).await?;
-                // set mac address of ovs port
-                let cmd = vec![
-                    "ip", "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "address", &mac
-                ];
-                run_testbed_orchestration_command_allow_fail(
-                    &common,
-                    testbed_host,
-                    "sudo",
-                    cmd,
-                    false,
-                    None,
-                ).await?;
-                // set ip of ovs port
-                let ip = if net[0].ip.eq("dynamic") {
-                    let lsp_name = format!("{}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
-                    let dynamic_ip = get_lsp_dynamic_ip(&lsp_name, testbed_host, &common).await?;
-                    dynamic_ip
-                } else {
-                    net[0].ip.clone()
-                };
-                // TODO - get mask for this ip
-                let namespace_ip = format!("{ip}/24");
-                let cmd = vec![
-                    "ip", "netns", "exec", &namespace, "ip", "addr", "add", &namespace_ip, "dev", &guest_interface,
-                ];
-                run_testbed_orchestration_command_allow_fail(
-                    &common,
-                    testbed_host,
-                    "sudo",
-                    cmd,
-                    false,
-                    None,
-                ).await?;
-
-                // set ovs port up
-                let cmd = vec![
-                    "ip", "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "up"
-                ];
-                run_testbed_orchestration_command_allow_fail(
-                    &common,
-                    testbed_host,
-                    "sudo",
-                    cmd,
-                    false,
-                    None,
-                ).await?;
-                // set default route for ovs port
-                let cmd = vec![
-                    "ip", "netns", "exec", &namespace, "ip", "route", "add", "default", "via", gateway, "dev", &guest_interface,
-                ];
-                run_testbed_orchestration_command_allow_fail(
-                    &common,
-                    testbed_host,
-                    "sudo",
-                    cmd,
-                    false,
-                    None,
-                ).await?;
-            }
-
-
-            // finally, deploy avd in background
+            // create port for android guest
+            let iface_id = format!("external_ids:iface-id={}", &lsp_name);
+            let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
+                .unwrap().ovn.bridge;
             let cmd = vec![
-                "ip", "netns", "exec", &namespace, "/opt/android-sdk/emulator/emulator",
-                "-avd", &guest_project_name,
-                // qemu options
-
+                "ovs-vsctl", "--may-exist", "add-port", integration_bridge, &guest_interface,
+                "--", "set", "Interface", &guest_interface, "type=internal",
+                "--", "set", "Interface", &guest_interface, &iface_id,
             ];
-            run_testbed_orchestration_command(
+            run_testbed_orchestration_command_allow_fail(
                 &common,
                 testbed_host,
                 "sudo",
                 cmd,
-                true,
+                false,
                 None,
             ).await?;
-        } else {
-            tracing::info!("The Android Emulator is already running. Skipping the deployment of Android guest");
+
+
+            // create namespace
+            let cmd = vec!["ip", "netns", "add", &namespace];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+            // make sure loopback is up
+            let cmd = vec!["ip", "netns", "exec", &namespace, "ip", "link", "set", "dev", "lo", "up"];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+            // put ovs port into namespace
+            let cmd = vec![
+                "ip", "link", "set", &guest_interface, "netns", &namespace,
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+            // set mac address of ovs port
+            let cmd = vec![
+                "ip", "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "address", &mac
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+            // set ip of ovs port
+            let ip = if net[0].ip.eq("dynamic") {
+                let lsp_name = format!("{}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
+                let dynamic_ip = get_lsp_dynamic_ip(&lsp_name, testbed_host, &common).await?;
+                dynamic_ip
+            } else {
+                net[0].ip.clone()
+            };
+            // TODO - get mask for this ip
+            let namespace_ip = format!("{ip}/24");
+            let cmd = vec![
+                "ip", "netns", "exec", &namespace, "ip", "addr", "add", &namespace_ip, "dev", &guest_interface,
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+
+            // set ovs port up
+            let cmd = vec![
+                "ip", "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "up"
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+            // set default route for ovs port
+            let cmd = vec![
+                "ip", "netns", "exec", &namespace, "ip", "route", "add", "default", "via", gateway, "dev", &guest_interface,
+            ];
+            run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
         }
+
+
+        // finally, deploy avd in background
+        let cmd = vec![
+            "ip", "netns", "exec", &namespace, "/opt/android-sdk/emulator/emulator",
+            "-avd", &guest_project_name,
+            // qemu options
+
+        ];
+        run_testbed_orchestration_command(
+            &common,
+            testbed_host,
+            "sudo",
+            cmd,
+            true,
+            None,
+        ).await?;
 
         Ok(())
     }
