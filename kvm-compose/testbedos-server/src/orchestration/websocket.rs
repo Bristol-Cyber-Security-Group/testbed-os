@@ -9,7 +9,7 @@ use kvm_compose_lib::orchestration::api::{OrchestrationInstruction, Orchestratio
 use kvm_compose_lib::orchestration::{OrchestrationCommon};
 use kvm_compose_lib::state::orchestration_tasks::get_orchestration_common;
 use kvm_compose_lib::state::State;
-use kvm_compose_schemas::deployment_models::{DeploymentCommand, DeploymentState};
+use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand, DeploymentState};
 use crate::AppState;
 
 /// This function completely handles the orchestration command requested by the client. This is the websocket
@@ -256,51 +256,53 @@ async fn run(
     // TODO - is there a chance of a race condition between this running and the client checking for the outcome?
     //  it would be in "running" state if the client checks before the server gets a chance
 
-    // determine the outcome of the job
-    match orchestration_task {
-        Ok(_) => {
-            // get deployment config and set to success for whatever the command was
-            match deployment_command {
-                DeploymentCommand::Up { .. } => {
-                    deployment.state = DeploymentState::Up;
-                    db_config.deployment_config_db
-                        .write()
-                        .await
-                        .update_deployment(deployment.name.clone(), deployment)
-                        .await
-                        .context("updating deployment to up state")?;
-                }
-                DeploymentCommand::Down => {
-                    deployment.state = DeploymentState::Down;
-                    db_config.deployment_config_db
-                        .write()
-                        .await
-                        .update_deployment(deployment.name.clone(), deployment)
-                        .await
-                        .context("updating deployment to down state")?;
-                }
-                DeploymentCommand::ClearArtefacts => {
-                    // should be down due to clear artefacts implementation
-                    deployment.state = DeploymentState::Down;
-                    db_config.deployment_config_db
-                        .write()
-                        .await
-                        .update_deployment(deployment.name.clone(), deployment)
-                        .await
-                        .context("updating deployment to down state")?;
-                }
-                _ => {
-                    // set to previous state
-                    deployment.state = previous_state;
-                    db_config.deployment_config_db
-                        .write()
-                        .await
-                        .update_deployment(deployment.name.clone(), deployment)
-                        .await
-                        .context("updating deployment to previous state")?;
-                }
-            }
+    // determine the outcome of the job to update the deployment state, if this was a destructive
+    // command then update the deployment state, if it was something else like an exec command
+    // then we don't update the deployment state
+    match deployment_command {
+        DeploymentCommand::Up { .. } => {
+            update_state_on_command_end(DeploymentState::Up, deployment, &db_config, deployment_command, orchestration_task).await?;
         }
+        DeploymentCommand::Down => {
+            update_state_on_command_end(DeploymentState::Down, deployment, &db_config, deployment_command, orchestration_task).await?;
+        }
+        DeploymentCommand::ClearArtefacts => {
+            update_state_on_command_end(DeploymentState::Down, deployment, &db_config, deployment_command, orchestration_task).await?;
+        }
+        _ => {
+            // don't update state if a non-destructive command
+            // set to previous state
+            deployment.state = previous_state;
+            db_config.deployment_config_db
+                .write()
+                .await
+                .update_deployment(deployment.name.clone(), deployment)
+                .await
+                .context("updating deployment to previous state")?;
+        }
+    }
+
+    Ok(())
+}
+
+/// This function will update the deployment state to either the given new state or into a failed
+/// state. This should only be used for those commands considered to be destructive such as
+/// - Up
+/// - Down
+/// - ClearArtefacts
+/// Which have an impact on the state of the network and guests.
+async fn update_state_on_command_end(
+    intended_state: DeploymentState,
+    mut deployment: Deployment,
+    db_config: &Arc<AppState>,
+    deployment_command: DeploymentCommand,
+    orchestration_task: anyhow::Result<()>,
+) -> anyhow::Result<()> {
+
+    // there was a failure, set state to failed - expectation that this function is called only for
+    // the destructive commands
+    match orchestration_task {
+        Ok(_) => {}
         Err(err) => {
             tracing::error!("error in orchestration websocket: {err:#}");
             // set state to failed with the deployment command attempted
@@ -311,11 +313,22 @@ async fn run(
                 .update_deployment(deployment.name.clone(), deployment)
                 .await
                 .context("updating deployment to failed state")?;
+            return Ok(());
         }
     }
 
+    // update the state to the new intended state as a result of the command running
+    deployment.state = intended_state;
+    db_config.deployment_config_db
+        .write()
+        .await
+        .update_deployment(deployment.name.clone(), deployment)
+        .await
+        .context("updating deployment to up state")?;
+
     Ok(())
 }
+
 
 /// Get the result of the instruction, but also listen for messages during the execution of the
 /// instruction to also pass to the client such as output of commands that were executed or data
