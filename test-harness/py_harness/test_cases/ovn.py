@@ -39,11 +39,7 @@ class OvnTestCase(TestCase):
             False,
         )
 
-        # this should be false as this scenario has no public switch to bridge the logical network to the host network,
-        # so we will negate the test outcome, as a failed connection is a pass
         internet_test = confirm_no_internet_connectivity(self.test_case_name, self.linked_clone_hosts, merged_guests)
-        print("@@@", internet_test)
-        internet_test.success = not internet_test.success
 
         return [
             up_result_report,
