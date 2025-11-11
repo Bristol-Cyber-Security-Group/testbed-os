@@ -327,24 +327,8 @@ async fn run(
                             }
                         }
                     }
-                    // cancel_response = cancel_response_recv_channel.recv() => {
-                    //     // if there was a cancel, then there will be a response with the cancel state
-                    //     if let Some(response) = cancel_response {
-                    //
-                    //     } else {
-                    //
-                    //     }
-                    // }
                     else => bail!("there was a problem in getting the message from the instruction_recv_channel"),
                 }
-                // if let Ok(instruction) = instruction_recv_channel.recv().await.context("receiving instruction message") {
-                //
-                //
-                // } else {
-                //     // instruction over channel was not Ok
-                //     bail!("there was a problem in getting the message from the instruction_recv_channel")
-                // }
-
             }
 
             Ok(())
