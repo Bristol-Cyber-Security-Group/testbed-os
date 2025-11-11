@@ -52,13 +52,6 @@ network:
       sw-mid:
         subnet: "10.0.1.0/24"
       
-      public:
-        subnet: "172.16.1.0/24"
-        ports:
-          - name: ls-public
-            localnet:
-              network_name: public
-
     routers:
 
       lr0:
@@ -74,23 +67,12 @@ network:
             gateway_ip: "10.0.1.1/24"
             switch: sw-mid
 
-          - name: lr0-public
-            mac: "00:00:20:20:12:13"
-            gateway_ip: "172.16.1.200/24"
-            switch: public
-            set_gateway_chassis: main
-
         static_routes:
           - prefix: "0.0.0.0/0"
             nexthop: "172.16.1.1"
 
           - prefix: "10.0.2.0/24"
             nexthop: "10.0.1.2"
-
-        nat:
-          - nat_type: snat
-            external_ip: "172.16.1.200"
-            logical_ip: "10.0.0.0/16"
 
       lr1:
         ports:
