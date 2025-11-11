@@ -51,6 +51,13 @@ network:
 
       sw-mid:
         subnet: "10.0.1.0/24"
+      
+      public:
+        subnet: "172.16.1.0/24"
+        ports:
+          - name: ls-public
+            localnet:
+              network_name: public
 
     routers:
 
@@ -66,6 +73,12 @@ network:
             mac: "00:00:00:00:ff:02"
             gateway_ip: "10.0.1.1/24"
             switch: sw-mid
+
+          - name: lr0-public
+            mac: "00:00:20:20:12:13"
+            gateway_ip: "172.16.1.200/24"
+            switch: public
+            set_gateway_chassis: main
 
         static_routes:
           - prefix: "0.0.0.0/0"
