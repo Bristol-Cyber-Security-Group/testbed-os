@@ -1,10 +1,14 @@
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::mpsc::{Receiver};
+use tokio::sync::Mutex;
 use kvm_compose_schemas::cli_models::AnalysisToolsCmd;
 
 /// Run the packet capture. This function needs to work out which testbed host this capture needs to
 /// run on. This function also needs to work out if the
 pub async fn packet_capture(
-    at: &AnalysisToolsCmd
+    at: &AnalysisToolsCmd,
+    _cancel_token_recv: Arc<Mutex<Receiver<()>>>
 ) -> anyhow::Result<()> {
     //
     tracing::info!("tcpdump args: {at:?}");

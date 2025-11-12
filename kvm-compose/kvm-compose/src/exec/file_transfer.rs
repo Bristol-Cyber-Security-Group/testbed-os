@@ -13,6 +13,7 @@ const CDROM_DEVICE_XML: &str = r#"
     <disk type='file' device='cdrom'>
         <driver name='qemu' type='raw'/>
         <target dev='sdc' bus='scsi'/>
+        <source file='VALID_ISO_PATH'/>
         <readonly/>
         <address type='drive' controller='0' bus='0' target='0' unit='2'/>
     </disk>
@@ -62,18 +63,17 @@ pub async fn attach_cdrom_to_guest(
         .context("connecting to libvirt to get attach CD ROM device")?;
     let domain = virt::domain::Domain::lookup_by_name(&conn, guest_name_with_project)
         .context("getting domain from libvirt connection")?;
-    // insert the scsi CD ROM device via an XML definition (will not persist between guest boots)
-    domain.attach_device(CDROM_DEVICE_XML)
-        .context("Attaching CD ROM device to guest")?;
 
-    // attach the media
+    // we need to create a temporary xml with the full path to the ISO file, we replace the
+    // existing template with the temp iso path
+    let mut temp_cdrom_xml = CDROM_DEVICE_XML.to_string();
     let temp_iso_str_path = temp_iso.path().to_string_lossy().into_owned();
-    run_subprocess_command(
-        "sudo",
-        vec!["virsh", "change-media", &guest_name_with_project, "sdc", &temp_iso_str_path],
-        false,
-        None,
-    ).await?;
+    temp_cdrom_xml = temp_cdrom_xml.replace("VALID_ISO_PATH", &temp_iso_str_path);
+
+    // TODO - if we are going to attach another, do we need to do any clearup of the previous cdrom?
+    // insert the scsi CD ROM device via an XML definition (will not persist between guest boots)
+    domain.attach_device(&temp_cdrom_xml)
+        .context("Attaching CD ROM device to guest")?;
 
     Ok(())
 }

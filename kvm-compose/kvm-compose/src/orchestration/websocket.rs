@@ -15,10 +15,6 @@ use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationLoggerLevel, OrchestrationProtocol, OrchestrationProtocolResponse};
 use crate::orchestration::orchestrator::{run_orchestration, CommandResult};
 
-struct WebsocketContainer {
-    pub sender: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
-    pub receiver: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
-}
 
 /// This function completely handles the orchestration command from the client side by sending instructions to the
 /// server. We pass the websocket sink and stream to the orchestration function, and depending on the orchestration
@@ -49,9 +45,13 @@ pub async fn ws_orchestration_client(
     let (sender, receiver) = ws_stream.split();
     // since we move this sender and received into the futures below, we need to wrap these in a thread safe
     // container so that we can clone the container and re-use it later
-    let websocket_container = Arc::new(Mutex::new(WebsocketContainer { sender, receiver }));
+    let safe_sender = Arc::new(Mutex::new(sender));
+    let safe_receiver = Arc::new(Mutex::new(receiver));
     // make a copy for the futures
-    let websocket_container_clone = websocket_container.clone();
+    let websocket_container_sender_clone = safe_sender.clone();
+    let websocket_container_receiver_clone = safe_receiver.clone();
+
+    let cancellation_future_ws_sender_clone = safe_sender.clone();
 
     // when using MPSC channel, the sender will wait until the buffer is read, so it shouldn't
     // matter if the sender works faster than the receiver and therefore the size of the buffer
@@ -59,7 +59,7 @@ pub async fn ws_orchestration_client(
     let (orchestration_send, mut orchestration_recv) = mpsc::channel(32);
 
     // start orchestration task
-    let run_orchestration_res = tokio::spawn(async move {
+    let run_orchestration_res: anyhow::Result<anyhow::Result<bool>> = tokio::spawn(async move {
 
         let local_deployment = deployment.clone();
         // let mut orchestration_recv_resub = orchestration_recv.resubscribe();
@@ -102,15 +102,27 @@ pub async fn ws_orchestration_client(
                             // if command generation end is matched, then we can stop checking for
                             // more commands and continue to wait for the server to finish if the
                             // last sent command is long-running and/or will send more logging
+
+                            // we need to send the End command still
+                            send_orchestration_instruction(
+                                websocket_container_sender_clone.clone(), // this is cloned every loop...
+                                websocket_container_receiver_clone.clone(),
+                                protocol,
+                            ).await?;
+
                             break;
                         }
                         _ => {}
                     }
-                    // send protocol to server on websocket
-                    send_orchestration_instruction(
-                        websocket_container_clone.clone(), // this is cloned every loop...
+                    // send protocol to server on websocket, this will then wait for the
+                    // acknowledgement of receipt, any logging and then the instruction complete
+                    // response
+                    let instruction_res = send_orchestration_instruction(
+                        websocket_container_sender_clone.clone(), // this is cloned every loop...
+                        websocket_container_receiver_clone.clone(),
                         protocol,
-                    ).await?;
+                    ).await;
+                    instruction_res?;
                     
                 } else {
                     bail!("exiting socket send loop, message not Ok");
@@ -127,6 +139,19 @@ pub async fn ws_orchestration_client(
 
             tracing::info!("captured ctrl + C, gracefully stopping command");
 
+            // create and send the cancel token to the server, before this exits in the future loop
+            // which will abort the other tasks
+            let cancel = serde_json::to_vec(&OrchestrationProtocol {
+                instruction: OrchestrationInstruction::Cancel,
+            }).context("serializing cancel instruction")?;
+
+            cancellation_future_ws_sender_clone
+                .lock()
+                .await
+                .send(Message::Binary(cancel.into()))
+                .await
+                .context("sending serialised OrchestrationProtocol")?;
+
             bail!("orchestration was interrupted by user")
 
         });
@@ -135,29 +160,46 @@ pub async fn ws_orchestration_client(
         // but we need to make sure to abort all the futures once we are done.
 
         // this will check each of the three async tasks to see which has finished first
-        let deployment_result = tokio::spawn(future_loop(
+        let clientside_cmd_result = tokio::spawn(future_loop(
             orchestration_cmd_generation_thread,
             orchestration_message_cmd_receiver_thread,
             orchestration_interrupt_listener,
         )).await.context("running parallel tasks to manage command running state")?;
-        let success = match deployment_result {
+        // this checks whether the client side was successful or not i.e. the command generation
+        // and/or sending to the server could have worked or failed, but this is separate to
+        // whether the commands actually worked on the server - we need to get this state back from
+        // the server next
+        let client_success = match clientside_cmd_result {
+            // the command didn't error but the command could be success: true or false
             Ok(cmd_res) => cmd_res.command_success,
             Err(err) => {
-                bail!(err); // TODO - we should close the websocket before bailing
+                tracing::error!("command error: {}", err);
+                false
             },
         };
 
-        // close websocket
-        tracing::debug!("closing websocket");
-        let _ = websocket_container.lock()
-                .await
-                .sender
-                .send(Message::Close(Some(CloseFrame {
-            code: CloseCode::Normal,
-            reason: Utf8Bytes::from("End of orchestration"),
-        }))).await.context("sending close message to orchestration worker")?;
+        // TODO - wait for state of completion of the command from server, if nothing comes back
+        //  in X amount of time, then we give this result to the user as well
 
-        Ok(success)
+        // if we had a client failure, then we need to tell the server to stop because the client
+        // will not be continuing with this command running session
+        if !client_success {
+            tracing::info!("Client experienced an error, closing connection to server");
+            // to stop we send a close message, which will be handled by the
+            // `server_listener_handler` and `process_message` on the server-side
+            let _ = safe_sender.lock().await.send(Message::Close(Some(CloseFrame {
+                code: CloseCode::Error,
+                reason: Utf8Bytes::from("There was an error in command running"),
+            }))).await.context("sending close to client websocket")?;
+            return Ok(false);
+        }
+        tracing::debug!("waiting for server final response");
+        let server_success = final_server_response(safe_receiver).await?;
+
+        tracing::debug!("server_success: {server_success:?}");
+
+        // both must be successful
+        Ok(client_success && server_success)
     })
         .await
         .context("spawning send receive task for client");
@@ -192,34 +234,95 @@ pub async fn ws_orchestration_client(
 /// the command running. The command running consists of the command generator and the command
 /// sender.
 pub async fn future_loop(
-    orchestration_cmd_generation_thread: JoinHandle<Result<CommandResult, Error>>,
-    orchestration_message_cmd_receiver_thread: JoinHandle<Result<(), Error>>,
+    mut orchestration_cmd_generation_thread: JoinHandle<Result<CommandResult, Error>>,
+    mut orchestration_message_cmd_receiver_thread: JoinHandle<Result<(), Error>>,
     orchestration_interrupt_listener: JoinHandle<Result<(), Error>>
 ) -> anyhow::Result<CommandResult> {
-    loop {
-        if orchestration_interrupt_listener.is_finished() {
+
+    // Here we join together the cmd generation and cmd receiver handles into a single future.
+    // This means we can await for both inside this future, and then wait on this single future
+    // in the select! macro. So we can test for if both have finished, or the cancel interrupt
+    // handler has finished first.
+
+    let both_handlers = tokio::spawn(async {
+        // Here we have a mildly complicated set of exit conditions, because the command generation
+        // will finish before the other one naturally. However, if the command runner future fails
+        // then we want to abort command generation. If command generation fails, then we want to
+        // abort the command running (lets be on the safe side). So we need to poll both and check
+        // for their outcomes.
+
+        tokio::select! {
+            cmd_gen_result = &mut orchestration_cmd_generation_thread => {
+                match cmd_gen_result {
+                    Ok(Ok(cmd_res)) => {
+                        // cmd gen finished, just wait for cmd run to finish
+                        tracing::info!("Command generation finished");
+                        orchestration_message_cmd_receiver_thread.await??;
+                        Ok(cmd_res)
+                    },
+                    Ok(Err(err)) => {
+                        // cmd gen failed, so we abort cmd run
+                        tracing::error!("Command generation finished due to error: {err:#}");
+                        orchestration_message_cmd_receiver_thread.abort();
+                        // TODO - send cancel token?
+                        Err(err)
+                    }
+                    Err(join_err) => {
+                        // cmd gen (outer) future panicked, so also abort cmd run
+                        tracing::error!("Command generation failed due to error {join_err:#}");
+                        orchestration_message_cmd_receiver_thread.abort();
+                        Err(join_err.into())
+                    }
+                }
+            }
+            cmd_run_result = &mut orchestration_message_cmd_receiver_thread => {
+                match cmd_run_result {
+                    Ok(Ok(_)) => {
+                        // cmd running finished, we expect cmd gen to have already finished
+                        let cmd_res = orchestration_cmd_generation_thread.await??;
+                        tracing::info!("Command running finished");
+                        Ok(cmd_res)
+                    }
+                    Ok(Err(err)) => {
+                        // cmd running aborted due to error, so kill cmd gen
+                        tracing::error!("Command running finished due to error: {err:#}");
+                        orchestration_cmd_generation_thread.abort();
+                        Err(err)
+                    }
+                    Err(join_err) => {
+                        // cmd run failed to join due to a panic, fail everything
+                        tracing::error!("Command running failed due to error {join_err:#}");
+                        orchestration_cmd_generation_thread.abort();
+                        Err(join_err.into())
+                    }
+                }
+            }
+        }
+    });
+    let both_handlers_abort_handle = both_handlers.abort_handle();
+    let orchestration_interrupt_listener_abort_handle = orchestration_interrupt_listener.abort_handle();
+
+    tokio::select! {
+        _ = orchestration_interrupt_listener => {
             // caught interrupt, abort the others
-            orchestration_cmd_generation_thread.abort();
-            orchestration_message_cmd_receiver_thread.abort();
-            orchestration_interrupt_listener.abort();
+            both_handlers_abort_handle.abort();
+
             bail!("orchestration interrupted");
         }
-        if orchestration_cmd_generation_thread.is_finished() && orchestration_message_cmd_receiver_thread.is_finished() {
+        result = both_handlers => {
             // orchestration is finished and we have finished sending messages to the server,
             // abort the interrupt listener
             tracing::debug!("cmd gen and msg gen finished, aborting interrupt listener");
-            orchestration_interrupt_listener.abort();
-            tracing::debug!("awaiting on cmd gen");
-            let result = orchestration_cmd_generation_thread.await?;
-            tracing::debug!("awaiting on msg gen");
-            let cmd_run_result = orchestration_message_cmd_receiver_thread.await?;
-            cmd_run_result?;
-            return result;
-        }
-        // TODO - what if either orchestration_cmd_generation_thread or orchestration_message_cmd_receiver_thread never finishes?
+            orchestration_interrupt_listener_abort_handle.abort();
 
-        // TODO - what if the CMD generation thread has not finished generating?
+            result?
+        }
     }
+
+    // TODO - what if either orchestration_cmd_generation_thread or orchestration_message_cmd_receiver_thread never finishes?
+
+    // TODO - what if the CMD generation thread has not finished generating?
+
 }
 
 pub async fn send_orchestration_instruction_over_channel(
@@ -242,7 +345,8 @@ pub async fn send_orchestration_instruction_over_channel(
 /// server to process. This protocol is split into three parts on the client side: 1) send 2) receive acknowledgement
 /// 3) wait for response of outcome of instruction. The outcome may or may not have been successful.
 async fn send_orchestration_instruction(
-    websocket_container: Arc<Mutex<WebsocketContainer>>,
+    websocket_sender: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>,
+    websocket_receiver: Arc<Mutex<SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>>>,
     orchestration_protocol: OrchestrationProtocol,
 ) -> anyhow::Result<()> {
 
@@ -251,19 +355,17 @@ async fn send_orchestration_instruction(
     // need to serialise the instruction to binary format
     let serialised_instruction = serde_json::to_vec(&orchestration_protocol)
         .context("serialising OrchestrationProtocol")?;
-    let _ = websocket_container
+    let _ = websocket_sender
         .lock()
         .await
-        .sender
         .send(Message::Binary(serialised_instruction.into()))
         .await
         .context("sending serialised OrchestrationProtocol")?;
 
     // get acknowledgement
-    if let Some(response) = websocket_container
+    if let Some(response) = websocket_receiver
         .lock()
         .await
-        .receiver
         .next()
         .await {
         let response = response
@@ -295,10 +397,9 @@ async fn send_orchestration_instruction(
     loop {
 
         // wait for response
-        if let Some(response) = websocket_container
+        if let Some(response) = websocket_receiver
             .lock()
             .await
-            .receiver
             .next().await {
             let response = response
                 .context("getting instruction outcome response")?;
@@ -372,4 +473,52 @@ async fn send_orchestration_instruction(
 
 
     Ok(())
+}
+
+async fn final_server_response(
+    safe_receiver: Arc<Mutex<SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>>>
+) -> anyhow::Result<bool> {
+
+    let message = safe_receiver
+        .lock()
+        .await
+        .next()
+        .await;
+
+    if let Some(Ok(final_response)) = message {
+        match final_response {
+            Message::Text(b) => {
+                let response_result: Result<OrchestrationProtocolResponse, serde_json::Error> = serde_json::from_str(&b);
+                if let Ok(ref response) = response_result {
+                    let result_messages = response.get_result_messages()?;
+                    if let Some(success) = result_messages.success_message {
+                        for msg in success {
+                            tracing::info!("Server response: {}", msg);
+                        }
+                        return Ok(true);
+                    }
+                    if let Some(fail) = result_messages.fail_message {
+                        // tracing::error!("Instruction completed with the following failures: {}", fail);
+                        for msg in fail {
+                            tracing::error!("Server response: {}", msg);
+                        }
+                        return Ok(false);
+                    }
+                    // TODO - logic here can be improved, this doesn't correspond to anything
+                    Ok(false)
+                } else {
+                    // we couldn't get the final response
+                    tracing::error!("could not deserialise the last response from the server");
+                    Ok(false)
+                }
+            }
+            _ => {
+                tracing::error!("received unexpected response format from server when waiting for final message");
+                Ok(false)
+            }
+        }
+    } else {
+        tracing::error!("received unexpected response from server when waiting for final message");
+        Ok(false)
+    }
 }
