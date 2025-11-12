@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use anyhow::{bail, Context};
 use axum::extract::ws::{CloseFrame, Message, Utf8Bytes, WebSocket};
-use futures_util::{Sink, SinkExt, StreamExt};
+use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::SplitSink;
 use tokio::sync::{mpsc, Mutex};
 use tokio::sync::mpsc::{Receiver};
@@ -110,7 +110,7 @@ async fn run(
     tracing::info!("getting deployment info");
 
     // get the deployment info for later
-    let (mut deployment, previous_state, deployment_command) = match init.instruction {
+    let (deployment, previous_state, deployment_command) = match init.instruction {
         OrchestrationInstruction::Init { deployment, deployment_command } => {
             let mut deployment = db_config.deployment_config_db
                 .read()

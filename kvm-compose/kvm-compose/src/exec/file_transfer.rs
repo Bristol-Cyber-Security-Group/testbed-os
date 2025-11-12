@@ -6,7 +6,7 @@ use kvm_compose_schemas::exec::ExecCmdFileTransfer;
 use crate::components::helpers::serialisation;
 use crate::exec::libvirt::shell_command;
 use crate::orchestration::api::OrchestrationLogger;
-use crate::orchestration::{run_subprocess_command, OrchestrationCommon};
+use crate::orchestration::OrchestrationCommon;
 use crate::state::StateTestbedGuest;
 
 const CDROM_DEVICE_XML: &str = r#"
