@@ -51,7 +51,7 @@ network:
 
       sw-mid:
         subnet: "10.0.1.0/24"
-      
+
     routers:
 
       lr0:
