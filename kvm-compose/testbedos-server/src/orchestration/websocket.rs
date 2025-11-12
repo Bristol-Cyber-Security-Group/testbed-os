@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use anyhow::{bail, Context};
 use axum::extract::ws::{CloseFrame, Message, Utf8Bytes, WebSocket};
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{Sink, SinkExt, StreamExt};
 use futures_util::stream::SplitSink;
 use tokio::sync::{mpsc, Mutex};
 use tokio::sync::mpsc::{Receiver};
@@ -159,7 +159,7 @@ async fn run(
     let sender_clone = sender.clone();
 
     // in this loop, we wait for instructions until the client sends a close
-    let orchestration_task: anyhow::Result<anyhow::Result<bool>> = tokio::spawn(async move {
+    let orchestration_task: anyhow::Result<(anyhow::Result<bool>, bool)> = tokio::spawn(async move {
 
         tracing::info!("getting project state");
         // get some of the deployment specific data to be used later
@@ -232,17 +232,23 @@ async fn run(
                                     break;
                                 }
                                 OrchestrationInstruction::End => {
-                                    instruction_send_channel
+                                    // TODO - the receiver might close itself if there is an error
+                                    //  so we might need to ignore a failed End
+                                    tracing::info!("End instruction received, breaking out of instruction listener loop");
+                                    let _ = instruction_send_channel
                                         .send(Some(instruction))
                                         .await
-                                        .context("sending end instruction")?;
+                                        .context("sending end instruction");
                                     break;
                                 }
                                 _ => {
-                                    instruction_send_channel
+                                    tracing::debug!("sending instruction {instruction:?}");
+                                    let instruction_res = instruction_send_channel
                                         .send(Some(instruction))
                                         .await
-                                        .context("sending instruction")?;
+                                        .context("sending instruction");
+                                    tracing::debug!("send instruction result {instruction_res:?}");
+                                    instruction_res?;
                                 }
                             }
                         }
@@ -251,17 +257,10 @@ async fn run(
                             tracing::info!("close connection true in orchestration websocket");
 
                             // tell the instruction channel to close up
-                            instruction_send_channel.send(None).await.context("sending close signal to instruction_send_channel")?;
-
-                            // TODO - this following code errors because the connection is already closed on the client's side
-                            //  do we leave this in for robustness?
-
-                            // normal close
-                            // connection might already be closed by client so don't handle error with ?
-                            let _ = server_listener_handler_sender.lock().await.send(Message::Close(Some(CloseFrame {
-                                code: 1000,
-                                reason: Utf8Bytes::from("Last command received, connection closed"),
-                            }))).await.context("sending close to client websocket"); // TODO - need ? here?
+                            // the instruction channel might already be closed, since we are in cleanup
+                            // of the command running, we can allow this to fail if already closed
+                            // TODO - is there an edge case this will bite us?
+                            let _ = instruction_send_channel.send(None).await.context("sending close signal to instruction_send_channel");
 
                             break;
                         }
@@ -301,6 +300,7 @@ async fn run(
                                     .await
                                     .context("sending acknowledgement")?;
 
+                                tracing::debug!("received instruction from server listener loop, instruction: {instruction:?}");
                                 let run_instruction_res = get_instruction_result(
                                     instruction,
                                     &state,
@@ -308,6 +308,7 @@ async fn run(
                                     server_instruction_handler_sender.clone(),
                                     safe_cancel_recv_channel.clone(),
                                 ).await.context("getting result for instruction execution and ws sender")?;
+                                tracing::debug!("finished running instruction, next sending client the result of {run_instruction_res:?}");
 
                                 // send to client the result
                                 let serialised_response = serde_json::to_string(&run_instruction_res)?;
@@ -316,6 +317,7 @@ async fn run(
                                     .context("sending instruction result")?;
 
                                 if !run_instruction_res.is_success()? {
+                                    tracing::error!("the instruction result was an error, bailing");
                                     bail!("there was a failed orchestration instruction, {run_instruction_res:?}");
                                 }
 
@@ -327,19 +329,33 @@ async fn run(
                             }
                         }
                     }
-                    else => bail!("there was a problem in getting the message from the instruction_recv_channel"),
+                    else => {
+                        // bail!("there was a problem in getting the message from the instruction_recv_channel");
+                        // there is no more channel to poll, exit gracefully
+                        break;
+                    }
                 }
             }
 
             Ok(())
         });
 
+        // instruction runner may have bailed due to error, so we can kill the listener as the
+        // client will also have bailed
+
+
         // await on both so that we don't continue before both have finished
-        let (cancelled, _) = tokio::try_join!(server_listener_handler, server_instruction_handler)?;
+        let (cancelled, instruction_res) = tokio::try_join!(server_listener_handler, server_instruction_handler)?;
 
-        tracing::info!("end of command running");
+        tracing::info!("end of command running at handler, cancel status: {cancelled:?}");
+        tracing::debug!("instruction_res: {instruction_res:?}");
 
-        Ok(cancelled)
+        let command_result = match instruction_res {
+            Ok(_) => true,
+            Err(_) => false,
+        };
+
+        Ok((cancelled, command_result))
 
     }).await.context("could not join on job task")?;
 
@@ -347,6 +363,22 @@ async fn run(
     //  it would be in "running" state if the client checks before the server gets a chance
 
     tracing::info!("end of command running, now determining if it was successful");
+
+    let (was_cancelled, command_result) = match orchestration_task {
+        Ok((ref job_result, cmd_res)) => {
+            match job_result {
+                Ok(cancelled) => (*cancelled, cmd_res),
+                Err(_) => (false, cmd_res),
+            }
+        }
+        Err(_) => (false, false),
+    };
+    tracing::info!("the command running resulted in cancel status of: {was_cancelled}");
+    let cancelled = if was_cancelled {
+        " and was cancelled".to_string()
+    } else {
+        "".to_string()
+    };
 
     // update the state of the deployment on the server backend
     match deployment_command {
@@ -364,27 +396,38 @@ async fn run(
             // set to previous state
             update_state_on_command_end(previous_state, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
 
-            // deployment.state = previous_state;
-            // db_config.deployment_config_db
-            //     .write()
-            //     .await
-            //     .update_deployment(deployment.name.clone(), deployment)
-            //     .await
-            //     .context("updating deployment to previous state")?;
+            // do not check current state to determine the success of the command as it is a
+            // non-destructive command
+            let final_response = if was_cancelled {
+                OrchestrationProtocolResponse::Generic {
+                    is_success: false,
+                    message: format!("The command failed{cancelled}"),
+                }
+            } else {
+                let msg = if command_result {
+                    ""
+                } else {
+                    "not "
+                };
+                OrchestrationProtocolResponse::Generic {
+                    is_success: command_result,
+                    message: format!("The command was {msg}successful"),
+                }
+            };
+            let serialised_response = serde_json::to_string(&final_response)?;
+            tracing::info!("non-destructive command running end - sending final message to client with result of {serialised_response:?}");
+
+            // finally send to the client the result
+            let _ = sender.lock().await.send(Message::Text(serialised_response.into()))
+                .await
+                .context("sending instruction result")?;
+            return Ok(());
+
         }
     }
 
-    let was_cancelled = match orchestration_task {
-        Ok(job_result) => {
-            job_result.unwrap_or_else(|_| false)
-        }
-        Err(_) => false,
-    };
-    let cancelled = if was_cancelled {
-        " and was cancelled".to_string()
-    } else {
-        "".to_string()
-    };
+    // the following sends the success of the command based on the state we worked out due to
+    // a destructive command
 
     let final_response = match deployment.state {
         DeploymentState::Failed(_) => {
@@ -395,14 +438,14 @@ async fn run(
         }
         _ => {
             OrchestrationProtocolResponse::Generic {
-                is_success: true,
+                is_success: command_result,
                 message: format!("The command was successful{cancelled}"),
             }
         }
     };
     let serialised_response = serde_json::to_string(&final_response)?;
 
-    tracing::info!("sending final message to client with result");
+    tracing::info!("destructive command running end - sending final message to client with result of {serialised_response:?}");
 
     // finally send to the client the result
     let _ = sender.lock().await.send(Message::Text(serialised_response.into()))
@@ -424,17 +467,15 @@ async fn update_state_on_command_end(
     mut deployment: Deployment,
     db_config: &Arc<AppState>,
     deployment_command: DeploymentCommand,
-    orchestration_task: &anyhow::Result<anyhow::Result<bool>>,
+    orchestration_task: &anyhow::Result<(anyhow::Result<bool>, bool)>,
 ) -> anyhow::Result<()> {
-
-
 
     // there was a failure, set state to failed - expectation that this function is called only for
     // the destructive commands
     let final_state: DeploymentState = match orchestration_task {
-        Ok(job_result) => {
+        Ok((job_cancel_result, _)) => {
             // handle the case where the thread joins successfully, but because of a cancellation
-            match job_result {
+            match job_cancel_result {
                 Ok(cancelled) => {
                     if *cancelled {
                         tracing::info!("the job finished due to a cancellation");

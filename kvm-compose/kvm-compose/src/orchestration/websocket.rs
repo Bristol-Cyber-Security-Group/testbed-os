@@ -173,7 +173,7 @@ pub async fn ws_orchestration_client(
             // the command didn't error but the command could be success: true or false
             Ok(cmd_res) => cmd_res.command_success,
             Err(err) => {
-                tracing::error!("command error: {}", err);
+                tracing::error!("command error: {:#}", err);
                 false
             },
         };
@@ -184,14 +184,18 @@ pub async fn ws_orchestration_client(
         // if we had a client failure, then we need to tell the server to stop because the client
         // will not be continuing with this command running session
         if !client_success {
-            tracing::info!("Client experienced an error, closing connection to server");
-            // to stop we send a close message, which will be handled by the
-            // `server_listener_handler` and `process_message` on the server-side
-            let _ = safe_sender.lock().await.send(Message::Close(Some(CloseFrame {
-                code: CloseCode::Error,
-                reason: Utf8Bytes::from("There was an error in command running"),
-            }))).await.context("sending close to client websocket")?;
-            return Ok(false);
+            tracing::info!("Due to error in instruction, now cleaning up by sending End instruction");
+            let serialised_instruction = serde_json::to_vec(&OrchestrationProtocol {
+                    instruction: OrchestrationInstruction::End,
+                })
+                .context("serialising OrchestrationProtocol")?;
+            let _ = safe_sender
+                .lock()
+                .await
+                .send(Message::Binary(serialised_instruction.into()))
+                .await
+                .context("sending early exit End instruction OrchestrationProtocol")?;
+
         }
         tracing::debug!("waiting for server final response");
         let server_success = final_server_response(safe_receiver).await?;
@@ -372,7 +376,7 @@ async fn send_orchestration_instruction(
             .context("getting acknowledgement response")?;
         match response {
             Message::Text(t) => {
-                tracing::debug!("Server response: {t}");
+                tracing::debug!("Server acknowledgement response: {t}");
             }
             Message::Close(msg) => {
                 match msg {
@@ -493,7 +497,7 @@ async fn final_server_response(
                     let result_messages = response.get_result_messages()?;
                     if let Some(success) = result_messages.success_message {
                         for msg in success {
-                            tracing::info!("Server response: {}", msg);
+                            tracing::info!("Server final response: {}", msg);
                         }
                         return Ok(true);
                     }
