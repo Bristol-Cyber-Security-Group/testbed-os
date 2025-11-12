@@ -70,9 +70,9 @@ async fn main() {
             //  request the appropriate lock in their context
             // the database is also wrapped in an atomically referenced counter to ensure there is only one
             //  between all handler contexts
-            let deployment_config_db: Arc<RwLock<Box<(dyn DeploymentProvider + Sync + Send)>>> =
+            let deployment_config_db: Arc<RwLock<Box<dyn DeploymentProvider + Sync + Send>>> =
                 Arc::new(RwLock::new(deployment_db));
-            let config_db: Arc<RwLock<Box<(dyn TestbedConfigProvider + Sync + Send)>>> =
+            let config_db: Arc<RwLock<Box<dyn TestbedConfigProvider + Sync + Send>>> =
                 Arc::new(RwLock::new(config_db));
 
             // given the mode, make sure settings are correct
@@ -122,7 +122,7 @@ async fn main() {
         ServerModeCmd::Client(ref client_mode) => {
             // start server in client mode
             let config_db = get_cluster_config_db();
-            let config_db: Arc<RwLock<Box<(dyn TestbedConfigProvider + Sync + Send)>>> =
+            let config_db: Arc<RwLock<Box<dyn TestbedConfigProvider + Sync + Send>>> =
                 Arc::new(RwLock::new(config_db));
             // given the mode, make sure settings are correct
             try_configure_host(&mode, &config_db).await;
