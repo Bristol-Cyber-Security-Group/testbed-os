@@ -1,0 +1,10 @@
+[package]
+name = "packet-capture"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { workspace = true }
+anyhow = { workspace = true }
+pcap = { version = "2.3.0" }
+pnet = { version = "0.35.0" }
