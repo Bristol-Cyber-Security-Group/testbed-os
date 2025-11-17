@@ -29,6 +29,15 @@ If you are running this, you must make sure that the emulator will allow you to 
 This is possible if you disable the playstore, in the yaml set `playstore_enabled: false`.
 If the emulator already had playstore enabled, you must re-provision the emulator.
 
+install-apk
+===========
+
+The `install-apk` tool is specific to `android` guests.
+
+This tool will install an APK file onto the specified `android` guest via the `kvm-compose` interface. This tool uses `adb` under the hood.
+
+You must specify the argument to the command: `<fullpathapk>` where `<fullpathapk>` is the absolute path to the APK file.
+
 
 test-permissions
 ================
