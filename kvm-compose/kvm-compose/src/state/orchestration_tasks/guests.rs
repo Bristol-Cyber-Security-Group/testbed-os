@@ -1253,6 +1253,29 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
         let namespace = format!("{project_name}-{guest_name}-nmspc");
         let net = &machine_config.guest_type.network
             .context("getting guest network in android create action")?;
+
+        // checking if the Android emulator is already running
+        let cmd = vec![
+            "ps", 
+            "aux",
+        ];
+        let cmd_result = run_testbed_orchestration_command_allow_fail(
+                &common,
+                testbed_host,
+                "sudo",
+                cmd,
+                false,
+                None,
+            ).await?;
+        let process_name = format!("sudo ip netns exec {} /opt/android-sdk/emulator/emulator -avd {}", namespace, guest_project_name);
+        let existing_android_emulator = cmd_result.contains(&process_name);
+        
+        if existing_android_emulator {
+            tracing::info!("The Android Emulator is already running. Skipping the deployment of the Android guest");
+            return Ok(());
+        }
+
+        tracing::info!("The Android Emulator is not already running. Proceeding to deploy the Android guest");
         if !net.is_empty() {
             // only one interface allowed
             let guest_interface = get_guest_interface_name(&common.project_name, machine_config.guest_id, 0);

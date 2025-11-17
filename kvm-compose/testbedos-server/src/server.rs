@@ -25,7 +25,7 @@ use testbedos_lib::cluster::ovn::{set_up_cluster_client_check_cron_jobs, set_up_
 use testbedos_lib::config::db::get_cluster_config_db;
 use testbedos_lib::config::provider::TestbedConfigProvider;
 use testbedos_lib::gui::add_gui_handlers;
-use testbedos_lib::logging::setup_orchestration_log_cleanup;
+use testbedos_lib::logging::server_log_cleanup;
 use testbedos_lib::orchestration::add_orchestration_handlers;
 use testbedos_lib::resource_monitoring::handlers::*;
 
@@ -102,7 +102,7 @@ async fn main() {
                 }
             }
             // set up cron job to clear orchestration logs
-            match setup_orchestration_log_cleanup().await {
+            match server_log_cleanup().await {
                 Ok(_) => {}
                 Err(err) => {
                     tracing::error!("could not set up orchestration log cron job with err: {err:#}");
