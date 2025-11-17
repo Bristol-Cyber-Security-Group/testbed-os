@@ -398,6 +398,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55b672471b4e9f9e95499ea597ff64941a309b2cdbffcc46f2cc5e2d971fd335"
 
 [[package]]
+name = "command-group"
+version = "5.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a68fa787550392a9d58f44c21a3022cfb3ea3e2458b7f85d3b399d0ceeccf409"
+dependencies = [
+ "async-trait",
+ "nix 0.27.1",
+ "tokio",
+ "winapi",
+]
+
+[[package]]
 name = "compact_str"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1325,12 +1337,13 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "command-group",
  "console",
  "futures-util",
  "glob",
  "kvm-compose-schemas",
  "lazy_static",
- "nix",
+ "nix 0.30.1",
  "rand 0.9.1",
  "reqwest",
  "rexpect",
@@ -1355,7 +1368,7 @@ dependencies = [
  "crossterm 0.29.0",
  "kvm-compose",
  "kvm-compose-schemas",
- "nix",
+ "nix 0.30.1",
  "ratatui",
  "reqwest",
  "tokio",
@@ -1371,7 +1384,7 @@ dependencies = [
  "chrono",
  "clap",
  "futures",
- "nix",
+ "nix 0.30.1",
  "reqwest",
  "serde",
  "serde_json",
@@ -1530,6 +1543,17 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "nix"
+version = "0.27.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2eb04e9c688eff1c89d72b407f168cf79bb9e867a9d3323ed6c01519eb9cc053"
+dependencies = [
+ "bitflags",
+ "cfg-if",
+ "libc",
 ]
 
 [[package]]
@@ -2073,7 +2097,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c1bcd4ac488e9d2d726d147031cceff5cff6425011ff1914049739770fa4726"
 dependencies = [
  "comma",
- "nix",
+ "nix 0.30.1",
  "regex",
  "tempfile",
  "thiserror 2.0.12",
@@ -2556,7 +2580,7 @@ dependencies = [
  "glob",
  "kvm-compose",
  "kvm-compose-schemas",
- "nix",
+ "nix 0.30.1",
  "regex",
  "reqwest",
  "serde",

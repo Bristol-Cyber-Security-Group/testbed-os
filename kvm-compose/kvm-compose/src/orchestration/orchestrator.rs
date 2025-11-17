@@ -13,6 +13,7 @@ use crate::orchestration::api::{OrchestrationInstruction, OrchestrationProtocol}
 use crate::orchestration::websocket::{send_orchestration_instruction_over_channel};
 use crate::state::orchestration_tasks::ovn_network::reapply_acl_action;
 
+#[derive(Debug)]
 pub struct CommandResult {
     pub deployment: Deployment,
     pub command_success: bool,

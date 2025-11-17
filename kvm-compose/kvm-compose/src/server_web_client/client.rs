@@ -73,7 +73,7 @@ pub async fn orchestration_action(
             success
         }
         Err(err) => {
-            tracing::error!("there was a problem in the orchestration, will stop");
+            tracing::error!("there was a problem in the command running, will stop");
             err.chain().for_each(|cause| tracing::error!("because: {}", cause));
             false
         }
@@ -86,15 +86,12 @@ pub async fn orchestration_action(
     // TODO - make sure the database update matches result?
     tracing::debug!("deployment is now in {:?} state", &check_deployment.state);
 
-    // only bail if the command wasn't successful, despite the state of the deployment being failed
-    // .. this is because not all commands impact the deployment state i.e. exec commands
-    if !success {
-        // return the result of this command
-        get_result(&check_deployment.state)
-            .context("getting orchestration result")?;
+    if success {
+        Ok(())
+    } else {
+        bail!("Server reported command failure")
     }
 
-    Ok(())
 }
 
 pub fn get_deployment_action(
@@ -152,20 +149,6 @@ async fn analysis_tools_action(
 ) -> anyhow::Result<()> {
 
     Ok(())
-}
-
-/// Helper to check the resulting state from the command running on the testbed server and then
-/// return Ok or panic with helpful context
-fn get_result(
-    deployment_end_state: &DeploymentState,
-) -> anyhow::Result<()> {
-    match deployment_end_state {
-        DeploymentState::Failed(dep_cmd) => bail!("the command {:?} was not successful", dep_cmd),
-        _ => {
-            tracing::info!("the command was successful");
-            Ok(())
-        }
-    }
 }
 
 /// Prevent commands running in a folder with the same name as an existing deployment, which would

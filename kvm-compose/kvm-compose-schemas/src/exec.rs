@@ -86,6 +86,9 @@ pub enum TestbedTools {
     FridaSetup,
     TestPermissions(Command),
     TestPrivacy(Command),
+    /// TLS Intercept, you must pass two arguments as <packagename> <outdir> where package name is
+    /// the name of the app if it is running, or the full name of the app including the organisation
+    /// i.e. org.testbed.application
     TLSIntercept(Command),
 }
 
