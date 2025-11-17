@@ -26,6 +26,15 @@
         </disk>
         {% endif %}
 
+        <!-- leave a pre-defined CDROM definition in the guest for hot-swapping CDROM in libvirt version <= 8 -->
+        <disk type='file' device='cdrom'>
+            <driver name='qemu' type='raw'/>
+            <target dev='sdc' bus='scsi'/>
+            <readonly/>
+            <source file=''/>
+            <address type='drive' controller='0' bus='0' target='0' unit='2'/>
+        </disk>
+
         <graphics type="spice" autoport="yes">
             <listen type="address"/>
             <image compression="off"/>

@@ -84,4 +84,4 @@ class MountTestCase(TestCase):
             mount_docker,
         ]
 
-# registered_test_cases.append(MountTestCase)
+registered_test_cases.append(MountTestCase)
