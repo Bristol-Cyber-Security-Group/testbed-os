@@ -35,6 +35,15 @@ class MountTestCase(TestCase):
             self.linked_clone_hosts,
             "_check_setup_script_artefact_exists",
         )
+        # this is here so that we don't run the tests following before cloud-init finishes, meaning the context folder
+        # might not be available yet for example
+        cloud_init_wait = run_command(
+            "client1",
+            "timeout 300 cloud-init status --wait",
+            self.test_case_name,
+            self.linked_clone_hosts,
+            "_ensure_cloud_init_finished_running",
+        )
         context_artefact = run_command(
             "client1",
             "ls /etc/nocloud/context/",
@@ -77,6 +86,7 @@ class MountTestCase(TestCase):
             up_result_report,
             run_script_artefact,
             setup_script_artefact,
+            cloud_init_wait,
             context_artefact,
             # env_var,
             # env_file_var_docker,
