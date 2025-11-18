@@ -22,7 +22,8 @@
             <driver name="qemu" type="raw"></driver>
             <source file="{{ cloud_init_iso }}"></source>
             <readonly></readonly>
-            <target dev="hdb" bus="sata"></target>
+            <target dev="hdb" bus="scsi"></target>
+            <address type='drive' controller='0' bus='0' target='0' unit='0'/>
         </disk>
         {% endif %}
 
