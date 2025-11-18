@@ -67,13 +67,13 @@ class MountTestCase(TestCase):
         )
 
         ## docker
-        # env_file_var_docker = run_command(
-        #     "client2",
-        #     """[ -n "${DOCKER_ENV}" ] && exit 0 || exit 1""",
-        #     self.test_case_name,
-        #     self.linked_clone_hosts,
-        #     "_check_env_file_var_exists_docker",
-        # )
+        env_file_var_docker = run_command(
+            "client2",
+            """'test $DOCKER_ENV = success'""",
+            self.test_case_name,
+            self.linked_clone_hosts,
+            "_check_env_file_var_exists_docker",
+        )
         env_var_docker = run_command(
             "client2",
             """'test $TWO = 2'""",
@@ -81,13 +81,14 @@ class MountTestCase(TestCase):
             self.linked_clone_hosts,
             "_check_env_var_exists_docker",
         )
-        # mount_docker = run_command(
-        #     "client2",
-        #     "ls /opt/context",
-        #     self.test_case_name,
-        #     self.linked_clone_hosts,
-        #     "_check_mount_exists_docker",
-        # )
+        # the contents of ./context/ in the yaml will be placed inside /opt (docker does not preserve the parent folder)
+        mount_docker = run_command(
+            "client2",
+            "ls /opt/context.txt",
+            self.test_case_name,
+            self.linked_clone_hosts,
+            "_check_mount_exists_docker",
+        )
 
         return [
             up_result_report,
@@ -96,9 +97,9 @@ class MountTestCase(TestCase):
             cloud_init_wait,
             context_artefact,
             env_var,
-            # env_file_var_docker,
+            env_file_var_docker,
             env_var_docker,
-            # mount_docker,
+            mount_docker,
         ]
 
 registered_test_cases.append(MountTestCase)
