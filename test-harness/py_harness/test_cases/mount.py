@@ -74,13 +74,13 @@ class MountTestCase(TestCase):
         #     self.linked_clone_hosts,
         #     "_check_env_file_var_exists_docker",
         # )
-        # env_var_docker = run_command(
-        #     "client2",
-        #     """[ -n "${TWO}" ] && exit 0 || exit 1""",
-        #     self.test_case_name,
-        #     self.linked_clone_hosts,
-        #     "_check_env_var_exists_docker",
-        # )
+        env_var_docker = run_command(
+            "client2",
+            """'test $TWO = 2'""",
+            self.test_case_name,
+            self.linked_clone_hosts,
+            "_check_env_var_exists_docker",
+        )
         # mount_docker = run_command(
         #     "client2",
         #     "ls /opt/context",
@@ -97,7 +97,7 @@ class MountTestCase(TestCase):
             context_artefact,
             env_var,
             # env_file_var_docker,
-            # env_var_docker,
+            env_var_docker,
             # mount_docker,
         ]
 
