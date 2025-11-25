@@ -36,7 +36,7 @@ class BaseTestCase(TestCase):
         inter_docker_guest_connection = test_connection_between_guests(
             self.test_case_name,
             self.linked_clone_hosts,
-            "client1",
+            "nginx",
             "server",
             "10.0.0.11:8000",
             "_from_docker",

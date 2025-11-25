@@ -225,6 +225,19 @@ pub async fn unmount_and_detach_cdrom_from_guest(
     // then detatch the device via libvirt
     let conn = Connect::open(Some("qemu:///system"))
         .context("connecting to libvirt to get detach CD ROM device")?;
+
+    // if the libvirt version is less than or equal to 8, then we need to leave this device plugged
+    // since libvirt doesn't support hotplug properly until version 9 and later, so we will skip
+    // the detach step
+
+    // they represent the version of the library the following way to factor in minor versions
+    let libvirt_version = conn.get_lib_version().context("Getting libvirt version before detach")?;
+    if libvirt_version <= 8_000_000 {
+        // version 8 or lower, skip detach
+        tracing::info!("Detaching CD ROM skipped due to libvirt version being version 8 or lower, version: {libvirt_version}");
+        return Ok(());
+    }
+
     let domain = virt::domain::Domain::lookup_by_name(&conn, guest_name_with_project)
         .context("getting domain from libvirt connection")?;
     // insert the scsi CD ROM device via an XML definition (will not persist between guest boots)

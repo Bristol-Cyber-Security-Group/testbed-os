@@ -15,7 +15,10 @@ users:
 runcmd:
   - mkdir -p /etc/nocloud/context
   - mkdir /nocloudtmp
-  - mount /dev/sr0 /nocloudtmp
+  - |
+    # scsi0-0-0-0 corresponds to the scsi drive in the domain xml
+    ISO_DEV=$(readlink -f /dev/disk/by-id/*scsi0-0-0-0)
+    mount $ISO_DEV /nocloudtmp/ > /home/nocloud/context-mount.log
   - tar -xf /nocloudtmp/context.tar -C /etc/nocloud/context
   - umount /nocloudtmp
   - rm -rf /nocloudtmp

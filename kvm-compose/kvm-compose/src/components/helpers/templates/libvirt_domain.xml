@@ -22,9 +22,19 @@
             <driver name="qemu" type="raw"></driver>
             <source file="{{ cloud_init_iso }}"></source>
             <readonly></readonly>
-            <target dev="hdb" bus="sata"></target>
+            <target dev="hdb" bus="scsi"></target>
+            <address type='drive' controller='0' bus='0' target='0' unit='0'/>
         </disk>
         {% endif %}
+
+        <!-- leave a pre-defined CDROM definition in the guest for hot-swapping CDROM in libvirt version <= 8 -->
+        <disk type='file' device='cdrom'>
+            <driver name='qemu' type='raw'/>
+            <target dev='sdc' bus='scsi'/>
+            <readonly/>
+            <source file=''/>
+            <address type='drive' controller='0' bus='0' target='0' unit='2'/>
+        </disk>
 
         <graphics type="spice" autoport="yes">
             <listen type="address"/>
