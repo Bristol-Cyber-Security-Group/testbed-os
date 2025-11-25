@@ -85,7 +85,8 @@ pub enum TestbedTools {
     ADB(Command),
     FridaSetup,
     /// Install an Android app from an APK file
-    InstallApk(Command),
+    InstallApk(ApkFile),
+    // InstallApk(Command),
     TestPermissions(Command),
     TestPrivacy(Command),
     TLSIntercept(Command),
@@ -96,4 +97,12 @@ pub enum TestbedTools {
 pub struct Command {
     #[clap(trailing_var_arg=true, index = 1)]
     pub command: Vec<String>,
+}
+
+// / Represents the full path of the APK file on a host
+#[derive(Parser, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub struct ApkFile {
+    #[clap(index = 1, help = "Full path to the APK file on a host")]
+    pub apk_file_path: PathBuf,
 }

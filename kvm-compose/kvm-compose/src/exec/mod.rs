@@ -137,9 +137,9 @@ pub async fn run_guest_exec_cmd(
                     tracing::info!("Running frida tools setup commands");
                     android::frida_setup(&namespace, &logging_send).await?;
                 }
-                TestbedTools::InstallApk(command) => {
+                TestbedTools::InstallApk(apk_file) => {
                     tracing::info!("Installing APK");
-                    android::install_apk(&namespace, &command.command, &logging_send, false).await?
+                    android::install_apk(&namespace, &apk_file.apk_file_path, &logging_send, false).await?
                 }
                 TestbedTools::TestPermissions(command) => {
                     tracing::info!("Running permissions tests");
