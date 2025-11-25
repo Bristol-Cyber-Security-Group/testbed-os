@@ -4,7 +4,27 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tokio = { workspace = true }
+tokio = { workspace = true, version = "1.46.1", features = ["rt", "rt-multi-thread", "macros"] }
 anyhow = { workspace = true }
-pcap = { version = "2.3.0" }
+pcap = { version = "2.3.0", features = ["capture-stream"] }
 pnet = { version = "0.35.0" }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+futures = { workspace = true}
+
+# The following is to separate the binary version of this to have a clap CLI frontend, otherwise it]
+# can just be used as a library in the test of the testbed code
+
+[features]
+default = []
+cli-binary = ["clap"]
+
+[dependencies.clap]
+version = "4.5.41"
+features = ["derive"]
+optional = true
+
+[[bin]]
+name = "testbedos-tcpdump"
+path = "src/main.rs"
+required-features = ["cli-binary"]
