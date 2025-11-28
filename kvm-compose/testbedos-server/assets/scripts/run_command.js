@@ -59,6 +59,9 @@ $(document).ready(function() {
         'a_d_b': [
             {label: 'Command', type: 'text', id: 'command'}
         ],
+        'install_apk': [
+            {label: 'APK File (Full Path)', type: 'text', id: 'apk_file_path'}
+        ],
         'frida_setup': [],
         'test_permissions': [
             {label: 'Command', type: 'text', id: 'command'}
