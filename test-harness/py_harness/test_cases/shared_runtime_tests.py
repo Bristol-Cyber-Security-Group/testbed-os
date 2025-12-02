@@ -90,6 +90,37 @@ def check_internet_connectivity(
     return report
 
 
+def confirm_no_internet_connectivity(
+    test_case_name: str,
+    linked_clone_hosts: List[LinkedCloneHost],
+    guest_names: List[str],
+) -> TestReport:
+    report = TestReport(inspect.currentframe().f_code.co_name + "_" + test_case_name)
+    logging.info(f"Running test {report.test_name}")
+
+    test_case = f"{test_case_location}/{test_case_name}"
+    # for each guest supplied (by names in the yaml file), try to curl google as a network test
+    results = []
+    for guest_name in guest_names:
+        curl_result: subprocess.CompletedProcess = ssh_command(f"cd {test_case} && kvm-compose exec {guest_name} shell-command curl google.com",
+                            base_ssh_key,
+                            linked_clone_hosts[0].hostname,  # first host will be main
+                            )
+        results.append([guest_name, curl_result])
+
+    # check test results
+    all_ok = all(item[1].returncode != 0 for item in results)
+    report.success = all_ok
+    if not all_ok:
+        # store the error message for the failed test(s)
+        msg = ""
+        for guest, err_msg in results:
+            msg = msg + f"guest: {guest}, stderr: {err_msg.stderr}\n"
+        report.info = msg
+
+    return report
+
+
 def test_connection_between_guests(
     test_case_name: str,
     linked_clone_hosts: List[LinkedCloneHost],

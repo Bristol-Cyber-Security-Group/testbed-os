@@ -6,13 +6,14 @@ use kvm_compose_schemas::exec::ExecCmdFileTransfer;
 use crate::components::helpers::serialisation;
 use crate::exec::libvirt::shell_command;
 use crate::orchestration::api::OrchestrationLogger;
-use crate::orchestration::{run_subprocess_command, OrchestrationCommon};
+use crate::orchestration::OrchestrationCommon;
 use crate::state::StateTestbedGuest;
 
 const CDROM_DEVICE_XML: &str = r#"
     <disk type='file' device='cdrom'>
         <driver name='qemu' type='raw'/>
         <target dev='sdc' bus='scsi'/>
+        <source file='VALID_ISO_PATH'/>
         <readonly/>
         <address type='drive' controller='0' bus='0' target='0' unit='2'/>
     </disk>
@@ -62,18 +63,17 @@ pub async fn attach_cdrom_to_guest(
         .context("connecting to libvirt to get attach CD ROM device")?;
     let domain = virt::domain::Domain::lookup_by_name(&conn, guest_name_with_project)
         .context("getting domain from libvirt connection")?;
-    // insert the scsi CD ROM device via an XML definition (will not persist between guest boots)
-    domain.attach_device(CDROM_DEVICE_XML)
-        .context("Attaching CD ROM device to guest")?;
 
-    // attach the media
+    // we need to create a temporary xml with the full path to the ISO file, we replace the
+    // existing template with the temp iso path
+    let mut temp_cdrom_xml = CDROM_DEVICE_XML.to_string();
     let temp_iso_str_path = temp_iso.path().to_string_lossy().into_owned();
-    run_subprocess_command(
-        "sudo",
-        vec!["virsh", "change-media", &guest_name_with_project, "sdc", &temp_iso_str_path],
-        false,
-        None,
-    ).await?;
+    temp_cdrom_xml = temp_cdrom_xml.replace("VALID_ISO_PATH", &temp_iso_str_path);
+
+    // TODO - if we are going to attach another, do we need to do any clearup of the previous cdrom?
+    // insert the scsi CD ROM device via an XML definition (will not persist between guest boots)
+    domain.attach_device(&temp_cdrom_xml)
+        .context("Attaching CD ROM device to guest")?;
 
     Ok(())
 }
@@ -225,6 +225,19 @@ pub async fn unmount_and_detach_cdrom_from_guest(
     // then detatch the device via libvirt
     let conn = Connect::open(Some("qemu:///system"))
         .context("connecting to libvirt to get detach CD ROM device")?;
+
+    // if the libvirt version is less than or equal to 8, then we need to leave this device plugged
+    // since libvirt doesn't support hotplug properly until version 9 and later, so we will skip
+    // the detach step
+
+    // they represent the version of the library the following way to factor in minor versions
+    let libvirt_version = conn.get_lib_version().context("Getting libvirt version before detach")?;
+    if libvirt_version <= 8_000_000 {
+        // version 8 or lower, skip detach
+        tracing::info!("Detaching CD ROM skipped due to libvirt version being version 8 or lower, version: {libvirt_version}");
+        return Ok(());
+    }
+
     let domain = virt::domain::Domain::lookup_by_name(&conn, guest_name_with_project)
         .context("getting domain from libvirt connection")?;
     // insert the scsi CD ROM device via an XML definition (will not persist between guest boots)

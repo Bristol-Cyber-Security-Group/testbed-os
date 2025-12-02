@@ -1,9 +1,13 @@
 use tokio::time::Duration;
 use tokio::process::{Command};
-use std::process::Output;
 use anyhow::{bail, Context};
 use std::path::{Path, PathBuf};
-use tokio::sync::mpsc::Sender;
+use std::process::Stdio;
+use std::sync::Arc;
+use command_group::AsyncCommandGroup;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::Mutex;
 use crate::orchestration::api::{OrchestrationLogger};
 use crate::orchestration::OrchestrationCommon;
 use crate::state::StateTestbedGuest;
@@ -25,7 +29,7 @@ pub async fn adb_command(
     command: &Vec<String>,
     logging_send: &Sender<OrchestrationLogger>,
     suppress_output: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<String> {
 
     let mut args = vec![
         "ip".to_string(),
@@ -47,16 +51,15 @@ pub async fn adb_command(
 
     if output.status.success() {
         let log = String::from_utf8_lossy(&output.stdout);
-        tracing::info!("ADB output: {:?}", String::from_utf8_lossy(&output.stdout));
+        tracing::info!("ADB output: {:?}", log);
         if !suppress_output {
             logging_send.send(OrchestrationLogger::info(log.to_string())).await?;
         }
+        Ok(log.to_string())
     } else {
         bail!("ADB error: {:?}", String::from_utf8_lossy(&output.stderr));
     }
 
-
-    Ok(())
 }
 
 pub async fn install_apk(
@@ -97,12 +100,31 @@ pub async fn frida_setup(
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
 
+    adb_command(namespace, &vec!["start-server".to_string()], &logging_send, false)
+        .await
+        .context("making sure adb server is running on device")?;
+
+    // we need to know if the emulator is x86 or x86_64, we can use an adb command to do this
+    let res = adb_command(
+        namespace,
+        &vec!["shell".to_string(), "getprop".to_string(), "ro.product.cpu.abi".to_string()],
+        &logging_send,
+        true,
+    ).await;
+    let abi = match res {
+        Ok(ok) => ok,
+        Err(e) => bail!("could not determine the abi version for the emulator: {e:#}"),
+    };
+
+    // remove whitespaces and newlines
+    let abi = abi.trim().to_string();
+
     // Install frida server if it doesn't exist
-    if !Path::new("/var/lib/testbedos/tools/frida-server-16.1.4-android-x86").exists() {
+    if !Path::new(&format!("/var/lib/testbedos/tools/frida-server-17.2.15-android-{abi}")).exists() {
         tracing::info!("Installing frida server");
         let output = Command::new("sudo")
             .arg("wget")
-            .arg("https://github.com/frida/frida/releases/download/16.1.4/frida-server-16.1.4-android-x86.xz")
+            .arg(format!("https://github.com/frida/frida/releases/download/17.2.15/frida-server-17.2.15-android-{abi}.xz"))
             .arg("-P")
             .arg("/var/lib/testbedos/tools/")
             .output()
@@ -115,7 +137,7 @@ pub async fn frida_setup(
 
         Command::new("sudo")
             .arg("unxz")
-            .arg("/var/lib/testbedos/tools/frida-server-16.1.4-android-x86.xz")
+            .arg(format!("/var/lib/testbedos/tools/frida-server-17.2.15-android-{abi}.xz"))
             .output()
             .await
             .context("Failed to extract server")?;
@@ -139,12 +161,12 @@ pub async fn frida_setup(
     tracing::info!("waiting to give a chance for rooting to complete before continuing ...");
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    adb_command(namespace, &vec!["push".to_string(), "/var/lib/testbedos/tools/frida-server-16.1.4-android-x86".to_string(), "/data/local/tmp".to_string()], &logging_send, false).await?;
-    adb_command(namespace, &vec!["shell".to_string(), "chmod".to_string(), "755".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86".to_string()], &logging_send, false).await?;
+    adb_command(namespace, &vec!["push".to_string(), format!("/var/lib/testbedos/tools/frida-server-17.2.15-android-{abi}"), "/data/local/tmp".to_string()], &logging_send, false).await?;
+    adb_command(namespace, &vec!["shell".to_string(), "chmod".to_string(), "755".to_string(), format!("/data/local/tmp/frida-server-17.2.15-android-{abi}")], &logging_send, false).await?;
 
     // Added -D to daemonize and -C to ignore crashes, which seems to prevent frida from holding
     // up the terminal so it exits - unclear if this is causing side effects yet
-    let res = adb_command(namespace, &vec!["shell".to_string(), "/data/local/tmp/frida-server-16.1.4-android-x86 -D -C".to_string()], &logging_send, false).await;
+    let res = adb_command(namespace, &vec!["shell".to_string(), format!("/data/local/tmp/frida-server-17.2.15-android-{abi} -D -C")], &logging_send, false).await;
     match res {
         Ok(_) => {}
         Err(e) => {
@@ -168,13 +190,7 @@ pub async fn test_permissions(
     logging_send: &Sender<OrchestrationLogger>,
 ) -> anyhow::Result<()> {
 
-    // Get path of poetry venv
-    let output = get_frida_tools_env().await?;
-
-    let venv = String::from_utf8_lossy(&output.stdout);
-    let venv_path = format!("{}/bin/python", venv.trim_end());
-
-    tracing::info!("Poetry env is {}", venv_path);
+    let venv_path = format!("/var/lib/testbedos/tools/frida_tools_venv/bin/python");
 
     let mut args = vec![
         "ip".to_string(),
@@ -211,15 +227,14 @@ pub async fn tls_intercept(
     namespace: &str,
     command: &Vec<String>,
     logging_send: &Sender<OrchestrationLogger>,
+    cancel_token_recv: Arc<Mutex<Receiver<()>>>,
 ) -> anyhow::Result<()> {
 
-    // Get path of poetry venv
-    let output = get_frida_tools_env().await?;
+    adb_command(namespace, &vec!["start-server".to_string()], &logging_send, false)
+        .await
+        .context("making sure adb server is running on device")?;
 
-    let venv = String::from_utf8_lossy(&output.stdout);
-    let venv_path = format!("{}/bin/python", venv.trim_end());
-
-    tracing::info!("Poetry env is {}", venv_path);
+    let venv_path = format!("/var/lib/testbedos/tools/frida_tools_venv/bin/python");
 
     let mut args = vec![
         "ip".to_string(),
@@ -235,19 +250,71 @@ pub async fn tls_intercept(
 
     tracing::info!("Running command: sudo {}", args.join(" "));
 
-    let output = Command::new("sudo")
-        .args(&args)
-        .output()
-        .await
-        .context("Failed to execute intercept command")?;
+    // TODO - how to fix relative paths given to the CLI/GUI and then what the script sees, so
+    //  currently a relative path will try to put the output in the Frida-Tools folder
 
-    if output.status.success() {
-        let log = String::from_utf8_lossy(&output.stdout);
-        tracing::info!("output: {:?}", log);
-        logging_send.send(OrchestrationLogger::info(log.to_string())).await?;
-    } else {
-        bail!("error: {:?}", String::from_utf8_lossy(&output.stderr));
+    let mut child = Command::new("sudo")
+        .args(&args)
+        .current_dir("/var/lib/testbedos/tools/Frida-Tools")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .group_spawn()
+        .context("Spawning tls intercept command")?;
+
+    let inner = child.inner();
+
+    let stdout = inner.stdout.take().context("Child did not have stdout")?;
+    let stderr = inner.stderr.take().context("Child did not have stderr")?;
+    let mut stdout_reader = BufReader::new(stdout).lines();
+    let mut stderr_reader = BufReader::new(stderr).lines();
+
+    let pid = child.id().context("getting tls intercept pid")?;
+    tracing::info!("Got tls intercept pid {}", pid);
+
+    let mut recv_lock = cancel_token_recv.lock().await;
+
+    logging_send.send(OrchestrationLogger::info("The following is tls-interceptor logs ========".to_string())).await?;
+
+    // loop here on the tokio select! as we will be sending back to the client the logging from
+    loop {
+        tokio::select! {
+            output = child.wait() => {
+                // this will run if the command exits by itself
+                let status = output?;
+                if status.success() {
+                    logging_send.send(OrchestrationLogger::info("tls-interceptor exited successfully".to_string())).await?;
+                    break;
+                } else {
+                    bail!("tls-interceptor did not exit successfully");
+                }
+            }
+            cancel = recv_lock.recv() => {
+                // this will run if a cancel token is received
+                tracing::info!("received cancel token in tls intercept");
+                if let Some(_) = cancel {
+                    let _ = child.kill().await?;
+                    break;
+                }
+            }
+            // the following two branches are for the live logging from the command
+            stdout_line = stdout_reader.next_line() => {
+                match stdout_line {
+                    Ok(Some(line)) => logging_send.send(OrchestrationLogger::info(line)).await?,
+                    Ok(None) => {},
+                    Err(err) => logging_send.send(OrchestrationLogger::error(err.to_string())).await?,
+                }
+            }
+            stderr_line = stderr_reader.next_line() => {
+                match stderr_line {
+                    Ok(Some(line)) => logging_send.send(OrchestrationLogger::error(line)).await?,
+                    Ok(None) => {},
+                    Err(err) => logging_send.send(OrchestrationLogger::error(err.to_string())).await?,
+                }
+            }
+        }
     }
+
+    logging_send.send(OrchestrationLogger::info("End of tls-interceptor logging ========".to_string())).await?;
 
     Ok(())
 }
@@ -286,16 +353,4 @@ pub async fn test_privacy(
     }
 
     Ok(())
-}
-
-async fn get_frida_tools_env() -> anyhow::Result<Output> {
-    Command::new("sudo")
-        .arg("/var/lib/testbedos/tools/frida_tools_venv/bin/poetry")
-        .arg("env")
-        .arg("info")
-        .arg("-p")
-        .current_dir("/var/lib/testbedos/tools/Frida-Tools")
-        .output()
-        .await
-        .context("Failed to get python environment for frida tools, is it installed at '/var/lib/testbedos/tools/Frida-Tools'?")
 }

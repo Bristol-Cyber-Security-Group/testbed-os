@@ -3,8 +3,10 @@ pub mod docker;
 pub mod libvirt;
 pub mod file_transfer;
 
+use std::sync::Arc;
 use anyhow::{bail, Context};
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::Mutex;
 use kvm_compose_schemas::exec::{ExecCmd, ExecCmdType, TestbedTools};
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::state::{State, StateTestbedGuest};
@@ -19,6 +21,7 @@ pub async fn prepare_guest_exec_command(
     state: &State,
     orchestration_common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
+    cancel_token_recv: Arc<Mutex<Receiver<()>>>,
 ) -> anyhow::Result<bool> {
 
     logging_send.send(OrchestrationLogger::info(format!("running exec {:?} on {}", exec_cmd.command_type, exec_cmd.guest_name))).await?;
@@ -45,6 +48,7 @@ pub async fn prepare_guest_exec_command(
                 &state,
                 orchestration_common,
                 &logging_send,
+                cancel_token_recv,
             ).await;
             // check command running result
             match cmd_res {
@@ -73,6 +77,7 @@ pub async fn run_guest_exec_cmd(
     _state: &State,
     orchestration_common: &OrchestrationCommon,
     logging_send: &Sender<OrchestrationLogger>,
+    cancel_token_recv: Arc<Mutex<Receiver<()>>>,
 ) -> anyhow::Result<bool> {
     check_command_on_guest_type(guest_data, exec_cmd)?;
 
@@ -147,7 +152,7 @@ pub async fn run_guest_exec_cmd(
                 }
                 TestbedTools::TLSIntercept(command) => {
                     tracing::info!("Running TLS interceptor");
-                    android::tls_intercept(&namespace, &command.command, &logging_send).await?;
+                    android::tls_intercept(&namespace, &command.command, &logging_send, cancel_token_recv).await?;
                 }
                 TestbedTools::TestPrivacy(command) => {
                     tracing::info!("Running all privacy tests");

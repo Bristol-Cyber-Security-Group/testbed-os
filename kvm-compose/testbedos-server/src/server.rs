@@ -25,7 +25,7 @@ use testbedos_lib::cluster::ovn::{set_up_cluster_client_check_cron_jobs, set_up_
 use testbedos_lib::config::db::get_cluster_config_db;
 use testbedos_lib::config::provider::TestbedConfigProvider;
 use testbedos_lib::gui::add_gui_handlers;
-use testbedos_lib::logging::setup_orchestration_log_cleanup;
+use testbedos_lib::logging::server_log_cleanup;
 use testbedos_lib::orchestration::add_orchestration_handlers;
 use testbedos_lib::resource_monitoring::handlers::*;
 
@@ -70,9 +70,9 @@ async fn main() {
             //  request the appropriate lock in their context
             // the database is also wrapped in an atomically referenced counter to ensure there is only one
             //  between all handler contexts
-            let deployment_config_db: Arc<RwLock<Box<(dyn DeploymentProvider + Sync + Send)>>> =
+            let deployment_config_db: Arc<RwLock<Box<dyn DeploymentProvider + Sync + Send>>> =
                 Arc::new(RwLock::new(deployment_db));
-            let config_db: Arc<RwLock<Box<(dyn TestbedConfigProvider + Sync + Send)>>> =
+            let config_db: Arc<RwLock<Box<dyn TestbedConfigProvider + Sync + Send>>> =
                 Arc::new(RwLock::new(config_db));
 
             // given the mode, make sure settings are correct
@@ -102,7 +102,7 @@ async fn main() {
                 }
             }
             // set up cron job to clear orchestration logs
-            match setup_orchestration_log_cleanup().await {
+            match server_log_cleanup().await {
                 Ok(_) => {}
                 Err(err) => {
                     tracing::error!("could not set up orchestration log cron job with err: {err:#}");
@@ -122,7 +122,7 @@ async fn main() {
         ServerModeCmd::Client(ref client_mode) => {
             // start server in client mode
             let config_db = get_cluster_config_db();
-            let config_db: Arc<RwLock<Box<(dyn TestbedConfigProvider + Sync + Send)>>> =
+            let config_db: Arc<RwLock<Box<dyn TestbedConfigProvider + Sync + Send>>> =
                 Arc::new(RwLock::new(config_db));
             // given the mode, make sure settings are correct
             try_configure_host(&mode, &config_db).await;
