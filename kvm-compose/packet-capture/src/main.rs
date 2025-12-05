@@ -3,8 +3,7 @@ use tracing::level_filters::LevelFilter;
 use tracing_subscriber::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-
-use packet_capture::packet_capture;
+use packet_capture::{TestbedPacketCapture};
 
 #[derive(Parser, Debug)]
 struct CliArgs {
@@ -49,9 +48,12 @@ pub async fn run_loop(
     // channel that will be used to send and listen for the stop instruction
     let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
 
+    // create the packet capture
+    let tb_packet_capture = TestbedPacketCapture {};
+
     // packet capture future start, this wraps the blocking thread call in `packet_capture`
     let packet_capture_handle = tokio::spawn(async move {
-        packet_capture(interface, stop_rx).await
+        tb_packet_capture.capture(interface, stop_rx).await
     });
 
     // start future to listen to ctrl+c
