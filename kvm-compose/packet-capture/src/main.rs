@@ -6,6 +6,20 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use packet_capture::{TestbedPacketCapture};
 
+/// This CLI tool allows you to capture packets on the testbed OVS bridge.
+/// The bridge is fixed to `br-int` which is the OVN integration bridge that is used to provide the
+/// networking in the testbed.
+///
+/// You must supply the interface, which will be the same as the port on the integration bridge for
+/// the given guest you would like to capture on.
+/// If you check with `ovs-vsctl show` you can check which `Port` you want to capture on.
+/// This will then create a mirror port on a dummy interface to prevent interrupting any traffic.
+///
+/// You can also supply filters using the `tcpdump` Berkeley Packet Filter (BPF) syntax.
+/// For example, after all the arguments in the command, you can specify any filter arguments.
+/// `sudo testbedos-tcpdump -i vm-ovn00 dst host 10.0.0.21`
+/// This will capture on the interface `vm-ovn00` and use the BPF filter of `dst host 10.0.0.21`,
+/// which will filter packets with destination to ip 10.0.0.21 only.
 #[derive(Parser, Debug)]
 struct CliArgs {
 
