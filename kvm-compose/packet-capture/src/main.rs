@@ -1,4 +1,6 @@
+use std::sync::Arc;
 use clap::Parser;
+use tokio::task::JoinHandle;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::Layer;
 use tracing_subscriber::layer::SubscriberExt;
@@ -12,15 +14,16 @@ struct CliArgs {
     #[clap(short, long)]
     interface: String,
 
-    // TODO - recreate the ovs-tcpdump api
+    /// Optional arguments to be used with `tcpdump`
+    #[clap(short, long)]
+    dump_args: Vec<String>,
 
-    // db-sock
+    // /// Optional name for mirror port, otherwise one will automatically be made
+    // mirror_to: Option<String>,
 
-    // dump-cmd
-
-    // mirror-to
-
-    // span
+    /// Enable SPAN to mirror all traffic on the bridge
+    #[clap(short, long)]
+    span: bool,
 
 }
 
@@ -35,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
 
     // parse the CLI options and then run the packet capture with the given arguments
     let cli_args = CliArgs::parse();
-    run_loop(cli_args.interface).await?;
+    run_loop(cli_args).await?;
 
     Ok(())
 }
@@ -43,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
 /// In the run loop, we will run the pcap listener in a loop while at the same time waiting for a
 /// stop instruction to gracefully end the packet capture.
 pub async fn run_loop(
-    interface: String,
+    args: CliArgs,
 ) -> anyhow::Result<()> {
     // channel that will be used to send and listen for the stop instruction
     let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
@@ -51,29 +54,35 @@ pub async fn run_loop(
     // create the packet capture
     let tb_packet_capture = TestbedPacketCapture {};
 
+    // convert cli args to tcpdump args
+    let config = packet_capture::TCPDumpConfig::new(
+        args.interface,
+        // args.mirror_to,
+        args.span,
+        args.dump_args,
+    )?;
+
     // packet capture future start, this wraps the blocking thread call in `packet_capture`
     let packet_capture_handle = tokio::spawn(async move {
-        tb_packet_capture.capture(interface, stop_rx).await
+        tb_packet_capture.capture(config, stop_rx).await
     });
 
     // start future to listen to ctrl+c
-    let stop_handle = tokio::spawn(async move {
+    let stop_handle: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
         let _ = tokio::signal::ctrl_c().await;
         tracing::info!("captured ctrl + C, gracefully stopping command");
+
+        tracing::info!("sending cancel token");
+        stop_tx.send(())
+            .map_err(|_| anyhow::anyhow!("failed to send stop instruction to channel"))?;
+        Ok(())
     });
 
-    // wait for either packet capture to error or for ctrl+c to interrupt to exit gracefully
-    tokio::select! {
-        _ = stop_handle => {
-            // ctrl+c triggered, send stop token to packet capture
-            tracing::info!("stopping command");
-            stop_tx.send(())
-                .map_err(|_| anyhow::anyhow!("failed to send stop instruction to channel"))?;
-        }
-        result = packet_capture_handle => {
-            anyhow::bail!("packet_capture_handle exited with {:?}", result);
-        }
-    }
+    // wait for packet capture to finish, which will either be from the cancel token triggering a
+    // tear down, or the packet capture has errored
+    packet_capture_handle.await?;
+    // properly drop the cancel listener to clear resources
+    std::mem::drop(stop_handle);
 
     Ok(())
 }

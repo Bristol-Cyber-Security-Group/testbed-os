@@ -1,5 +1,7 @@
 use futures::StreamExt;
 use pcap::{Capture, PacketCodec};
+use crate::interface::OVSConfig;
+use crate::TCPDumpConfig;
 
 struct RawPacket;
 
@@ -12,12 +14,15 @@ impl PacketCodec for RawPacket {
 }
 
 pub async fn packet_capture(
-    interface: String,
+    config: TCPDumpConfig,
     stop_rx: tokio::sync::oneshot::Receiver<()>,
 ) -> anyhow::Result<()> {
 
+    // create the OVS mirroring
+    let mirror_port = OVSConfig::setup(&config).await?;
+
     // open connection to interface
-    let capture = Capture::from_device(interface.as_str())?
+    let capture = Capture::from_device(mirror_port.as_str())?
         .immediate_mode(true)
         .open()?
         // set non-blocking so we can check if we need to exit due to a stop instruction, otherwise
@@ -49,6 +54,9 @@ pub async fn packet_capture(
             tracing::error!("packet capture stream stopped: {:?}", result);
         }
     }
+
+    // destroy the mirror port and dummy interface
+    OVSConfig::teardown(&config).await?;
 
     tracing::info!("capture complete");
 

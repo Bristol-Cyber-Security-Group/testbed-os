@@ -1,3 +1,5 @@
+use rand::distr::Distribution;
+
 mod interface;
 mod capture;
 
@@ -6,10 +8,113 @@ pub struct TestbedPacketCapture;
 impl TestbedPacketCapture {
     pub async fn capture(
         &self,
-        interface: String, // TODO - interface configuration
+        config: TCPDumpConfig,
         stop_rx: tokio::sync::oneshot::Receiver<()>,
     ) -> anyhow::Result<()> {
-        capture::packet_capture(interface, stop_rx).await?;
+        capture::packet_capture(config, stop_rx).await?;
         Ok(())
     }
+}
+
+pub struct TCPDumpConfig {
+
+    /// OVS port or interface to capture on
+    pub interface: String,
+
+    // /// Optional name for mirror port, otherwise one will automatically be made
+    // pub mirror_to: Option<String>,
+
+    /// Whether to mirror all traffic on the bridge
+    pub span: bool,
+
+    /// Optional arguments to be passed to `tcpdump`
+    pub dump_args: Vec<String>, // TODO - this needs to be something else for the pcap lib code
+
+    /// Generated OS interface to receive mirrored traffic
+    pub mirror_interface: String,
+
+    /// Generated OVS mirror port name
+    pub mirror_name: String,
+
+    /// Name of OVS bridge
+    pub ovs_bridge: String,
+}
+
+impl TCPDumpConfig {
+
+    pub fn new(
+        interface: String,
+        // mirror_to: Option<String>,
+        span: bool,
+        dump_args: Vec<String>,
+    ) -> anyhow::Result<Self> {
+        let mirror_interface = Self::generate_interface_name(&interface);
+        let mirror_name = Self::generate_mirror_name(&interface, &mirror_interface);
+        let new = Self {
+            interface,
+            // mirror_to,
+            span,
+            dump_args,
+            mirror_interface,
+            mirror_name,
+            ovs_bridge: "br-int".to_string(),
+        };
+        new.validate()?;
+        Ok(new)
+    }
+
+    fn generate_interface_name(in_name: &str) -> String {
+        // this is the name of the OS interface, this can only be 15 characters max
+        let mut os_interface_name = format!("mi{in_name}");
+        // truncate by 6 if greater than 10 characters
+        if os_interface_name.len() > 10 {
+            os_interface_name = os_interface_name[0..10].to_string();
+        }
+        // add a unique id to the end to fill the space ... do 14 instead of 15 so that we can put
+        // in a hyphen between the text and the unique id
+        let needed_characters = 14 - os_interface_name.len();
+        let mut rng = rand::rng();
+        let suffix = rand::distr::Alphanumeric
+            .sample_iter(&mut rng)
+            .take(needed_characters)
+            .map(char::from)
+            .collect::<String>();
+
+        format!("{}-{}", os_interface_name, suffix)
+    }
+
+    fn generate_mirror_name(in_name: &str, os_interface: &str) -> String {
+        format!("mirror-{in_name}-to-{os_interface}")
+    }
+
+    pub fn validate(&self) -> anyhow::Result<()> {
+
+        // check interface exists
+
+        // if named mirror_to check if that name is okay
+
+        // check if mirror_to doesn't already exist
+
+
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::TCPDumpConfig;
+
+    #[test]
+    fn test_generate_interface_name_length_constraint_short_input() {
+        let test = TCPDumpConfig::generate_interface_name("short");
+        assert!(test.len() <= 15);
+    }
+
+    #[test]
+    fn test_generate_interface_name_length_constraint_long_input() {
+        let test = TCPDumpConfig::generate_interface_name("alonginputnameoverfifteen");
+        assert!(test.len() <= 15);
+    }
+
 }
