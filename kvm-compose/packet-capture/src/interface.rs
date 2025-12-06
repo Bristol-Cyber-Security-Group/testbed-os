@@ -1,5 +1,4 @@
 use anyhow::Context;
-use rand::distr::Distribution;
 use crate::TCPDumpConfig;
 
 pub struct OVSConfig {

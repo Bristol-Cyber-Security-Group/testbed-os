@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use clap::Parser;
 use tokio::task::JoinHandle;
 use tracing::level_filters::LevelFilter;
@@ -15,7 +14,7 @@ struct CliArgs {
     interface: String,
 
     /// Optional arguments to be used with `tcpdump`
-    #[clap(short, long)]
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true, index = 1)]
     dump_args: Vec<String>,
 
     // /// Optional name for mirror port, otherwise one will automatically be made
@@ -45,7 +44,7 @@ async fn main() -> anyhow::Result<()> {
 
 /// In the run loop, we will run the pcap listener in a loop while at the same time waiting for a
 /// stop instruction to gracefully end the packet capture.
-pub async fn run_loop(
+async fn run_loop(
     args: CliArgs,
 ) -> anyhow::Result<()> {
     // channel that will be used to send and listen for the stop instruction
@@ -80,7 +79,7 @@ pub async fn run_loop(
 
     // wait for packet capture to finish, which will either be from the cancel token triggering a
     // tear down, or the packet capture has errored
-    packet_capture_handle.await?;
+    let _ = packet_capture_handle.await?;
     // properly drop the cancel listener to clear resources
     std::mem::drop(stop_handle);
 

@@ -4,14 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tokio = { workspace = true, version = "1.46.1", features = ["rt", "rt-multi-thread", "macros"] }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
 anyhow = { workspace = true }
 pcap = { version = "2.3.0", features = ["capture-stream"] }
-pnet = { version = "0.35.0" }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 futures = { workspace = true}
 rand = "0.9.2"
+etherparse = "0.19.0"
 
 # The following is to separate the binary version of this to have a clap CLI frontend, otherwise it]
 # can just be used as a library in the test of the testbed code
