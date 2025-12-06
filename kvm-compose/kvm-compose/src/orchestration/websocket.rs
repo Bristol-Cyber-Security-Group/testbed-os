@@ -57,7 +57,7 @@ pub async fn ws_orchestration_client(
     let (orchestration_send, mut orchestration_recv) = mpsc::channel(32);
 
     // start orchestration task
-    let run_orchestration_res: anyhow::Result<anyhow::Result<bool>> = tokio::spawn(async move {
+    let run_orchestration_res: anyhow::Result<anyhow::Result<(CommandOutcome, bool)>> = tokio::spawn(async move {
 
         let local_deployment = deployment.clone();
         // let mut orchestration_recv_resub = orchestration_recv.resubscribe();
@@ -203,21 +203,17 @@ pub async fn ws_orchestration_client(
 
         tracing::debug!("server_success: {server_success:?}");
 
-        // convert the outcome to a bool, we assume a cancel is success because the user wanted it
-        let client_success = match client_outcome {
-            CommandOutcome::Failure => false,
-            _ => true,
-        };
-
-        // both must be successful
-        Ok(client_success && server_success)
+        // we need to define the end of this command running, but there are several combinations due
+        // to if the command actually failed and/or if there was a cancellation request from the
+        // client - we send all the info and calculate later
+        Ok((client_outcome, server_success))
     })
         .await
         .context("spawning send receive task for client");
     
     // get result of task creation, then get result of orchestration - send errors to GUI and tell
     // the channel receiver to close
-    let success = match run_orchestration_res {
+    let (cmd_outcome, server_success) = match run_orchestration_res {
         Ok(orchestration_result) => {
             match orchestration_result {
                 Ok(success) => {
@@ -231,6 +227,27 @@ pub async fn ws_orchestration_client(
         }
         Err(err) => {
             bail!(err);
+        }
+    };
+
+    // if we reach here, there was no serious failure, meaning we have caught any manageable
+    // errors in the command running and can now work out the exit code ... we have the outcome
+    // for the client, but we also have whether the server's command was successful or not
+    let success = match cmd_outcome {
+        CommandOutcome::Success => {
+            if server_success {
+                true
+            } else {
+                false
+            }
+        }
+        CommandOutcome::Failure => false,
+        CommandOutcome::Cancelled => {
+            if server_success {
+                true
+            } else {
+                false
+            }
         }
     };
 

@@ -110,7 +110,7 @@ async fn run(
     tracing::info!("getting deployment info");
 
     // get the deployment info for later
-    let (deployment, previous_state, deployment_command) = match init.instruction {
+    let (mut deployment, previous_state, deployment_command) = match init.instruction {
         OrchestrationInstruction::Init { deployment, deployment_command } => {
             let mut deployment = db_config.deployment_config_db
                 .read()
@@ -383,18 +383,18 @@ async fn run(
     // update the state of the deployment on the server backend
     match deployment_command {
         DeploymentCommand::Up { .. } => {
-            update_state_on_command_end(DeploymentState::Up, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
+            deployment.state = update_state_on_command_end(DeploymentState::Up, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
         }
         DeploymentCommand::Down => {
-            update_state_on_command_end(DeploymentState::Down, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
+            deployment.state = update_state_on_command_end(DeploymentState::Down, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
         }
         DeploymentCommand::ClearArtefacts => {
-            update_state_on_command_end(DeploymentState::Down, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
+            deployment.state = update_state_on_command_end(DeploymentState::Down, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
         }
         _ => {
             // don't update state if a non-destructive command
             // set to previous state
-            update_state_on_command_end(previous_state, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
+            deployment.state = update_state_on_command_end(previous_state, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
 
             // do not check current state to determine the success of the command as it is a
             // non-destructive command
@@ -436,6 +436,8 @@ async fn run(
     // the following sends the success of the command based on the state we worked out due to
     // a destructive command
 
+    tracing::info!("deployment state before sending final response: {:?}", deployment.state);
+
     let final_response = match deployment.state {
         DeploymentState::Failed(_) => {
             OrchestrationProtocolResponse::Generic {
@@ -475,7 +477,7 @@ async fn update_state_on_command_end(
     db_config: &Arc<AppState>,
     deployment_command: DeploymentCommand,
     orchestration_task: &anyhow::Result<(anyhow::Result<bool>, bool)>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<DeploymentState> {
 
     // there was a failure, set state to failed - expectation that this function is called only for
     // the destructive commands
@@ -506,7 +508,7 @@ async fn update_state_on_command_end(
     };
 
     // update the state to the new intended state as a result of the command running
-    deployment.state = final_state;
+    deployment.state = final_state.clone();
     db_config.deployment_config_db
         .write()
         .await
@@ -514,7 +516,7 @@ async fn update_state_on_command_end(
         .await
         .context("updating deployment to up state")?;
 
-    Ok(())
+    Ok(final_state)
 }
 
 
