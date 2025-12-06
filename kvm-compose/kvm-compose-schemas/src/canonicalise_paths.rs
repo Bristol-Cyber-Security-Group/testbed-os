@@ -34,7 +34,7 @@ pub fn cli_canonicalise_all_paths(
         SubCommand::Up(_) => {}
         SubCommand::Down => {}
         SubCommand::Snapshot(_) => {}
-        SubCommand::AnalysisTools(_) => {}
+        SubCommand::Tools(_) => {}
         SubCommand::TestbedSnapshot(_) => {}
         SubCommand::Exec(exec) => {
             match &mut exec.command_type {

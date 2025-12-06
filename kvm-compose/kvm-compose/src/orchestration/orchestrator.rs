@@ -369,7 +369,7 @@ pub async fn orchestration_parse_command(
             }
             deployment
         }
-        DeploymentCommand::AnalysisTool(ref tool) => {
+        DeploymentCommand::Tool(ref tool) => {
             if let Ok(_) = read_previous_state_request(&http_client, &server_conn, &project_name).await {
                 tracing::info!("running analysis tool: {tool:?}");
 

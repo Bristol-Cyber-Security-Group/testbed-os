@@ -1,7 +1,7 @@
 use crate::server_web_client::http_actions;
 use crate::get_project_name;
 use anyhow::{bail, Context};
-use kvm_compose_schemas::cli_models::{AnalysisToolsSubCmd, DeploymentCmd, DeploymentSubCommand, Opts, SubCommand};
+use kvm_compose_schemas::cli_models::{DeploymentCmd, DeploymentSubCommand, Opts, SubCommand};
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand, DeploymentState};
 use reqwest::Client;
 use crate::orchestration::websocket::ws_orchestration_client;
@@ -116,8 +116,8 @@ pub fn get_deployment_action(
         SubCommand::TestbedSnapshot(tb_snp) => {
             DeploymentCommand::TestbedSnapshot { snapshot_guests: tb_snp.snapshot_guests, }
         }
-        SubCommand::AnalysisTools(at_cmd) => {
-            DeploymentCommand::AnalysisTool(at_cmd.clone())
+        SubCommand::Tools(at_cmd) => {
+            DeploymentCommand::Tool(at_cmd.clone())
         }
         SubCommand::Exec(exec_cmd) => {
             DeploymentCommand::Exec(exec_cmd.clone())
@@ -139,16 +139,6 @@ pub async fn deployment_action(client: &Client, opts: &Opts, dep_cmd: &Deploymen
         // allow user to set the state manually in case it is stuck on running?
         DeploymentSubCommand::ResetState(name) => reset_state(name, client, opts).await,
     }
-}
-
-/// This will run the analysis tooling that is provided through the testbed python code, without
-/// using the testbed server.
-#[allow(dead_code)]
-async fn analysis_tools_action(
-    _tool: &AnalysisToolsSubCmd,
-) -> anyhow::Result<()> {
-
-    Ok(())
 }
 
 /// Prevent commands running in a folder with the same name as an existing deployment, which would
