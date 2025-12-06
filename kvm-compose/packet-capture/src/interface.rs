@@ -47,8 +47,6 @@ impl OVSConfig {
             .await
             .context("Creating OVS port")?;
 
-        // TODO - add any filters
-
         // create mirror
         tracing::info!("set up OVS port mirror for OS dummy interface {}", tcpdump_config.mirror_interface);
         tokio::process::Command::new("sudo")

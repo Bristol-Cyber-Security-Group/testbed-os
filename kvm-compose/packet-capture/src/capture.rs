@@ -2,14 +2,15 @@ use futures::{TryStreamExt};
 use pcap::{Active, Capture, Packet, PacketCodec, PacketHeader};
 use crate::interface::OVSConfig;
 use crate::{TCPDumpConfig, TCPDumpConsumer};
-#[cfg(feature = "cli-binary")]
-use etherparse::{NetSlice::*, SlicedPacket};
-#[cfg(feature = "cli-binary")]
-use std::fmt::Write;
 use std::path::Path;
 use anyhow::{bail, Context};
 use tokio::sync::mpsc::Receiver;
 use tokio::task::JoinHandle;
+
+#[cfg(feature = "cli-binary")]
+use etherparse::{NetSlice::*, SlicedPacket};
+#[cfg(feature = "cli-binary")]
+use std::fmt::Write;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PacketOwned {
@@ -150,7 +151,7 @@ fn decode_packet_human_readable(packet: &pcap::Packet) -> String {
 /// The consumers created from ``TCPDumpConsumer`` will have their own logic in how they save the
 /// packet data. All of these need to return a tokio future handle that will in the background
 /// listen for packets so that they can be written to their consumer. This separates the concern of
-/// tcpdump loop and the IO (consumer) loop.  
+/// tcpdump loop and the IO (consumer) loop.
 fn setup_consumer(
     consumer: &TCPDumpConsumer,
     capture: &Capture<Active>,
