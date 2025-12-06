@@ -11,18 +11,21 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 futures = { workspace = true}
 rand = "0.9.2"
-etherparse = "0.19.0"
 
-# The following is to separate the binary version of this to have a clap CLI frontend, otherwise it]
-# can just be used as a library in the test of the testbed code
+
+# The following is to separate the binary version of this to have a clap CLI frontend and etherparse,
+# otherwise it can just be used as a library in the test of the testbed code
 
 [features]
-default = []
-cli-binary = ["clap"]
+cli-binary = ["clap", "etherparse"]
 
 [dependencies.clap]
 version = "4.5.41"
 features = ["derive"]
+optional = true
+
+[dependencies.etherparse]
+version = "0.19.0"
 optional = true
 
 [[bin]]

@@ -1,9 +1,11 @@
-use std::fmt::Write;
-use etherparse::{LinkExtSlice::*, LinkSlice::*, NetSlice::*, SlicedPacket, TransportSlice::*};
 use futures::StreamExt;
 use pcap::{Capture, PacketCodec};
 use crate::interface::OVSConfig;
 use crate::TCPDumpConfig;
+#[cfg(feature = "cli-binary")]
+use etherparse::{NetSlice::*, SlicedPacket};
+#[cfg(feature = "cli-binary")]
+use std::fmt::Write;
 
 struct RawPacket;
 
@@ -11,8 +13,12 @@ impl PacketCodec for RawPacket {
     type Item = String;
 
     fn decode(&mut self, packet: pcap::Packet<'_>) -> Self::Item {
-        // format!("{packet:?}")
-        decode_packet_human_readable(packet)
+        // print human-readable logs for debugging when using as CLI
+        #[cfg(feature = "cli-binary")] {
+            let print = decode_packet_human_readable(&packet);
+            tracing::info!(print);
+        }
+        format!("{packet:?}")
     }
 }
 
@@ -45,7 +51,9 @@ pub async fn packet_capture(
     // this creates a stream, which is an async iterator, the stream creates a future for each
     // packet that is captured which is then processed inside the closure below
     let fut = stream.for_each(move |s| {
-        tracing::info!("inside: {s:?}");
+        // tracing::info!("inside: {s:?}");
+
+        // TODO - push packet into consumer to either write to file or into a DB
 
         // we need to return an empty future here, but this should be changed to a future that can
         // be processed into the destination data sink, keep this future light
@@ -74,7 +82,8 @@ pub async fn packet_capture(
 }
 
 /// This is just for debugging
-fn decode_packet_human_readable(packet: pcap::Packet) -> String {
+#[cfg(feature = "cli-binary")]
+fn decode_packet_human_readable(packet: &pcap::Packet) -> String {
     let mut output = String::new();
 
     let timestamp = packet.header.ts;
