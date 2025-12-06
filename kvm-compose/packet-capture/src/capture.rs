@@ -67,7 +67,7 @@ pub async fn packet_capture(
         capture.filter(&filter, true)?;
     }
 
-    // set up consumer
+    // set up consumer and channel for sending packets from tcpdump try_for_each future to consumer
     let (tx, rx) = tokio::sync::mpsc::channel::<PacketOwned>(100);
     let consumer_handle = setup_consumer(&config.consumer, &capture, rx)
         .context("Setting up consumer")?;
@@ -78,8 +78,12 @@ pub async fn packet_capture(
     // this creates a stream, which is an async iterator, the stream creates a future for each
     // packet that is captured which is then processed inside the closure below
     let fut = stream.try_for_each(async |s| {
+        // send the captured packet through consumer channel
         let send_res = tx.send(s)
             .await;
+        // need to manually handle any error in sending because we have to coerce the error into a
+        // PcapError - this should be improved, not really supposed to do this .. leaving like this
+        // just to move forward
         match send_res {
             Ok(_) => Ok(()), // returns Ok to continue loop
             Err(err) => {
