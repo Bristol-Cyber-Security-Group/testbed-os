@@ -12,6 +12,7 @@ use etherparse::{NetSlice::*, SlicedPacket};
 #[cfg(feature = "cli-binary")]
 use std::fmt::Write;
 
+/// Temporary wrapper for packets captured by tcpdump to be used by consumers ``TCPDumpConsumer``.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PacketOwned {
     pub header: PacketHeader,
@@ -24,6 +25,9 @@ impl PacketOwned {
     }
 }
 
+/// Implement a custom codec for use with ``PacketCodec`` to define how we want to parse all the
+/// packets coming from tcpdump. We simply pass it on as-is using our basic ``PacketOwned``
+/// implementation.
 struct Codec;
 
 impl PacketCodec for Codec {
@@ -35,7 +39,9 @@ impl PacketCodec for Codec {
             let print = decode_packet_human_readable(&packet);
             tracing::info!(print);
         }
-        // format!("{packet:?}")
+
+        // we need to place Packet contents into PacketOwned as the pcap crate forces a restrictive
+        // lifetime on Packet
         PacketOwned {
             header: *packet.header,
             data: packet.data.into(),
