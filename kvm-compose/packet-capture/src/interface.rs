@@ -8,7 +8,7 @@ pub struct OVSConfig {
 impl OVSConfig {
     pub async fn setup(
         tcpdump_config: &TCPDumpConfig,
-    ) -> anyhow::Result<String> {
+    ) -> anyhow::Result<()> {
 
         // create dummy interface
         tracing::info!("create OS dummy interface {}", tcpdump_config.mirror_interface);
@@ -85,7 +85,7 @@ impl OVSConfig {
 
         // TODO if using span, apply span option
 
-        Ok(tcpdump_config.mirror_interface.to_string())
+        Ok(())
     }
 
     pub async fn teardown(

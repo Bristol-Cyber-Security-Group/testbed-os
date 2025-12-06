@@ -1,5 +1,7 @@
 use std::path::PathBuf;
+use anyhow::Context;
 use rand::distr::Distribution;
+use crate::interface::OVSConfig;
 
 mod interface;
 mod capture;
@@ -12,7 +14,15 @@ impl TestbedPacketCapture {
         config: TCPDumpConfig,
         stop_rx: tokio::sync::oneshot::Receiver<()>,
     ) -> anyhow::Result<()> {
-        capture::packet_capture(config, stop_rx).await?;
+        match capture::packet_capture(&config, stop_rx).await {
+            Ok(_) => {}
+            Err(err) => {
+                tracing::warn!("forcing cleanup due to setup error");
+                OVSConfig::teardown(&config).await
+                    .context("tearing down mirror port infrastructure due to error in setup")?;
+                anyhow::bail!(err)
+            }
+        }
         Ok(())
     }
 }
@@ -95,7 +105,10 @@ impl TCPDumpConfig {
 
     pub fn validate(&self) -> anyhow::Result<()> {
 
-        // check interface exists
+        // check interface exists, this is the ovs side, and error if it doesn't
+        // tokio::process::Command::new("sudo")
+        //     .arg("ovs-vsctl")
+
 
         // if named mirror_to check if that name is okay
 

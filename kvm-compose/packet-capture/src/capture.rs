@@ -44,16 +44,16 @@ impl PacketCodec for Codec {
 }
 
 pub async fn packet_capture(
-    config: TCPDumpConfig,
+    config: &TCPDumpConfig,
     stop_rx: tokio::sync::oneshot::Receiver<()>,
 ) -> anyhow::Result<()> {
 
     // create the OVS mirroring
-    let mirror_port = OVSConfig::setup(&config).await
+    OVSConfig::setup(&config).await
         .context("Setting up mirror port infrastructure")?;
 
     // open connection to interface
-    let mut capture = Capture::from_device(mirror_port.as_str())?
+    let mut capture = Capture::from_device(config.mirror_interface.as_str())?
         .immediate_mode(true)
         .open()?
         // set non-blocking so we can check if we need to exit due to a stop instruction, otherwise
