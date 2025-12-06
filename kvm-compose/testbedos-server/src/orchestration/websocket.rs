@@ -399,9 +399,16 @@ async fn run(
             // do not check current state to determine the success of the command as it is a
             // non-destructive command
             let final_response = if was_cancelled {
-                OrchestrationProtocolResponse::Generic {
-                    is_success: false,
-                    message: format!("The command failed{cancelled}"),
+                if command_result {
+                    OrchestrationProtocolResponse::Generic {
+                        is_success: true,
+                        message: format!("The command was successful{cancelled}"),
+                    }
+                } else {
+                    OrchestrationProtocolResponse::Generic {
+                        is_success: false,
+                        message: format!("The command failed{cancelled}"),
+                    }
                 }
             } else {
                 let msg = if command_result {

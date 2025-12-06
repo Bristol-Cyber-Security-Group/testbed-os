@@ -11,7 +11,7 @@ use tokio_tungstenite::tungstenite::{Message};
 use kvm_compose_schemas::cli_models::Opts;
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationLoggerLevel, OrchestrationProtocol, OrchestrationProtocolResponse};
-use crate::orchestration::orchestrator::{run_orchestration, CommandResult};
+use crate::orchestration::orchestrator::{run_orchestration, CommandOutcome, CommandResult};
 
 
 /// This function completely handles the orchestration command from the client side by sending instructions to the
@@ -150,7 +150,8 @@ pub async fn ws_orchestration_client(
                 .await
                 .context("sending serialised OrchestrationProtocol")?;
 
-            bail!("orchestration was interrupted by user")
+            // bail!("orchestration was interrupted by user")
+            Ok(())
 
         });
 
@@ -167,12 +168,12 @@ pub async fn ws_orchestration_client(
         // and/or sending to the server could have worked or failed, but this is separate to
         // whether the commands actually worked on the server - we need to get this state back from
         // the server next
-        let client_success = match clientside_cmd_result {
+        let client_outcome = match clientside_cmd_result {
             // the command didn't error but the command could be success: true or false
-            Ok(cmd_res) => cmd_res.command_success,
+            Ok(command_outcome) => command_outcome,
             Err(err) => {
                 tracing::error!("command error: {:#}", err);
-                false
+                CommandOutcome::Failure
             },
         };
 
@@ -181,24 +182,32 @@ pub async fn ws_orchestration_client(
 
         // if we had a client failure, then we need to tell the server to stop because the client
         // will not be continuing with this command running session
-        if !client_success {
-            tracing::info!("Due to error in instruction, now cleaning up by sending End instruction");
-            let serialised_instruction = serde_json::to_vec(&OrchestrationProtocol {
+        match client_outcome {
+            CommandOutcome::Failure => {
+                tracing::info!("Due to error in instruction, now cleaning up by sending End instruction");
+                let serialised_instruction = serde_json::to_vec(&OrchestrationProtocol {
                     instruction: OrchestrationInstruction::End,
                 })
-                .context("serialising OrchestrationProtocol")?;
-            let _ = safe_sender
-                .lock()
-                .await
-                .send(Message::Binary(serialised_instruction.into()))
-                .await
-                .context("sending early exit End instruction OrchestrationProtocol")?;
-
+                    .context("serialising OrchestrationProtocol")?;
+                let _ = safe_sender
+                    .lock()
+                    .await
+                    .send(Message::Binary(serialised_instruction.into()))
+                    .await
+                    .context("sending early exit End instruction OrchestrationProtocol")?;
+            }
+            _ => {}
         }
         tracing::debug!("waiting for server final response");
         let server_success = final_server_response(safe_receiver).await?;
 
         tracing::debug!("server_success: {server_success:?}");
+
+        // convert the outcome to a bool, we assume a cancel is success because the user wanted it
+        let client_success = match client_outcome {
+            CommandOutcome::Failure => false,
+            _ => true,
+        };
 
         // both must be successful
         Ok(client_success && server_success)
@@ -239,7 +248,7 @@ pub async fn future_loop(
     mut orchestration_cmd_generation_thread: JoinHandle<Result<CommandResult, Error>>,
     mut orchestration_message_cmd_receiver_thread: JoinHandle<Result<(), Error>>,
     orchestration_interrupt_listener: JoinHandle<Result<(), Error>>
-) -> anyhow::Result<CommandResult> {
+) -> anyhow::Result<CommandOutcome> {
 
     // Here we join together the cmd generation and cmd receiver handles into a single future.
     // This means we can await for both inside this future, and then wait on this single future
@@ -309,7 +318,8 @@ pub async fn future_loop(
             // caught interrupt, abort the others
             both_handlers_abort_handle.abort();
 
-            bail!("orchestration interrupted");
+            // bail!("orchestration interrupted");
+            Ok(CommandOutcome::Cancelled)
         }
         result = both_handlers => {
             // orchestration is finished and we have finished sending messages to the server,
@@ -317,7 +327,7 @@ pub async fn future_loop(
             tracing::debug!("cmd gen and msg gen finished, aborting interrupt listener");
             orchestration_interrupt_listener_abort_handle.abort();
 
-            result?
+            Ok(result??.command_outcome)
         }
     }
 
