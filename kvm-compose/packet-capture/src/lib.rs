@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use rand::distr::Distribution;
 
 mod interface;
@@ -38,6 +39,9 @@ pub struct TCPDumpConfig {
 
     /// Name of OVS bridge
     pub ovs_bridge: String,
+
+    /// Specify which consumer type the captured packet data should go to
+    pub consumer: TCPDumpConsumer,
 }
 
 impl TCPDumpConfig {
@@ -47,6 +51,7 @@ impl TCPDumpConfig {
         // mirror_to: Option<String>,
         span: bool,
         dump_args: Vec<String>,
+        consumer: TCPDumpConsumer,
     ) -> anyhow::Result<Self> {
         let mirror_interface = Self::generate_interface_name(&interface);
         let mirror_name = Self::generate_mirror_name(&interface, &mirror_interface);
@@ -58,6 +63,7 @@ impl TCPDumpConfig {
             mirror_interface,
             mirror_name,
             ovs_bridge: "br-int".to_string(),
+            consumer,
         };
         new.validate()?;
         Ok(new)
@@ -99,6 +105,14 @@ impl TCPDumpConfig {
 
         Ok(())
     }
+}
+
+/// Enum to define the different consumers to output the packet capture data to
+pub enum TCPDumpConsumer {
+    /// Path to create a pcap file
+    File(PathBuf),
+
+    // TODO other consumers i.e. databases over the network
 }
 
 #[cfg(test)]

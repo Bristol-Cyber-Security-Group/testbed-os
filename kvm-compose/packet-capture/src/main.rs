@@ -1,10 +1,11 @@
+use std::path::PathBuf;
 use clap::Parser;
 use tokio::task::JoinHandle;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use packet_capture::{TestbedPacketCapture};
+use packet_capture::{TCPDumpConsumer, TestbedPacketCapture};
 
 /// This CLI tool allows you to capture packets on the testbed OVS bridge.
 /// The bridge is fixed to `br-int` which is the OVN integration bridge that is used to provide the
@@ -38,6 +39,8 @@ struct CliArgs {
     #[clap(short, long)]
     span: bool,
 
+    #[clap(short, long)]
+    output_file: PathBuf,
 }
 
 #[tokio::main]
@@ -73,11 +76,13 @@ async fn run_loop(
         // args.mirror_to,
         args.span,
         args.dump_args,
+        TCPDumpConsumer::File(args.output_file),
     )?;
 
     // packet capture future start, this wraps the blocking thread call in `packet_capture`
-    let packet_capture_handle = tokio::spawn(async move {
-        tb_packet_capture.capture(config, stop_rx).await
+    let packet_capture_handle: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
+        tb_packet_capture.capture(config, stop_rx).await?;
+        Ok(())
     });
 
     // start future to listen to ctrl+c
@@ -93,7 +98,7 @@ async fn run_loop(
 
     // wait for packet capture to finish, which will either be from the cancel token triggering a
     // tear down, or the packet capture has errored
-    let _ = packet_capture_handle.await?;
+    packet_capture_handle.await??;
     // properly drop the cancel listener to clear resources
     std::mem::drop(stop_handle);
 

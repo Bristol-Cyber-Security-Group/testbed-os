@@ -1,16 +1,32 @@
-use futures::StreamExt;
-use pcap::{Capture, PacketCodec};
+use futures::{TryStreamExt};
+use pcap::{Active, Capture, Packet, PacketCodec, PacketHeader};
 use crate::interface::OVSConfig;
-use crate::TCPDumpConfig;
+use crate::{TCPDumpConfig, TCPDumpConsumer};
 #[cfg(feature = "cli-binary")]
 use etherparse::{NetSlice::*, SlicedPacket};
 #[cfg(feature = "cli-binary")]
 use std::fmt::Write;
+use std::path::Path;
+use anyhow::{bail, Context};
+use tokio::sync::mpsc::Receiver;
+use tokio::task::JoinHandle;
 
-struct RawPacket;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PacketOwned {
+    pub header: PacketHeader,
+    pub data: Box<[u8]>,
+}
 
-impl PacketCodec for RawPacket {
-    type Item = String;
+impl PacketOwned {
+    fn to_packet(&self) -> Packet<'_> {
+        Packet::new(&self.header, &self.data)
+    }
+}
+
+struct Codec;
+
+impl PacketCodec for Codec {
+    type Item = PacketOwned;
 
     fn decode(&mut self, packet: pcap::Packet<'_>) -> Self::Item {
         // print human-readable logs for debugging when using as CLI
@@ -18,7 +34,11 @@ impl PacketCodec for RawPacket {
             let print = decode_packet_human_readable(&packet);
             tracing::info!(print);
         }
-        format!("{packet:?}")
+        // format!("{packet:?}")
+        PacketOwned {
+            header: *packet.header,
+            data: packet.data.into(),
+        }
     }
 }
 
@@ -28,7 +48,8 @@ pub async fn packet_capture(
 ) -> anyhow::Result<()> {
 
     // create the OVS mirroring
-    let mirror_port = OVSConfig::setup(&config).await?;
+    let mirror_port = OVSConfig::setup(&config).await
+        .context("Setting up mirror port infrastructure")?;
 
     // open connection to interface
     let mut capture = Capture::from_device(mirror_port.as_str())?
@@ -45,19 +66,27 @@ pub async fn packet_capture(
         capture.filter(&filter, true)?;
     }
 
+    // set up consumer
+    let (tx, rx) = tokio::sync::mpsc::channel::<PacketOwned>(100);
+    let consumer_handle = setup_consumer(&config.consumer, &capture, rx)
+        .context("Setting up consumer")?;
+
     // open a packet stream that can be used in futures
-    let stream = capture.stream(RawPacket {})?;
+    let stream = capture.stream(Codec {})?;
 
     // this creates a stream, which is an async iterator, the stream creates a future for each
     // packet that is captured which is then processed inside the closure below
-    let fut = stream.for_each(move |s| {
-        // tracing::info!("inside: {s:?}");
-
-        // TODO - push packet into consumer to either write to file or into a DB
-
-        // we need to return an empty future here, but this should be changed to a future that can
-        // be processed into the destination data sink, keep this future light
-        futures::future::ready(())
+    let fut = stream.try_for_each(async |s| {
+        let send_res = tx.send(s)
+            .await;
+        match send_res {
+            Ok(_) => Ok(()), // returns Ok to continue loop
+            Err(err) => {
+                // exit this stream
+                tracing::error!("Failed to send packet over channel to consumer");
+                return Err(pcap::Error::PcapError(format!("Channel err: {err:#}")));
+            }
+        }
     });
 
     // wait on either the stop instruction being received, or the stream closing itself, so
@@ -71,10 +100,15 @@ pub async fn packet_capture(
             // the stream has closed itself, for some reason
             tracing::error!("packet capture stream stopped: {:?}", result);
         }
+        consumer_res = consumer_handle => {
+            // the consumer future exited for some reason
+            tracing::error!("packet capture consumer stopped: {:?}", consumer_res);
+        }
     }
 
     // destroy the mirror port and dummy interface
-    OVSConfig::teardown(&config).await?;
+    OVSConfig::teardown(&config).await
+        .context("tearing down mirror port infrastructure")?;
 
     tracing::info!("capture complete");
 
@@ -111,4 +145,38 @@ fn decode_packet_human_readable(packet: &pcap::Packet) -> String {
         }
     }
     output
+}
+
+/// The consumers created from ``TCPDumpConsumer`` will have their own logic in how they save the
+/// packet data. All of these need to return a tokio future handle that will in the background
+/// listen for packets so that they can be written to their consumer. This separates the concern of
+/// tcpdump loop and the IO (consumer) loop.  
+fn setup_consumer(
+    consumer: &TCPDumpConsumer,
+    capture: &Capture<Active>,
+    mut packet_rx: Receiver<PacketOwned>,
+) -> anyhow::Result<JoinHandle<anyhow::Result<()>>> {
+    match consumer {
+        TCPDumpConsumer::File(path) => {
+            // for file based, we create the pcap file first then supply a future that will be used
+            // to read from the channel receiving `PacketOwned` to write into the pcap file.
+            let pcap_path = Path::new(&path);
+            if pcap_path.exists() {
+                bail!("File already exists: {path:?}");
+            }
+            let mut savefile = capture.savefile(pcap_path)?;
+            Ok(tokio::spawn(async move {
+                loop {
+                    let packet = packet_rx.recv().await;
+                    match packet {
+                        None => bail!("capture returned None"),
+                        Some(packet_owned) => {
+                            // need to reconstruct the packet
+                            savefile.write(&packet_owned.to_packet())
+                        }
+                    }
+                }
+            }))
+        }
+    }
 }
