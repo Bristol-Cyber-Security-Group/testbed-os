@@ -144,7 +144,7 @@ pub async fn run_guest_exec_cmd(
                 }
                 TestbedTools::InstallApk(apk_file) => {
                     tracing::info!("Installing APK");
-                    android::install_apk(&namespace, &apk_file.apk_file_path, &logging_send, false).await?
+                    android::install_apk(&namespace, &apk_file.apk_file_path, &logging_send).await?
                 }
                 TestbedTools::TestPermissions(command) => {
                     tracing::info!("Running permissions tests");

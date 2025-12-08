@@ -86,7 +86,6 @@ pub enum TestbedTools {
     FridaSetup,
     /// Install an Android app from an APK file
     InstallApk(ApkFile),
-    // InstallApk(Command),
     TestPermissions(Command),
     TestPrivacy(Command),
     /// TLS Intercept, you must pass two arguments as <packagename> <outdir> where package name is

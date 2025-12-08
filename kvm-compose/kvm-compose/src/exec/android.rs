@@ -66,31 +66,32 @@ pub async fn install_apk(
     namespace: &str,
     apk_file_path: &PathBuf,
     logging_send: &Sender<OrchestrationLogger>,
-    suppress_output: bool,
 ) -> anyhow::Result<()> {
+    adb_command(namespace, &vec!["start-server".to_string()], &logging_send, false)
+        .await
+        .context("making sure adb server is running on device")?;
+
     tracing::info!("Installing APK");
     let apk_file_existing_path = apk_file_path.as_path();
+    
     if apk_file_existing_path.exists() {
+        
         let args = vec![
             "install".to_string(),
             apk_file_path.to_str().unwrap().to_string(),
         ];
 
-        let res = adb_command(namespace, &args, &logging_send, false).await;
-
-        match res {
-            Ok(_) => {
-                tracing::info!("APK Installation complete");
-                Ok(())
-            }
-            Err(e) => { 
-                tracing::error!("APK Installation failed");
-                bail!(e);
-            }
-        }
+        adb_command(namespace, &args, &logging_send, false)
+            .await
+            .context("APK installation")?;
+        
+        tracing::info!("APK installation complete");
+        
+        Ok(())
     } else {
         tracing::error!("APK file not found");
-        bail!("APK file not found");
+        
+        Err(anyhow::Error::msg("APK file not found"))
     }
 }
 
