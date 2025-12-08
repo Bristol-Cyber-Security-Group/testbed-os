@@ -89,9 +89,7 @@ pub async fn install_apk(
         
         Ok(())
     } else {
-        tracing::error!("APK file not found");
-        
-        Err(anyhow::Error::msg("APK file not found"))
+        bail!("APK file not found");
     }
 }
 
