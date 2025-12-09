@@ -27,7 +27,7 @@ pub async fn packet_capture(
                 span.clone(),
                 dump_args.clone(),
                 TCPDumpConsumer::File(file_output.clone()),
-            )?
+            ).await?
         }
     };
 

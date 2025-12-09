@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use anyhow::Context;
+use anyhow::{bail, Context};
 use rand::distr::Distribution;
 use crate::interface::OVSConfig;
 
@@ -56,7 +56,7 @@ pub struct TCPDumpConfig {
 
 impl TCPDumpConfig {
 
-    pub fn new(
+    pub async fn new(
         interface: String,
         // mirror_to: Option<String>,
         span: bool,
@@ -75,7 +75,11 @@ impl TCPDumpConfig {
             ovs_bridge: "br-int".to_string(),
             consumer,
         };
-        new.validate()?;
+
+        new
+            .validate()
+            .await?;
+
         Ok(new)
     }
 
@@ -103,18 +107,36 @@ impl TCPDumpConfig {
         format!("mirror-{in_name}-to-{os_interface}")
     }
 
-    pub fn validate(&self) -> anyhow::Result<()> {
+    pub async fn validate(&self) -> anyhow::Result<()> {
+
+        // TODO - what if the interface/port is on a remote testbed
 
         // check interface exists, this is the ovs side, and error if it doesn't
-        // tokio::process::Command::new("sudo")
-        //     .arg("ovs-vsctl")
+        tokio::process::Command::new("sudo")
+            .arg("ovs-vsctl")
+            .arg("--id=@target")
+            .arg("get")
+            .arg("port")
+            .arg(&self.interface)
+            .output()
+            .await
+            .context("Getting existing interface/port")?;
 
-
-        // if named mirror_to check if that name is okay
-
-        // check if mirror_to doesn't already exist
-
-
+        // check mirror doesn't already exist
+        if tokio::process::Command::new("sudo")
+            .arg("ovs-vsctl")
+            .arg("--id=@target")
+            .arg("get")
+            .arg("mirror")
+            .arg(&self.mirror_interface)
+            .output()
+            .await
+            .context("Getting exiting mirror")?
+            .status
+            .success()
+        {
+            bail!("Mirror port {} already exists", &self.mirror_interface);
+        }
 
         Ok(())
     }

@@ -77,7 +77,7 @@ async fn run_loop(
         args.span,
         args.dump_args,
         TCPDumpConsumer::File(args.output_file),
-    )?;
+    ).await?;
 
     // packet capture future start, this wraps the blocking thread call in `packet_capture`
     let packet_capture_handle: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
