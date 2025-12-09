@@ -9,4 +9,5 @@ We provide a CLI, TUI, and a GUI.
     :caption: Contents:
 
     exec/index
+    tool/index
     gui/index
