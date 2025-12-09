@@ -1,5 +1,9 @@
 # TestbedOS
 
+<p align="center">
+  <img src="kvm-compose/testbedos-server/assets/icons/testbed_logo_optimised.png" alt="My Project Logo" width="400" height="471">
+</p>
+
 The TestbedOS combines virtualisation technologies, software defined networks and tooling to provide a platform to automate provisioning and testing of software.
 The testbed also supports scaling out to multiple machines in a cluster mode to utilise more CPU, RAM and disk space for large deployments.
 It offers a command line interface, textual user interface and a graphical interface to control the testbed.

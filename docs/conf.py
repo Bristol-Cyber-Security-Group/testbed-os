@@ -67,6 +67,8 @@ todo_include_todos = False
 #
 html_theme = 'sphinx_rtd_theme'
 
+html_logo = "../kvm-compose/testbedos-server/assets/icons/testbed_logo_optimised.png"
+html_favicon = "../kvm-compose/testbedos-server/assets/icons/Rephrain_icon_RGB.png"
 
 # -- Options for manual page output ---------------------------------------
 
