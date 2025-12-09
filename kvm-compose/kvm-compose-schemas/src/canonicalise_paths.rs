@@ -1,4 +1,6 @@
 use std::fs;
+use std::path::{Path, PathBuf};
+use anyhow::Context;
 use crate::cli_models::{DeploymentSubCommand, Opts, SubCommand};
 use crate::exec::{ExecCmdType, TestbedTools};
 
@@ -10,7 +12,7 @@ pub fn cli_canonicalise_all_paths(
 ) -> anyhow::Result<()> {
 
     // make sure the path to the kvm-compose yaml is absolute
-    opts.input = fs::canonicalize(&opts.input)?
+    opts.input = canonicalize_with_context(&opts.input)?
         .to_string_lossy()
         .into_owned();
 
@@ -40,15 +42,18 @@ pub fn cli_canonicalise_all_paths(
             match &mut exec.command_type {
                 ExecCmdType::ShellCommand(_) => {}
                 ExecCmdType::Push(transfer) => {
-                    transfer.source_path = fs::canonicalize(&transfer.source_path)?;
+                    transfer.source_path = canonicalize_with_context(&transfer.source_path)?;
                 }
                 ExecCmdType::Pull(transfer) => {
-                    transfer.target_path = fs::canonicalize(&transfer.target_path)?;
+                    transfer.target_path = canonicalize_with_context(&transfer.target_path)?;
                 }
                 ExecCmdType::Tool(tool) => {
                     match &mut tool.tool {
                         TestbedTools::ADB(_) => {}
                         TestbedTools::FridaSetup => {}
+                        TestbedTools::InstallApk(apk) => {
+                            apk.apk_file_path = canonicalize_with_context(&apk.apk_file_path)?;
+                        }
                         TestbedTools::TestPermissions(_) => {}
                         TestbedTools::TestPrivacy(_) => {}
                         TestbedTools::TLSIntercept(_) => {}
@@ -60,4 +65,15 @@ pub fn cli_canonicalise_all_paths(
 
 
     Ok(())
+}
+
+/// This just adds the filepath input as the context so that when the input via the CLI is to a
+/// Path that doesn't exist, we get the path printed in the Error log rather than a cryptic path
+/// does not exist error
+fn canonicalize_with_context<P: AsRef<Path>>(
+    path: &P,
+) -> anyhow::Result<PathBuf> {
+    let path_str = path.as_ref().to_string_lossy();
+    fs::canonicalize(path)
+        .context(format!("Canonicalizing path ({path_str})"))
 }

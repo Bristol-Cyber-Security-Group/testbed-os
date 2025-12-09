@@ -59,6 +59,9 @@ $(document).ready(function() {
         'a_d_b': [
             {label: 'Command', type: 'text', id: 'command'}
         ],
+        'install_apk': [
+            {label: 'APK File (Full Path)', type: 'text', id: 'apk_file_path'}
+        ],
         'frida_setup': [],
         'test_permissions': [
             {label: 'Command', type: 'text', id: 'command'}
@@ -845,8 +848,7 @@ function convertCommandToListOfStrings(sub_command, command_name) {
     let command = sub_command["Exec"]["command_type"]["tool"]["tool"][command_name]["command"];
     
     // command starts as a list of one string
-    let command_string = command[0];
-    let command_list = command_string.match(regex).map(arg => arg.replace(/(^"|"$)/g, ''));
+    let command_list = command.match(regex).map(arg => arg.replace(/(^"|"$)/g, ''));
     
     // add formatted command back to json
     sub_command["Exec"]["command_type"]["tool"]["tool"][command_name]["command"] = command_list;

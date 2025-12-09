@@ -142,6 +142,10 @@ pub async fn run_guest_exec_cmd(
                     tracing::info!("Running frida tools setup commands");
                     android::frida_setup(&namespace, &logging_send).await?;
                 }
+                TestbedTools::InstallApk(apk_file) => {
+                    tracing::info!("Installing APK");
+                    android::install_apk(&namespace, &apk_file.apk_file_path, &logging_send).await?
+                }
                 TestbedTools::TestPermissions(command) => {
                     tracing::info!("Running permissions tests");
                     android::test_permissions(&namespace, &command.command, &logging_send).await?;
@@ -191,6 +195,12 @@ fn check_command_on_guest_type(
                     }
                 }
                 TestbedTools::FridaSetup => {
+                    match guest_data.guest_type.guest_type {
+                        GuestType::Android(_) => {}
+                        _ => bail!("ADB tool only compatible with android guests"),
+                    }
+                }
+                TestbedTools::InstallApk(_) => {
                     match guest_data.guest_type.guest_type {
                         GuestType::Android(_) => {}
                         _ => bail!("ADB tool only compatible with android guests"),
