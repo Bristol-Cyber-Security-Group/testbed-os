@@ -90,6 +90,12 @@ class MountTestCase(TestCase):
             "_check_mount_exists_docker",
         )
 
+        consecutive_up = down_then_up(
+            self.test_case_name,
+            "_consecutive_up",
+            self.linked_clone_hosts,
+        )
+
         return [
             up_result_report,
             run_script_artefact,
@@ -100,6 +106,7 @@ class MountTestCase(TestCase):
             env_file_var_docker,
             env_var_docker,
             mount_docker,
+            consecutive_up,
         ]
 
 registered_test_cases.append(MountTestCase)

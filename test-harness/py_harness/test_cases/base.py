@@ -44,11 +44,18 @@ class BaseTestCase(TestCase):
         )
         # TODO - to a docker guest
 
+        consecutive_up = down_then_up(
+            self.test_case_name,
+            "_consecutive_up",
+            self.linked_clone_hosts,
+        )
+
         return [
             up_result_report,
             libvirt_net_test_report,
             inter_libvirt_guest_connection,
             inter_docker_guest_connection,
+            consecutive_up,
         ]
 
 registered_test_cases.append(BaseTestCase)

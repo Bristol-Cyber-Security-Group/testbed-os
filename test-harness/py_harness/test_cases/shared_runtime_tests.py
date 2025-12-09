@@ -183,3 +183,31 @@ def run_command(
     report.success = True if command_process.returncode == 0 else False
     report.info = ""
     return report
+
+
+def down_then_up(
+    test_case_name: str,
+    test_report_name: str,
+    linked_clone_hosts: List[LinkedCloneHost],
+) -> TestReport:
+    # bring down the deployment and then bring it back up again to test consecutive ups
+    test_case = f"{test_case_location}/{test_case_name}"
+    report = TestReport(inspect.currentframe().f_code.co_name + test_report_name + "_" + test_case_name)
+    logging.info(f"Running test {report.test_name}")
+
+    down_result: subprocess.CompletedProcess = ssh_command(
+        f"cd {test_case} && kvm-compose down",
+        base_ssh_key,
+        linked_clone_hosts[0].hostname,  # first host will be main
+    )
+
+    up_result: subprocess.CompletedProcess = ssh_command(
+        f"cd {test_case} && kvm-compose up",
+        base_ssh_key,
+        linked_clone_hosts[0].hostname,  # first host will be main
+    )
+
+    # both the down and up must be a success
+    report.success = True if down_result.returncode == 0 and up_result.returncode == 0 else False
+    report.info = ""
+    return report
