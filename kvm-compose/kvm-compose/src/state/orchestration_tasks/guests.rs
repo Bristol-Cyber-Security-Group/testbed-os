@@ -415,6 +415,18 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                     wait_for_libvirt_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
                     let local_script_path = parse_path_with_deployment_config(script, &common)?;
 
+                    logging_sender.send(OrchestrationLogger::info(format!("Making sure cloud-init has completed on {guest_name} (Setup Action)"))).await?;
+                    let (_, _) = libvirt::shell_command(
+                        vec!["timeout", "300", "cloud-init", "status", "--wait"],
+                        1000*301,
+                        &machine_config,
+                        &guest_name,
+                        &common,
+                        logging_sender,
+                        true,
+                        false,
+                    ).await?;
+
                     logging_sender.send(OrchestrationLogger::info(format!("Pushing {local_script_path:?} to {guest_name}"))).await?;
                     libvirt::push(
                         &ExecCmdFileTransfer {
@@ -588,6 +600,19 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 
                     logging_sender.send(OrchestrationLogger::info(format!("Waiting until guest {guest_name} is up before continuing"))).await?;
                     wait_for_libvirt_guest_to_be_up(&common, &machine_config, vec!["ls"], logging_sender).await?;
+
+                    logging_sender.send(OrchestrationLogger::info(format!("Making sure cloud-init has completed on {guest_name} (Run Action)"))).await?;
+                    let (_, _) = libvirt::shell_command(
+                        vec!["timeout", "300", "cloud-init", "status", "--wait"],
+                        1000*301,
+                        &machine_config,
+                        &guest_name,
+                        &common,
+                        logging_sender,
+                        true,
+                        false,
+                    ).await?;
+
                     let local_script_path = parse_path_with_deployment_config(script, &common)?;
 
                     logging_sender.send(OrchestrationLogger::info(format!("Pushing {local_script_path:?} to {guest_name}"))).await?;
@@ -838,9 +863,18 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
             cmd_string.push("--env-file".to_string());
             // need to set the absolute path for env file since it might be running on remote
             if is_main_testbed(&common, testbed_host) {
-                cmd_string.push(format!("{env_file}"));
+
+                // join the path in the yaml if it is relative, to the project folder
+                let mut absolute_path = PathBuf::from(env_file);
+                if absolute_path.is_relative() {
+                    absolute_path = common.project_working_dir.join(&absolute_path);
+                }
+
+                cmd_string.push(format!("{}", absolute_path.to_string_lossy()));
             } else {
                 // on remote
+                // TODO - this is not going to work on remote, we need to define how we push artefacts
+                //  and especially those outside the project folder (or we say no to that for simplicity)
                 let remote_project_folder = get_remote_project_folder(&common, testbed_host)?;
                 cmd_string.push(format!("{remote_project_folder}/{env_file}"));
             }
@@ -857,7 +891,11 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
                     // need to manually replace PWD as there is no shell
                     volume.source.replace("${PWD}", common.project_working_dir.to_str().unwrap())
                 } else {
-                    volume.source.clone()
+                    let mut absolute_path = PathBuf::from(&volume.source);
+                    if absolute_path.is_relative() {
+                        absolute_path = common.project_working_dir.join(&absolute_path);
+                    }
+                    absolute_path.to_string_lossy().into_owned()
                 };
                 cmd_string.push("-v".to_string());
                 // let mount_arg = format!("{}:{}", &volume.source, &volume.target);
