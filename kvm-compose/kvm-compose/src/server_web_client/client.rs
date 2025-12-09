@@ -116,7 +116,7 @@ pub fn get_deployment_action(
         SubCommand::TestbedSnapshot(tb_snp) => {
             DeploymentCommand::TestbedSnapshot { snapshot_guests: tb_snp.snapshot_guests, }
         }
-        SubCommand::Tools(at_cmd) => {
+        SubCommand::Tool(at_cmd) => {
             DeploymentCommand::Tool(at_cmd.clone())
         }
         SubCommand::Exec(exec_cmd) => {

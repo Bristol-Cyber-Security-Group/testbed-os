@@ -112,7 +112,7 @@ pub async fn parse_command(opts: Opts) -> anyhow::Result<()> {
             SubCommand::Up(_) => client::orchestration_action(&client, opts).await,
             SubCommand::Down => client::orchestration_action(&client, opts).await,
             SubCommand::Snapshot(_) => client::orchestration_action(&client, opts).await,
-            SubCommand::Tools(_) => client::orchestration_action(&client, opts).await,
+            SubCommand::Tool(_) => client::orchestration_action(&client, opts).await,
             SubCommand::TestbedSnapshot(_) => client::orchestration_action(&client, opts).await,
             SubCommand::Exec(_) => client::orchestration_action(&client, opts).await,
             _ => bail!("command not matched, please raise an issue"),

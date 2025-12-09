@@ -47,7 +47,7 @@ pub enum SubCommand {
     #[command(about = "Snapshot guest images (guests must be switched off)")]
     Snapshot(SnapshotCmd),
     #[command(about = "Testbed tools")]
-    Tools(ToolCmd),
+    Tool(ToolCmd),
     #[command(about = "Prepare all artefacts in deployment to be shared and used in another testbed")]
     TestbedSnapshot(TestbedSnapshotCmd),
     #[command(about = "Execute a command against a guest")]
@@ -65,7 +65,7 @@ impl SubCommand {
             SubCommand::Up(_) => "up".into(),
             SubCommand::Down => "down".into(),
             SubCommand::Snapshot(_) => "snapshot".into(),
-            SubCommand::Tools(_) => "analysis tools".into(),
+            SubCommand::Tool(_) => "analysis tools".into(),
             SubCommand::TestbedSnapshot(_) => "testbed snapshot".into(),
             SubCommand::Exec(_) => "exec".into(),
         }
