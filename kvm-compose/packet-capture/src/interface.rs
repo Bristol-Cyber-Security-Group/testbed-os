@@ -49,7 +49,8 @@ impl OVSConfig {
 
         // create mirror
         tracing::info!("set up OVS port mirror for OS dummy interface {}", tcpdump_config.mirror_interface);
-        tokio::process::Command::new("sudo")
+        let mut cmd = tokio::process::Command::new("sudo");
+        cmd
             .arg("ovs-vsctl")
             .arg("--")
             .arg("--id=@target")
@@ -67,10 +68,18 @@ impl OVSConfig {
             .arg("--id=@m")
             .arg("create")
             .arg("mirror")
-            .arg(format!("name={}", tcpdump_config.mirror_name))
-            .arg(format!("select-all={}", tcpdump_config.span.to_string()))
-            .arg("select-src-port=@target")
-            .arg("select-dst-port=@target")
+            .arg(format!("name={}", tcpdump_config.mirror_name));
+
+        if tcpdump_config.span {
+            cmd
+                .arg("select-all=true");
+        } else {
+            cmd
+                .arg("select-src-port=@target")
+                .arg("select-dst-port=@target");
+        }
+
+        cmd
             .arg("output-port=@mirror_port")
 
             .arg("--")
@@ -82,15 +91,24 @@ impl OVSConfig {
             .await
             .context("Creating OVS mirror port configuration")?;
 
-
-        // TODO if using span, apply span option
-
         Ok(())
     }
 
     pub async fn teardown(
         tcpdump_config: &TCPDumpConfig,
     ) -> anyhow::Result<()> {
+
+        // remove mirror object
+        tracing::info!("destroy OVS mirror {}", tcpdump_config.mirror_name);
+        tokio::process::Command::new("sudo")
+            .arg("ovs-vsctl")
+            .arg("--if-exists")
+            .arg("destroy")
+            .arg("mirror")
+            .arg(&tcpdump_config.mirror_name)
+            .output()
+            .await
+            .context("Destroying specific OVS mirror")?;
 
         // remove mirror
         tracing::info!("clear OVS mirror port for {}", tcpdump_config.mirror_interface);
@@ -99,7 +117,7 @@ impl OVSConfig {
             .arg("clear")
             .arg("bridge")
             .arg(&tcpdump_config.ovs_bridge)
-            .arg("mirrors") // TODO be specific which mirror
+            .arg("mirrors")
             .output()
             .await
             .context("Clearing OVS bridge mirror")?;
