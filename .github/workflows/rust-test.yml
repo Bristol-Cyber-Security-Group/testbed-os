@@ -3,9 +3,9 @@ name: rust-test
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-  test:
+  run-cargo-test:
     name: Cargo Test
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted]
 
     steps:
       - uses: actions/checkout@v6
