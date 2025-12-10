@@ -3,7 +3,7 @@ name: test-harness
 on:
   workflow_run:
     workflows:
-      - "Cargo Test"
+      - "rust-test"
     types:
       - completed
 
