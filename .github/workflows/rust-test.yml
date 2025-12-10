@@ -1,6 +1,6 @@
 name: rust-test
 
-on: [push, pull_request, workflow_dispatch]
+on: [push, workflow_dispatch]
 
 jobs:
   run-cargo-test:
