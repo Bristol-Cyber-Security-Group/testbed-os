@@ -112,8 +112,11 @@ impl DeploymentProvider for FileBasedProvider {
         }
         let path = PathBuf::from(format!("{root_path}{name}.json"));
         if path.is_file() {
-            let text = tokio::fs::read_to_string(path).await?;
-            let config: Deployment = serde_json::from_str(&text)?;
+            let text = tokio::fs::read_to_string(path)
+                .await
+                .context("reading deployment from disk")?;
+            let config: Deployment = serde_json::from_str(&text)
+                .context(format!("deserializing deployment config from json, content of json: ({text})"))?;
             Ok(config)
         } else {
             bail!("deployment json for {name} does not exist")
@@ -155,8 +158,16 @@ impl DeploymentProvider for FileBasedProvider {
             last_action_uuid: None,
         };
 
-        let mut output = File::create(json_name).await?;
-        output.write_all(format!("{deployment}").as_bytes()).await?;
+        let mut output = File::create(json_name)
+            .await
+            .context("creating deployment file")?;
+        output.write_all(format!("{deployment}")
+            .as_bytes())
+            .await
+            .context("writing to deployment file")?;
+        output.sync_all()
+            .await
+            .context("syncing deployment file")?;
 
         Ok(())
     }
