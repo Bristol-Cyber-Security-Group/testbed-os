@@ -14,7 +14,7 @@ jobs:
     runs-on: [self-hosted]
 #    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - name: build-harness-image
         run: |
           cd test-harness && docker image build -t test-harness:${{ github.event.pull_request.head.sha }} .
