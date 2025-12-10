@@ -2,10 +2,8 @@ name: test-harness
 
 on:
   workflow_run:
-    workflows:
-      - rust-test
-    types:
-      - completed
+    workflows: ["rust-test"]
+    types: [completed]
 
 
 jobs:
