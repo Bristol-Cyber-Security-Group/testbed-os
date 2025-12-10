@@ -6,8 +6,6 @@ on:
       - "Cargo Test"
     types:
       - completed
-  pull_request:
-  workflow_dispatch:
 
 
 jobs:
