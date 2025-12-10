@@ -1,9 +1,12 @@
 name: test-harness
 
-on:
-  workflow_run:
-    workflows: ["rust-test"]
-    types: [completed]
+on: [pull_request, workflow_dispatch]
+
+# This only works on main/default branches?
+#on:
+#  workflow_run:
+#    workflows: ["rust-test"]
+#    types: [completed]
 
 
 jobs:
