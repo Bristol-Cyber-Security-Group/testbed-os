@@ -1,0 +1,15 @@
+name: rust-test
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  test:
+    name: Cargo Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - run: cd kvm-compose && cargo test

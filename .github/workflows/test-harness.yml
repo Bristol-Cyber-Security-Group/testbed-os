@@ -1,12 +1,20 @@
 name: test-harness
 
-on: [pull_request, workflow_dispatch]
+on:
+  workflow_run:
+    workflows:
+      - "Cargo Test"
+    types:
+      - completed
+  pull_request:
+  workflow_dispatch:
+
 
 jobs:
   run-test-harness:
     runs-on: [self-hosted]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: build-harness-image
         run: |
           cd test-harness && docker image build -t test-harness:${{ github.event.pull_request.head.sha }} .
