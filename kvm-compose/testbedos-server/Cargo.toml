@@ -42,3 +42,6 @@ virt = { workspace = true }
 glob = "0.3.2"
 nix = { workspace = true }
 async-trait = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.23.0"

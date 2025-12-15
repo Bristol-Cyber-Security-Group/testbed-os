@@ -1,0 +1,17 @@
+name: rust-test
+
+on: [pull_request, workflow_dispatch]
+
+jobs:
+  run-cargo-test:
+    name: Cargo Test
+    runs-on: [self-hosted]
+
+    container:
+      image: rust:latest
+      options: --user root
+
+    steps:
+      - uses: actions/checkout@v6
+      - run: apt-get update && apt-get install libvirt-dev -y
+      - run: cd kvm-compose && cargo test

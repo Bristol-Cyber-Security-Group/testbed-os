@@ -121,7 +121,7 @@ mod tests {
         );
         let expected_add = vec_of_strings!["ovn-nbctl", "--may-exist", "--name=resource_name", "acl-add", "ovn-sw0", "to-lport", "10", "match", "drop"].join(" ");
         assert_eq!(expected_add, record.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
-        let expected_del = vec_of_strings!["ovn-nbctl", "acl-del", "ovn-sw0", "to-lport", "10", "match", "drop"].join(" ");
+        let expected_del = vec_of_strings!["ovn-nbctl", "acl-del", "ovn-sw0", "to-lport", "10", "match"].join(" ");
         assert_eq!(expected_del, record.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
     }
 }
