@@ -1,0 +1,7 @@
+[book]
+title = "Documentation"
+authors = ["wil25632"]
+language = "en"
+
+[output.html]
+default-theme = "Rust"

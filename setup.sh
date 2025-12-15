@@ -43,6 +43,16 @@ sudo rm -rf /var/lib/testbedos/assets/documentation/
 sudo mkdir /var/lib/testbedos/assets/documentation/
 sudo cp -r build/html/ /var/lib/testbedos/assets/documentation/
 
+echo "building html pages"
+# remove old doc build
+rm -rf build/*
+# build html pages using mdbook
+mdbook build docs/docs/ -d build
+# place documentation in server assets
+sudo rm -rf /var/lib/testbedos/assets/documentation/
+sudo mkdir /var/lib/testbedos/assets/documentation/
+sudo cp -r build/* /var/lib/testbedos/assets/documentation/
+
 # install man pages TODO
 
 echo "installing textual user interface"
