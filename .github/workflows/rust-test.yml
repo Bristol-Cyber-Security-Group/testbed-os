@@ -15,3 +15,6 @@ jobs:
       - uses: actions/checkout@v6
       - run: apt-get update && apt-get install libvirt-dev -y
       - run: cd kvm-compose && cargo test
+      - name: post-test cleanup
+        run: rm -rf kvm-compose/target || true
+        if: always()
