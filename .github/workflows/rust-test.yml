@@ -23,5 +23,5 @@ jobs:
       # clear the workspace including the cloned repo to prevent any leftover artefacts that might affect
       # a following workflow
       - name: post-test cleanup
-        run: rm -rf ${{ github.workspace }} || true
+        run: sudo rm -rf ${{ github.workspace }} || true
         if: always()
