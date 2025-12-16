@@ -18,6 +18,8 @@ jobs:
       options: --user root
 
     steps:
-      - uses: actions/checkout@v6
-      - run: apt-get update && apt-get install libvirt-dev libpcap-dev -y
-      - run: cd kvm-compose && cargo test
+      - run: apt-get update && apt-get install libvirt-dev libpcap-dev git -y
+      # rather than use the checkout action, just pull the repo inside the container to avoid spilling out
+      # the change of the directory to root since this container runs as root inside
+      - run: git clone https://github.com/${{ github.repository }} /tmp/testbed
+      - run: cd /tmp/testbed/kvm-compose && cargo test
