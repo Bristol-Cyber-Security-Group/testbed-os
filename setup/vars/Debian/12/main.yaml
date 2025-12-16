@@ -26,6 +26,7 @@ prereq_packages:
   - libnss-libvirt
   - genisoimage
   - virt-manager
+  - libpcap-dev
 
 
 docker_steps: |

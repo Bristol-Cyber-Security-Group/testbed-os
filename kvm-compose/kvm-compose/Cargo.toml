@@ -19,11 +19,12 @@ reqwest = { workspace = true}
 serde_json = { workspace = true}
 rust-embed = {version = "8.7.2", features = ["debug-embed"]}
 chrono = { workspace = true }
-tracing = { workspace = true}
-futures-util = { workspace = true}
-tokio = { workspace = true}
-tokio-tungstenite = { workspace = true}
+tracing = { workspace = true }
+futures-util = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
 kvm-compose-schemas = { path = "../kvm-compose-schemas" }
+packet-capture = { path = "../packet-capture" }
 tera = { workspace = true }
 lazy_static = { workspace = true }
 rand = "0.9.1"

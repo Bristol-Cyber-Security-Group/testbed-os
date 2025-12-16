@@ -16,7 +16,14 @@ use crate::state::orchestration_tasks::ovn_network::reapply_acl_action;
 #[derive(Debug)]
 pub struct CommandResult {
     pub deployment: Deployment,
-    pub command_success: bool,
+    pub command_outcome: CommandOutcome,
+}
+
+#[derive(Debug)]
+pub enum CommandOutcome {
+    Success,
+    Failure,
+    Cancelled,
 }
 
 
@@ -68,7 +75,7 @@ pub async fn orchestration_parse_command(
 ) -> anyhow::Result<CommandResult> {
     let yaml = format!("{}/kvm-compose.yaml", deployment.project_location.clone());
     let project_location = PathBuf::from(&deployment.project_location);
-    let mut command_success = false;
+    let mut command_outcome = CommandOutcome::Failure;
 
     tracing::info!("project location: {:?}", &project_location);
 
@@ -92,7 +99,7 @@ pub async fn orchestration_parse_command(
                     &http_client,
                     &server_conn,
                 ).await?;
-                command_success = true;
+                command_outcome = CommandOutcome::Success;
                 deployment
             } else {
                 // for now, we will ignore the previous state, this will cause state drift bugs
@@ -213,7 +220,7 @@ pub async fn orchestration_parse_command(
                 write_state_request(&http_client, &server_conn, &project_name, &state)
                     .await
                     .context("Sending the state json file to server to save to disk.")?;
-                command_success = true;
+                command_outcome = CommandOutcome::Success;
                 deployment
             }
         }
@@ -242,7 +249,7 @@ pub async fn orchestration_parse_command(
                             bail!("{err:#}");
                         },
                     }
-                    command_success = true;
+                    command_outcome = CommandOutcome::Success;
                 }
                 Err(err) => {
                     tracing::error!("{err:#}");
@@ -287,7 +294,7 @@ pub async fn orchestration_parse_command(
                 .await
                 .context("Failed to generate artefacts from logical testbed") {
                 Ok(_) => {
-                    command_success = true;
+                    command_outcome = CommandOutcome::Success;
                 }
                 Err(err) => {
                     deployment.state = DeploymentState::Failed(command.clone());
@@ -314,7 +321,7 @@ pub async fn orchestration_parse_command(
                     OrchestrationInstruction::ClearArtefacts,
                 ).await.context("requesting the execution of guest setup scripts")?;
 
-                command_success = true;
+                command_outcome = CommandOutcome::Success;
 
             } else {
                 tracing::error!("could not run clear artefacts, no state file");
@@ -338,7 +345,7 @@ pub async fn orchestration_parse_command(
                     OrchestrationInstruction::Snapshot(snapshot_cmd.clone()),
                 ).await.context("sending snapshot request to server")?;
 
-                command_success = true;
+                command_outcome = CommandOutcome::Success;
             } else {
                 tracing::error!("could not run snapshot command, no state file");
             }
@@ -362,14 +369,14 @@ pub async fn orchestration_parse_command(
                     },
                 ).await.context("sending snapshot request to server")?;
 
-                command_success = true;
+                command_outcome = CommandOutcome::Success;
                 tracing::info!("testbed snapshot complete");
             } else {
                 tracing::error!("could not run testbed snapshot command, no state file");
             }
             deployment
         }
-        DeploymentCommand::AnalysisTool(ref tool) => {
+        DeploymentCommand::Tool(ref tool) => {
             if let Ok(_) = read_previous_state_request(&http_client, &server_conn, &project_name).await {
                 tracing::info!("running analysis tool: {tool:?}");
 
@@ -385,7 +392,7 @@ pub async fn orchestration_parse_command(
                     sender,
                     OrchestrationInstruction::AnalysisTool(tool.clone()),
                 ).await.context("sending snapshot request to server")?;
-                command_success = true;
+                command_outcome = CommandOutcome::Success;
 
             } else {
                 tracing::error!("could not run testbed analysis tool command, no state file");
@@ -407,7 +414,7 @@ pub async fn orchestration_parse_command(
                     sender,
                     OrchestrationInstruction::Exec(exec_cmd.clone()),
                 ).await.context("sending Exec request to server")?;
-                command_success = true;
+                command_outcome = CommandOutcome::Success;
 
             } else {
                 tracing::error!("could not run testbed snapshot command, no state file");
@@ -426,13 +433,13 @@ pub async fn orchestration_parse_command(
                 sender,
                 OrchestrationInstruction::ListCloudImages,
             ).await.context("sending List Cloud Images request to server")?;
-            command_success = true;
+            command_outcome = CommandOutcome::Success;
             deployment
         }
     };
     tracing::info!("finished generating commands");
     Ok(CommandResult {
         deployment: result_deployment,
-        command_success,
+        command_outcome,
     })
 }

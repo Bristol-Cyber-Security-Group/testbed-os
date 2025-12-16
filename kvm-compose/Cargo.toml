@@ -4,7 +4,8 @@ members = [
     "testbedos-server",
     "kvm-compose-schemas",
     "service-clients",
-    "kvm-compose-cli"
+    "kvm-compose-cli",
+    "packet-capture",
 ]
 
 resolver = "2"
