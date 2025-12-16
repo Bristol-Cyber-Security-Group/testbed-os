@@ -1,7 +1,7 @@
 use tokio::time::Duration;
 use tokio::process::{Command};
 use anyhow::{bail, Context};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
 use command_group::AsyncCommandGroup;
@@ -61,6 +61,38 @@ pub async fn adb_command(
     }
 
 }
+
+pub async fn install_apk(
+    namespace: &str,
+    apk_file_path: &PathBuf,
+    logging_send: &Sender<OrchestrationLogger>,
+) -> anyhow::Result<()> {
+    adb_command(namespace, &vec!["start-server".to_string()], &logging_send, false)
+        .await
+        .context("making sure adb server is running on device")?;
+
+    tracing::info!("Installing APK");
+    let apk_file_existing_path = apk_file_path.as_path();
+    
+    if apk_file_existing_path.exists() {
+        
+        let args = vec![
+            "install".to_string(),
+            apk_file_path.to_str().unwrap().to_string(),
+        ];
+
+        adb_command(namespace, &args, &logging_send, false)
+            .await
+            .context("APK installation")?;
+        
+        tracing::info!("APK installation complete");
+        
+        Ok(())
+    } else {
+        bail!("APK file not found");
+    }
+}
+
 
 pub async fn frida_setup(
     namespace: &str,

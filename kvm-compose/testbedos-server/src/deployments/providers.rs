@@ -1,9 +1,11 @@
 use crate::deployments::models::*;
 use anyhow::{bail, Context};
-use tokio::fs::File;
-use std::path::PathBuf;
+use tokio::fs::{File, OpenOptions};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::io::AsyncWriteExt;
+use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use kvm_compose_lib::state::State;
 use crate::deployments::{get_state_json, set_state_json};
 
@@ -62,6 +64,67 @@ impl DeploymentDatabaseProvider {
 #[derive(Clone)]
 pub struct FileBasedProvider {
     pub data_location: String,
+    pub lock: Arc<RwLock<()>>,
+}
+
+/// Implement the file based provider. Since we are working with both files and directories to
+/// represent state, and since we are not going to have significant traffic, we will place a lock
+/// on the provider generally. So every function that is implemented for ``DeploymentProvider`` will
+/// either place a red or write lock at the start of the function. This allows us to be generic to
+/// either the whole folder or to a specific file. This should prevent race conditions on reading
+/// after a write.
+impl FileBasedProvider {
+    pub fn new(data_location: String) -> Self {
+        Self {
+            data_location,
+            lock: Arc::new(Default::default()),
+        }
+    }
+    async fn write_lock(&self) -> RwLockWriteGuard<'_, ()> {
+        self.lock.write().await
+    }
+
+    async fn read_lock(&self) -> RwLockReadGuard<'_, ()> {
+        self.lock.read().await
+    }
+
+    async fn write(&self, file_name: String, data: String, create: bool) -> anyhow::Result<()> {
+        let _guard = self.write_lock().await;
+        let mut output = if create {
+            File::create(file_name)
+                .await
+                .context("creating deployment file")?
+        } else {
+            OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .open(file_name)
+                .await
+                .context("opening deployment file")?
+
+        };
+
+        output.write_all(data
+            .as_bytes())
+            .await
+            .context("writing to deployment file")?;
+        output.sync_all()
+            .await
+            .context("syncing deployment file")?;
+
+        Ok(())
+    }
+
+    async fn read<F: AsRef<Path>>(&self, file_name: F) -> anyhow::Result<Deployment> {
+        let _guard = self.read_lock().await;
+        let text = tokio::fs::read_to_string(file_name)
+            .await
+            .context("reading deployment file")?;
+        let config: Deployment = serde_json::from_str(&text)
+            .context("deserializing deployment file")?;
+        Ok(config)
+    }
+
 }
 
 #[async_trait]
@@ -83,20 +146,23 @@ impl DeploymentProvider for FileBasedProvider {
                 if file.display().to_string().ends_with("-logs.json") {
                     continue;
                 }
-                let text = tokio::fs::read_to_string(&file).await?;
 
-                let config = serde_json::from_str(&text);
-                if config.is_ok() {
-                    // is a validated project
-                    let deployment: Deployment = config?;
-                    deployment_list
-                        .deployments
-                        .insert(deployment.name.clone(), deployment);
-                } else {
-                    // there is a file but it is not a deployment file
-                    let file_loc = &file.display();
-                    tracing::info!("could not read file {file_loc} as a Deployment config");
+                let deployment = self.read(&file).await;
+
+                match deployment {
+                    Ok(dep) => {
+                        // is a validated project
+                        deployment_list
+                            .deployments
+                            .insert(dep.name.clone(), dep);
+                    }
+                    Err(_) => {
+                        // there is a file but it is not a deployment file
+                        let file_loc = &file.display();
+                        tracing::info!("could not read file {file_loc} as a Deployment config");
+                    }
                 }
+
             } else {
                 break;
             }
@@ -111,13 +177,12 @@ impl DeploymentProvider for FileBasedProvider {
             bail!("deployment name was empty");
         }
         let path = PathBuf::from(format!("{root_path}{name}.json"));
-        if path.is_file() {
-            let text = tokio::fs::read_to_string(path).await?;
-            let config: Deployment = serde_json::from_str(&text)?;
-            Ok(config)
-        } else {
-            bail!("deployment json for {name} does not exist")
-        }
+
+        let deployment = self.read(&path)
+            .await
+            .context(format!("reading deployment file {path:?}"))?;
+        Ok(deployment)
+
     }
 
     async fn create_deployment(&self, new_deployment: NewDeployment) -> anyhow::Result<()> {
@@ -155,8 +220,9 @@ impl DeploymentProvider for FileBasedProvider {
             last_action_uuid: None,
         };
 
-        let mut output = File::create(json_name).await?;
-        output.write_all(format!("{deployment}").as_bytes()).await?;
+        self.write(json_name, deployment.to_string(), true)
+            .await
+            .context("creating deployment file")?;
 
         Ok(())
     }
@@ -170,8 +236,10 @@ impl DeploymentProvider for FileBasedProvider {
 
         let json_name = format!("{root_path}{name}.json");
 
-        let mut output = File::create(json_name).await?;
-        output.write_all(format!("{deployment}").as_bytes()).await?;
+        self.write(json_name, deployment.to_string(), false)
+            .await
+            .context("creating deployment file")?;
+
         Ok(deployment)
     }
 
@@ -189,6 +257,8 @@ impl DeploymentProvider for FileBasedProvider {
                 bail!("cannot delete a deployment that is in RUNNING state")
             }
             _ => {
+                let _guard = self.write_lock().await;
+
                 tokio::fs::remove_file(json_name).await?;
                 // this may not exist if deployment never orchestrated, ignore fail
                 let _ = tokio::fs::remove_file(log_json_name).await;

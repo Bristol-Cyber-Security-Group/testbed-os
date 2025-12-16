@@ -2,11 +2,19 @@ name: test-harness
 
 on: [pull_request, workflow_dispatch]
 
+# This only works on main/default branches?
+#on:
+#  workflow_run:
+#    workflows: ["rust-test"]
+#    types: [completed]
+
+
 jobs:
   run-test-harness:
     runs-on: [self-hosted]
+#    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: build-harness-image
         run: |
           cd test-harness && docker image build -t test-harness:${{ github.event.pull_request.head.sha }} .
