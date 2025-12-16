@@ -15,6 +15,9 @@ jobs:
       - uses: actions/checkout@v6
       - run: apt-get update && apt-get install libvirt-dev -y
       - run: cd kvm-compose && cargo test
+
+      # clear the workspace including the cloned repo to prevent any leftover artefacts that might affect
+      # a following workflow
       - name: post-test cleanup
-        run: rm -rf kvm-compose/target || true
+        run: rm -rf ${{ github.workspace }} || true
         if: always()
