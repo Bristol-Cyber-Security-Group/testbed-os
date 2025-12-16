@@ -22,9 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: get commit sha
-        id: set_sha
         run: |
-          SHA=$(git rev-parse HEAD)
+          SHA="${{ github.event.pull_request.head.sha || github.sha }}"
           echo "COMMIT_SHA=$SHA" >> "$GITHUB_ENV"
       - name: build-harness-image
         run: |
