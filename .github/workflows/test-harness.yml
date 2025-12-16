@@ -1,6 +1,12 @@
 name: test-harness
 
-on: [pull_request, workflow_dispatch]
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - develop
 
 # This only works on main/default branches?
 #on:
