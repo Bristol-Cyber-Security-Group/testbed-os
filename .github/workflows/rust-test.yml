@@ -16,6 +16,10 @@ jobs:
       - run: apt-get update && apt-get install libvirt-dev -y
       - run: cd kvm-compose && cargo test
 
+  run-cleanup:
+    name: Cargo Test Cleanup
+    runs-on: [self-hosted]
+    steps:
       # clear the workspace including the cloned repo to prevent any leftover artefacts that might affect
       # a following workflow
       - name: post-test cleanup
