@@ -32,14 +32,11 @@ pub struct TCPDumpConfig {
     /// OVS port or interface to capture on
     pub interface: String,
 
-    // /// Optional name for mirror port, otherwise one will automatically be made
-    // pub mirror_to: Option<String>,
-
     /// Whether to mirror all traffic on the bridge
     pub span: bool,
 
     /// Optional arguments to be passed to `tcpdump`
-    pub dump_args: Vec<String>, // TODO - this needs to be something else for the pcap lib code
+    pub dump_args: Vec<String>,
 
     /// Generated OS interface to receive mirrored traffic
     pub mirror_interface: String,
@@ -58,16 +55,15 @@ impl TCPDumpConfig {
 
     pub async fn new(
         interface: String,
-        // mirror_to: Option<String>,
         span: bool,
         dump_args: Vec<String>,
         consumer: TCPDumpConsumer,
     ) -> anyhow::Result<Self> {
-        let mirror_interface = Self::generate_interface_name(&interface);
+        let mirror_interface = Self::generate_interface_name(&interface)
+            .await?;
         let mirror_name = Self::generate_mirror_name(&interface, &mirror_interface);
         let new = Self {
             interface,
-            // mirror_to,
             span,
             dump_args,
             mirror_interface,
@@ -83,31 +79,38 @@ impl TCPDumpConfig {
         Ok(new)
     }
 
-    fn generate_interface_name(in_name: &str) -> String {
-        // this is the name of the OS interface, this can only be 15 characters max
-        let mut os_interface_name = format!("mi{in_name}");
-        // truncate by 6 if greater than 10 characters
-        if os_interface_name.len() > 10 {
-            os_interface_name = os_interface_name[0..10].to_string();
-        }
-        // add a unique id to the end to fill the space ... do 14 instead of 15 so that we can put
-        // in a hyphen between the text and the unique id
-        let needed_characters = 14 - os_interface_name.len();
-        let mut rng = rand::rng();
-        let suffix = rand::distr::Alphanumeric
-            .sample_iter(&mut rng)
-            .take(needed_characters)
-            .map(char::from)
-            .collect::<String>();
+    async fn generate_interface_name(in_name: &str) -> anyhow::Result<String> {
+        // we will try to generate an interface name up to 10 times, if for some reason this
+        // collides this many times, something is seriously wrong, and we should defer to the user,
+        // since we should not keep trying until this works to prevent an infinite loop
 
-        format!("{}-{}", os_interface_name, suffix)
+        for _ in 0..10 {
+            let maybe_name = generate_name(&in_name);
+
+            // check if there was a collision, if there is, this will Err and will loop again
+            if let Ok(_) = tokio::process::Command::new("sudo")
+                .arg("ip")
+                .arg("link")
+                .arg("show")
+                .arg("dev")
+                .arg(&maybe_name)
+                .output()
+                .await
+            {
+                // exit loop early, the name does not collide
+                return Ok(maybe_name);
+            }
+
+        }
+
+        bail!("could not generate an interface name without a collision 10 times")
     }
 
     fn generate_mirror_name(in_name: &str, os_interface: &str) -> String {
         format!("mirror-{in_name}-to-{os_interface}")
     }
 
-    pub async fn validate(&self) -> anyhow::Result<()> {
+    async fn validate(&self) -> anyhow::Result<()> {
 
         // TODO - what if the interface/port is on a remote testbed
 
@@ -150,19 +153,39 @@ pub enum TCPDumpConsumer {
     // TODO other consumers i.e. databases over the network
 }
 
+fn generate_name(in_name: &str) -> String {
+    // this is the name of the OS interface, this can only be 15 characters max
+    let mut os_interface_name = format!("mi{in_name}");
+    // truncate by 6 if greater than 10 characters
+    if os_interface_name.len() > 10 {
+        os_interface_name = os_interface_name[0..10].to_string();
+    }
+    // add a unique id to the end to fill the space ... do 14 instead of 15 so that we can put
+    // in a hyphen between the text and the unique id
+    let needed_characters = 14 - os_interface_name.len();
+    let mut rng = rand::rng();
+    let suffix = rand::distr::Alphanumeric
+        .sample_iter(&mut rng)
+        .take(needed_characters)
+        .map(char::from)
+        .collect::<String>();
+
+    format!("{}-{}", os_interface_name, suffix)
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::TCPDumpConfig;
+    use crate::generate_name;
 
     #[test]
     fn test_generate_interface_name_length_constraint_short_input() {
-        let test = TCPDumpConfig::generate_interface_name("short");
+        let test = generate_name("short");
         assert!(test.len() <= 15);
     }
 
     #[test]
     fn test_generate_interface_name_length_constraint_long_input() {
-        let test = TCPDumpConfig::generate_interface_name("alonginputnameoverfifteen");
+        let test = generate_name("alonginputnameoverfifteen");
         assert!(test.len() <= 15);
     }
 
