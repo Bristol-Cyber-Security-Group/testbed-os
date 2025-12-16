@@ -21,15 +21,20 @@ jobs:
 #    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
+      - name: get commit sha
+        id: set_sha
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "$COMMIT_SHA=$SHA" >> "$GITHUB_ENV"
       - name: build-harness-image
         run: |
-          cd test-harness && docker image build -t test-harness:${{ github.sha }} .
+          cd test-harness && docker image build -t test-harness:$COMMIT_SHA .
       - name: run-test-harness
         run: |
           cd test-harness && docker run \
             -v /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock \
             -v /var/lib/libvirt/images:/var/lib/libvirt/images --network=host \
-            -e COMMIT_HASH=${{ github.sha }} --rm test-harness:${{ github.sha }}
+            -e COMMIT_HASH=$COMMIT_SHA --rm test-harness:$COMMIT_SHA
       - name: cleanup
         run: |
-          docker image rm test-harness:${{ github.sha }}
+          docker image rm test-harness:$COMMIT_SHA
