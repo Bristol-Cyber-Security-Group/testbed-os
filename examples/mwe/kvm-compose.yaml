@@ -1,0 +1,20 @@
+machines:
+  - name: server
+    network:
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:01"
+        ip: "10.0.0.10"
+    libvirt:
+      cpus: 1
+      memory_mb: 1024
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 2
+
+network:
+  ovn:
+    switches:
+      sw0:
+        subnet: "10.0.0.0/24"

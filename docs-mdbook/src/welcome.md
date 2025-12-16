@@ -6,7 +6,7 @@ TestbedOS[^1] is a platform for launching a virtualised testbed on abstract topo
 
 ## Quick Installation
 
-The TestbedOS GitHub repository can be found at [`https://github.com/Bristol-Cyber-Security-Group/testbed-os`](https://github.com/Bristol-Cyber-Security-Group/testbed-os>) and we have packaged the installation into an Ansible playbook. We will build and install TestbedOS based on this codebase using the following steps.
+The TestbedOS GitHub repository can be found at [`https://github.com/Bristol-Cyber-Security-Group/testbed-os`](https://github.com/Bristol-Cyber-Security-Group/testbed-os>) and we have packaged the installation into an Ansible playbook. The target supported platform for TestbedOS currently assumes that you have administrator privileges and that you are the single user on your machine. We will build and install TestbedOS based on this codebase using the following steps.
 
 1. On your terminal, install the prerequisites for the installation if they are not already available on your machine.
     
@@ -40,9 +40,9 @@ The TestbedOS GitHub repository can be found at [`https://github.com/Bristol-Cyb
     kvm-compose-schemas 1.0
     ```
 
-## Minimal Working Example (MWE)
+## Minimal Working Example
 
-We will show an example of a testbed deployment or a _test case_ and the most common commands for the lifecycle of creating, running, and stopping a deployment. The specification for this MWE is in the form of a YAML file called `kvm-compose.yaml`, which is also the specification for any other deployments on TestbedOS. We assume that TestbedOS has been installed as per the instructions in the previous section. 
+We will show a minimal working example (MWE) of a testbed deployment or a _test case_ and the most common commands for the lifecycle of creating, running, and stopping a deployment. The specification for this MWE is in the form of a YAML file called `kvm-compose.yaml`, which is also the specification for any other deployments on TestbedOS. We assume that TestbedOS has been installed as per the instructions in the previous section. 
 
 The `kvm-compose.yaml` specification file for this MWE has been included in the TestbedOS repository from [`https://github.com/Bristol-Cyber-Security-Group/testbed-os`](https://github.com/Bristol-Cyber-Security-Group/testbed-os>). The `kvm-compose.yaml` file for this MWE contains the following:
 
@@ -104,7 +104,17 @@ This MWE deploys a virtual machine (VM) assigned the identifier `server` in the 
 5. Once the deployment is up and running, you can interact with the deployment based on the type of guests and networking specified. TestbedOS provides many ways of interacting with a deployment and an example of this can be the following command, which uses the shell of the deployed `server` VM to execute the `ls` bash command. 
 
     ```
-    kvm-compose exec server 
+    kvm-compose exec server shell-command echo "hello world"
+    ```
+
+    This specifies the subcommand `exec` to execute a `shell-command` operation on the guest `server`. The output will show the following to indicate a successful execution.
+    ```
+    # Some TestbedOS messages
+
+    2025-12-16T10:45:24.824438Z  INFO kvm_compose_lib::orchestration::websocket: Command output:
+    hello world
+    
+    # Followed by more TestbedOS messages
     ```
 
 6. Once you are done with the deployment, simply run the following command to bring the deployment down.
@@ -120,10 +130,18 @@ This MWE deploys a virtual machine (VM) assigned the identifier `server` in the 
     ```
 This will delete the artefacts folder and that means the next time the deployment is run, `kvm-compose generate-artefacts` should be run before `kvm-compose up`.
 
+## Uninstallation
+
+You should tear down any test cases before uninstalling the testbed, see :ref:`orchestration <orchestration/index:orchestration>` for more information on how to tear down a test case.
+
+If you want to the testbed (assuming all vms and networking components have been destroyed), you can use the ``tear-down.sh`` script in the root of the testbed-or repo to remove the kvm-compose binary and python code+environments originally installed via setup.sh.
+
 ## Further Details and Documentation
 
 For more details on what TestbedOS offers and topics on how TestbedOS works under the hood, please refer to the following documentation.
 
+- [TestbedOS User Interface](user_interface.md) for the different user interfaces that TestbedOS provides, including the CLI that we have seen in the [MWE](#minimal-working-example) . 
+- [TestbedOS Dependencies](dependencies.md) for more details on what dependencies are being installed and the installation setup on your machine.
 - |kvm-compose.yaml| for the complete schema of the yaml file
 - |orchestration| section for the deployment approach
 - |networking| section for information on the network architecture of the testbed
