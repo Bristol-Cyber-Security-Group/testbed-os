@@ -19,9 +19,10 @@ jobs:
   run-cleanup:
     name: Cargo Test Cleanup
     runs-on: [self-hosted]
+    needs: run-cargo-test
+    if: always()
     steps:
       # clear the workspace including the cloned repo to prevent any leftover artefacts that might affect
       # a following workflow
       - name: post-test cleanup
         run: sudo rm -rf ${{ github.workspace }} || true
-        if: always()
