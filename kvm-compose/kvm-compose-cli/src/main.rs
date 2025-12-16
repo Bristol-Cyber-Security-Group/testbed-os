@@ -112,7 +112,7 @@ pub async fn parse_command(opts: Opts) -> anyhow::Result<()> {
             SubCommand::Up(_) => client::orchestration_action(&client, opts).await,
             SubCommand::Down => client::orchestration_action(&client, opts).await,
             SubCommand::Snapshot(_) => client::orchestration_action(&client, opts).await,
-            SubCommand::AnalysisTools(_) => unimplemented!(), // unimplemented while we are reworking tcpdump
+            SubCommand::Tool(_) => client::orchestration_action(&client, opts).await,
             SubCommand::TestbedSnapshot(_) => client::orchestration_action(&client, opts).await,
             SubCommand::Exec(_) => client::orchestration_action(&client, opts).await,
             _ => bail!("command not matched, please raise an issue"),
@@ -121,20 +121,9 @@ pub async fn parse_command(opts: Opts) -> anyhow::Result<()> {
             .context("running CLI command")?;
         Ok(())
     });
-    let interrupt_block = tokio::spawn(async move {
-        let _ = tokio::signal::ctrl_c().await;
-        tracing::info!("captured ctrl + C, gracefully stopping command");
-    });
 
-    tokio::select! {
-        result = command_block => {
-            // propagate if there was a failure in the command executed
-            result??;
-        }
-        _ = interrupt_block => {
-            bail!("exiting interrupted kvm-compose");
-        }
-    }
+    // await on the result of the command
+    command_block.await??;
 
     Ok(())
 }

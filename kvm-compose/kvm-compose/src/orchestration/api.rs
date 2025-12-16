@@ -6,12 +6,12 @@ use nix::unistd::{Gid, Uid};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Mutex;
-use kvm_compose_schemas::cli_models::{AnalysisToolsCmd, AnalysisToolsSubCmd, SnapshotSubCommand};
+use kvm_compose_schemas::cli_models::{ToolCmd, ToolSubCmd, SnapshotSubCommand};
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use kvm_compose_schemas::exec::ExecCmd;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt_image_download::OnlineCloudImage;
-use crate::analysis_tools::packet_capture::packet_capture;
+use crate::tool::packet_capture::packet_capture;
 use crate::exec::prepare_guest_exec_command;
 use crate::orchestration::{create_remote_project_folders, OrchestrationCommon, OrchestrationGuestTask};
 use crate::orchestration::ssh::SSHClient;
@@ -122,7 +122,7 @@ pub enum OrchestrationInstruction {
         snapshot_guests: bool,
     },
     /// Run an analysis tool
-    AnalysisTool(AnalysisToolsCmd),
+    AnalysisTool(ToolCmd),
     /// Return the list of supported cloud images
     ListCloudImages,
     /// Run an exec command
@@ -579,8 +579,8 @@ impl OrchestrationInstruction {
             }
             OrchestrationInstruction::AnalysisTool(at) => {
                 let analysis_tool_res = match at.tool {
-                    AnalysisToolsSubCmd::TcpDump { .. } => {
-                        packet_capture(at, cancel_token_recv).await
+                    ToolSubCmd::TcpDump { .. } => {
+                        packet_capture(at, cancel_token_recv, logging_send).await
                     }
                 };
                 match analysis_tool_res {

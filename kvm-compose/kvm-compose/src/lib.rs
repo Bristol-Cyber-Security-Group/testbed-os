@@ -19,7 +19,7 @@ pub mod orchestration;
 pub mod snapshot;
 pub mod exec;
 pub mod ovn;
-pub mod analysis_tools;
+pub mod tool;
 
 fn format_prj_name(s: &str) -> String {
     // replace awkward characters with "-"

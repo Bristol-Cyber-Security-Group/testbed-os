@@ -1,4 +1,4 @@
-use crate::cli_models::{AnalysisToolsCmd, SnapshotSubCommand, UpCmd};
+use crate::cli_models::{ToolCmd, SnapshotSubCommand, UpCmd};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -96,7 +96,7 @@ pub enum DeploymentCommand {
     TestbedSnapshot {
         snapshot_guests: bool,
     },
-    AnalysisTool(AnalysisToolsCmd),
+    Tool(ToolCmd),
     Exec(ExecCmd),
     ListCloudImages,
 }

@@ -46,8 +46,8 @@ pub enum SubCommand {
     Down,
     #[command(about = "Snapshot guest images (guests must be switched off)")]
     Snapshot(SnapshotCmd),
-    #[command(about = "Analysis tools")]
-    AnalysisTools(AnalysisToolsCmd),
+    #[command(about = "Testbed tools")]
+    Tool(ToolCmd),
     #[command(about = "Prepare all artefacts in deployment to be shared and used in another testbed")]
     TestbedSnapshot(TestbedSnapshotCmd),
     #[command(about = "Execute a command against a guest")]
@@ -65,7 +65,7 @@ impl SubCommand {
             SubCommand::Up(_) => "up".into(),
             SubCommand::Down => "down".into(),
             SubCommand::Snapshot(_) => "snapshot".into(),
-            SubCommand::AnalysisTools(_) => "analysis tools".into(),
+            SubCommand::Tool(_) => "analysis tools".into(),
             SubCommand::TestbedSnapshot(_) => "testbed snapshot".into(),
             SubCommand::Exec(_) => "exec".into(),
         }
@@ -262,29 +262,36 @@ pub struct DeploymentName {
 
 #[derive(Parser, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub struct AnalysisToolsCmd {
+pub struct ToolCmd {
     #[command(subcommand)]
-    pub tool: AnalysisToolsSubCmd,
+    pub tool: ToolSubCmd,
 }
 
-impl AnalysisToolsCmd {
+impl ToolCmd {
     pub fn name(&self) -> String {
         match self.tool {
-            AnalysisToolsSubCmd::TcpDump { .. } => "TCP Dump".to_string(),
+            ToolSubCmd::TcpDump { .. } => "TCP Dump".to_string(),
         }
     }
 }
 
 #[derive(Parser, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-pub enum AnalysisToolsSubCmd {
-    // #[clap(trailing_var_arg=true)] // TODO this doesnt seem to remove the need for -- in cli args
+pub enum ToolSubCmd {
     TcpDump {
         /// Specify either an OVS port or a guest interface
-        port_or_iface: String,
-        /// Specify the name of the output file for the capture
-        output_file: PathBuf,
-        // /// Arguments to pass through to tcpdump such as filters, don't pass -w or -i
-        // tcpdump_args: Vec<String>,
+        #[clap(short, long)]
+        interface: String,
+        /// Whether to mirror all traffic on the bridge
+        #[clap(short, long)]
+        span: bool,
+        /// Arguments to pass through to tcpdump such as filters, don't pass -w or -i
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true, index = 1)]
+        dump_args: Vec<String>,
+
+        /// Specify output location for pcap file
+        #[clap(short, long)]
+        file_output: PathBuf,
     },
 }
+
