@@ -139,15 +139,16 @@ If you want to the testbed (assuming all vms and networking components have been
 ## Further Details and Documentation
 
 For more details on what TestbedOS offers and topics on how TestbedOS works under the hood, please refer to the following documentation.
-
-- [TestbedOS User Interface](user_interface.md) for the different user interfaces that TestbedOS provides, including the CLI that we have seen in the [MWE](#minimal-working-example) . 
+ 
 - [TestbedOS Dependencies](dependencies.md) for more details on what dependencies are being installed and the installation setup on your machine.
-- |kvm-compose.yaml| for the complete schema of the yaml file
-- |orchestration| section for the deployment approach
+- [TestbedOS Configurations](configurations.md) for more details on the configurations done during installation, the required configuration for having TestbedOS in the clustering mode, and also custom configurations to suit your specific needs.
+- [TestbedOS User Interface](user_interface.md) for the different user interfaces that TestbedOS provides, including the CLI that we have seen in the [MWE](#minimal-working-example).
+- [TestbedOS Schema](schema.md) to see the full available options for `kvm-compose.yaml`, including the different guest types and networking settings available for deployment.
+- [TestbedOS Clustering Mode](clustering_mode.md) for having a cluster of hosts to run a deployment in TestbedOS.
+- [TestbedOS Server](server.md) for more information on the TestbedOS server in the deployment and how it works.
+- [TestbedOS Orchestration](orchestration.md) section for the deployment approach.
 - |networking| section for information on the network architecture of the testbed
 - |installation|, |host.json| sections for initial setup before using yaml files to create testbed deployments
-
-To get started with your first test case, see the |examples| topic which will walk you through a minimal test case building up a |kvm-compose.yaml| file.
 
 
 [^1]: The term testbed operating system was being used by Professor Steve Wong at the Singapore Institute of Technology.
