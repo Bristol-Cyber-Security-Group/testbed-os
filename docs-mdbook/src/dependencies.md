@@ -5,14 +5,14 @@ This installation guide will outline each component needed.
 
 ## General Dependencies
 
-**[Rust](https://rustup.rs/)**
+- **[Rust](https://rustup.rs/)**
 The Rust programming language. Default configuration, when prompted, is fine.
 
-**[Poetry](https://python-poetry.org/docs/#installation)**
+- **[Poetry](https://python-poetry.org/docs/#installation)**
 Please make sure you have python version `3.10` and above, consider using pyenv to manage python installs (see [Poetry Documentation](https://python-poetry.org/docs/managing-environments/)).
 Also make sure you have `pip3` installed for this python version, for Ubuntu install `python3-pip`.
 
-**[PyEnv](https://github.com/pyenv/pyenv)**
+- **[PyEnv](https://github.com/pyenv/pyenv)**
 Python version manager, asks you to manually add it to your shell profile once installed.
 
 Poetry has been used to manage the python virtual environments for TestbedOS.
