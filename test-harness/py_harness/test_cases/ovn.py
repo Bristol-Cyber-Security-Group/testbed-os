@@ -41,11 +41,18 @@ class OvnTestCase(TestCase):
 
         internet_test = confirm_no_internet_connectivity(self.test_case_name, self.linked_clone_hosts, merged_guests)
 
+        consecutive_up = down_then_up(
+            self.test_case_name,
+            "_consecutive_up",
+            self.linked_clone_hosts,
+        )
+
         return [
             up_result_report,
             sw0_to_sw1,
             sw1_to_sw0,
             internet_test,
+            consecutive_up,
         ]
 
 registered_test_cases.append(OvnTestCase)

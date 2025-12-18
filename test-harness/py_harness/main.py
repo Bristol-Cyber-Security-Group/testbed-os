@@ -177,6 +177,10 @@ def main(connection: libvirt.virConnect) -> TestHarnessReport:
                     else:
                         n_host_report.clear_linked_clone_hosts = True
 
+            if not harness_settings.dev_mode:
+                # now that linked clones are destroyed, we can destroy the base host
+                base_host.ensure_destroyed()
+
 
     # clean up the test harness working area in the libvirt images folder
     if not harness_settings.dev_mode:
