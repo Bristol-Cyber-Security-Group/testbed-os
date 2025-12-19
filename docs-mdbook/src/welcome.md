@@ -1,4 +1,4 @@
-# Welcome to TestbedOS Documentation!
+# Welcome to the TestbedOS Documentation!
 
 ## What is TestbedOS?
 
