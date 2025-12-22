@@ -1,11 +1,14 @@
 # Summary
 
-- [Welcome to TestbedOS!](welcome.md)
+- [Welcome to the TestbedOS Documentation!](welcome.md)
 - [TestbedOS Dependencies](dependencies.md)
 - [TestbedOS Configurations](configurations.md)
 - [TestbedOS User Interface](user_interface.md)
 - [TestbedOS Schema](schema.md)
   - [TestbedOS Guest Machines](machines.md)
+    - [TestbedOS libvirt Guest Machines](libvirt.md)
+    - [TestbedOS Docker Guest Machines](docker.md)
+    - [TestbedOS Android Virtual Device](avd.md)
   - [TestbedOS Guest Networking](networking.md)
   - [TestbedOS Tooling](tooling.md)
   - [TestbedOS Deployment Options](deployment_options.md)
