@@ -13,6 +13,8 @@ TestbedOS also provides Docker containers as guest machines under the `docker` f
 
 Internally, these options are passed from TestbedOS to `docker run`, for more information on these options please refer to [docker container run](https://docs.docker.com/reference/cli/docker/container/run/).
 
+## Minimal Working Example (MWE)
+
 For example, the following shows an example that can be run on TestbedOS similar to the [Minimal Working Example](welcome.md#minimal-working-example).
 
 ``` yaml

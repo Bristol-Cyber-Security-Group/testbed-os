@@ -1,6 +1,11 @@
 # TestbedOS Guest Machines
 
-`TestbedOS` currently provides three types of guest machines for a deployment: libvirt virtual machines (VMs), Docker containers, and Android Virtual Devices (AVDs). All guest types can exist in the same deployment as 'first-class' guests. This means the guests are deployed natively on TestbedOS and can interact with each other without being emulated, e.g., being wrapped in a VM.
+`TestbedOS` currently provides three types of guest machines for a deployment: libvirt virtual machines (VMs), Docker containers, and Android Virtual Devices (AVDs). 
+These guests can all be defined and assigned to the TestbedOS network in the deployment. 
+We have introduced Docker and AVD as guests to remove the need to deploy these inside a libvirt virtual machine. 
+This removes the overhead of a whole virtual machine in terms of performance and disk usage, and allows all guests to be treated as `first-class` in TestbedOS.
+However, if the use case requires it or there is some functionality that is not supported in our implementation, you are free to deploy Docker and AVD instances inside Libvirt virtual machines. 
+The following describes further how to deploy the guests in TestbedOS, specifically in the `kvm-compose.yaml` file, which would already be familiar to you if you have followed the [Minimal Working Example](welcome.md#minimal-working-example).
 
 The `machine` section of the `kvm-compose.yaml` file allows you to define one or more instances of guest machines for a deployment. The definitions depend on the type of guest machines for a deployment, which further includes the specific configuration for the definition of each guest. In the `machine` section of the `kvm-compose.yaml` file the following JSON keys can be specified.
 
@@ -40,7 +45,7 @@ For an AVD guest,
 ``` yaml
 ...
     - name: avd-guest
-    network:
+      network:
         - switch: sw0
           gateway: 10.0.0.1
           mac: "00:00:00:00:00:01"

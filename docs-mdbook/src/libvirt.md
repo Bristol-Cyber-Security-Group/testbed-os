@@ -13,7 +13,19 @@ The `libvirt` subsection in the `kvm-compose.yaml` file offers the following fie
 - **`cpus`**: the number of virtual cpus to assign to the libvirt guest.
 - **`memory_mbs`**: the amount of memory in megabytes to be allocated to the libvirt guest.
 
-The following snippets show examples of the relevant parts of possible libvirt guest definitions. For a `cloud_image` libvirt guest,
+The following snippets show examples of the relevant parts of possible libvirt guest definitions for each of the libvirt guest types. 
+
+## libvirt Guest Type: Cloud Image
+
+For a `cloud_image` libvirt guest, these further options are available:
+- **`name`**: name of the supported `cloud-init` image,
+- **`expand_gigabyte`**: the size of the disk storage from the TestbedOS to be allocated to the guest,
+- **`environment`**: environment variables to be supplied to the `cloud_image` libvirt guest as a key-value store,
+- **`context`**: a directory on the TestbedOS host to be mounted to the guest's directory of `/etc/nocloud/context`,
+- **`setup_script`**: the script executed on the guest before deployment, specifically after `kvm-compose generate-artefacts`, and
+- **`run_script`**: the script executed on the guest at the start of the deployment, specifically after `kvm-compose up`.
+
+The following is an example snippet in the `kvm-compose.yaml` file on the relevant section for the `cloud_image` libvirt guest type. We have seen a more complete working example in [Minimal Working Example](installation.md#minimal-working-example).
 
 ``` yaml
 - name: cloud-image-guest
@@ -23,7 +35,15 @@ The following snippets show examples of the relevant parts of possible libvirt g
         name: ubuntu_20_04
 ```
 
-For an `existing_disk` libvirt guest, with an additional parameter `path` to refer to the existing libvirt image on the TestbedOS host's disk.
+## libvirt Guest Type: Existing Disk
+
+For an `existing_disk` libvirt guest, these further options are available:
+- **`path`**: the TestbedOS host path to the pre-existing libvirt image
+- **`driver_type`**: an optional field for the image format of the pre-existing image. Possible values are `raw` or `qcow2`, with `raw` as the default value, 
+- **`device_type`**: an optional field for the type of storage device for the `existing_disk` libvirt guest. Possible values are `disk` or `cdrom`, with `disk` as the default value, and
+- **`readonly`**: a `true` or `false` value that indicates if the disk image is read-only, with `false` as the default value.
+
+The following is an example snippet in the `kvm-compose.yaml` file on the relevant section for the `existing_disk` libvirt guest type.
 
 ``` yaml
 - name: existing-disk-guest
@@ -32,6 +52,8 @@ For an `existing_disk` libvirt guest, with an additional parameter `path` to ref
       existing_disk:
         path: /path/to/prebuilt/image.img
 ```
+
+## libvirt Guest Type: ISO Guest
 
 For an `iso-guest` libvirt guest, with an additional parameter `path` to refer to the installation ISO image on the TestbedOS host's disk.
 
@@ -42,8 +64,6 @@ For an `iso-guest` libvirt guest, with an additional parameter `path` to refer t
       iso_guest:
         path: /path/to/install/iso.iso
 ```
-
-We have previously provided an example to run a libvirt `cloud_image` guest in [Minimal Working Example](welcome.md#minimal-working-example). Follow along to get a sense of how TestbedOS runs a libvirt guest machine.
 
 ## Scaling
 
