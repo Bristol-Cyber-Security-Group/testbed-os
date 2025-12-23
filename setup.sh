@@ -31,17 +31,27 @@ poetry env use 3.10.5 || exit
 poetry install || exit
 #poetry update || exit
 
-echo "building man pages"
+# echo "building man pages"
+# # remove old doc build
+# rm -rf build/*
+# # build man pages (use kvm-orchestrate venv as it has sphinx and sphinx-click installed)
+# poetry run sphinx-build -M man docs build
+# # build html pages of documentation which can be useful
+# poetry run sphinx-build -M html docs build
+# # place documentation in server assets
+# sudo rm -rf /var/lib/testbedos/assets/documentation/
+# sudo mkdir /var/lib/testbedos/assets/documentation/
+# sudo cp -r build/html/ /var/lib/testbedos/assets/documentation/
+
+echo "building html pages"
 # remove old doc build
 rm -rf build/*
-# build man pages (use kvm-orchestrate venv as it has sphinx and sphinx-click installed)
-poetry run sphinx-build -M man docs build
-# build html pages of documentation which can be useful
-poetry run sphinx-build -M html docs build
+# build html pages using mdbook
+mdbook build docs/ -d build
 # place documentation in server assets
 sudo rm -rf /var/lib/testbedos/assets/documentation/
 sudo mkdir /var/lib/testbedos/assets/documentation/
-sudo cp -r build/html/ /var/lib/testbedos/assets/documentation/
+sudo cp -r build/* /var/lib/testbedos/assets/documentation/
 
 # install man pages TODO
 

@@ -7,3 +7,5 @@ __pycache__/
 
 ./ovn/
 kvm-compose/testbedos-server/assets/documentation/*
+docs/book/*
+docs-mdbook/*
