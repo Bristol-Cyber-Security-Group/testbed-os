@@ -1,36 +1,35 @@
-Host JSON
-=========
+# Host JSON
 
 The host JSON contains basic information about how the testbed can use the network interfaces of the host for the guests it will create.
 This is also used for the OVN configuration.
 
 The following is an example `host.json`:
 
-.. code-block:: json
-
-    {
-      "ip": "10.50.0.1",
-      "user": "ubuntu",
-      "identity_file": "/home/ubuntu/.ssh/id_ed25519",
-      "testbed_nic": "eth0",
-      "main_interface": "wlo1",
-      "is_main_host": true,
-      "ovn": {
-        "chassis_name": "main",
-        "bridge": "br-int",
-        "encap_type": "geneve",
-        "encap_ip": "10.50.0.1",
-        "main_ovn_remote": "unix:/usr/local/var/run/ovn/ovnsb_db.sock",
-        "client_ovn_remote": null,
-        "bridge_mappings": [
-          [
-            "public",
-            "br-ex",
-            "172.16.1.1/24"
-          ]
-        ]
-      }
-    }
+``` json
+{
+  "ip": "10.50.0.1",
+  "user": "ubuntu",
+  "identity_file": "/home/ubuntu/.ssh/id_ed25519",
+  "testbed_nic": "eth0",
+  "main_interface": "wlo1",
+  "is_main_host": true,
+  "ovn": {
+    "chassis_name": "main",
+    "bridge": "br-int",
+    "encap_type": "geneve",
+    "encap_ip": "10.50.0.1",
+    "main_ovn_remote": "unix:/usr/local/var/run/ovn/ovnsb_db.sock",
+    "client_ovn_remote": null,
+    "bridge_mappings": [
+      [
+        "public",
+        "br-ex",
+        "172.16.1.1/24"
+      ]
+    ]
+  }
+}
+```
 
 These are generally good defaults you can use in your own testbed, apart from the username and identity_file path.
 
@@ -51,8 +50,7 @@ You need to specify the protocol and port to the main's OVN server - so just rep
 Note that when in client mode, the main will only need some of this whole configuration but it will require this JSON to be valid before it accepts the client join request.
 
 
-Cluster Mode
-------------
+## Cluster Mode
 
 The above example shows you how to set up the main testbed server.
 To set up the client testbed server(s), you must edit the `host.json` slightly.
@@ -63,43 +61,43 @@ IT is currently unsupported using the same network interface for main internet c
 If the main testbed server has the IP `10.50.0.1` and the client we are configuring has ip `10.50.0.2`, you can do the following.
 Note that the `chassis_name` must be unique in your cluster.
 
-.. code-block:: json
-
-    {
-      "ip": "10.50.0.2",
-      "user": "ubuntu",
-      "identity_file": "/home/ubuntu/.ssh/id_ed25519",
-      "testbed_nic": "eth0",
-      "main_interface": "wlo1",
-      "is_main_host": true,
-      "ovn": {
-        "chassis_name": "client1",
-        "bridge": "br-int",
-        "encap_type": "geneve",
-        "encap_ip": "10.50.0.2",
-        "main_ovn_remote": "tcp:10.50.0.1:6642",
-        "client_ovn_remote": null,
-        "bridge_mappings": [
-          [
-            "public",
-            "br-ex",
-            "172.16.1.1/24"
-          ]
-        ]
-      }
-    }
+``` json
+{
+  "ip": "10.50.0.2",
+  "user": "ubuntu",
+  "identity_file": "/home/ubuntu/.ssh/id_ed25519",
+  "testbed_nic": "eth0",
+  "main_interface": "wlo1",
+  "is_main_host": true,
+  "ovn": {
+    "chassis_name": "client1",
+    "bridge": "br-int",
+    "encap_type": "geneve",
+    "encap_ip": "10.50.0.2",
+    "main_ovn_remote": "tcp:10.50.0.1:6642",
+    "client_ovn_remote": null,
+    "bridge_mappings": [
+      [
+        "public",
+        "br-ex",
+        "172.16.1.1/24"
+      ]
+    ]
+  }
+}
+```
 
 Once that is done, you can then run:
 
-.. code-block:: shell
-
-    sudo testbedos-server client -m 10.50.0.1 -t eth0
+``` bash
+sudo testbedos-server client -m 10.50.0.1 -t eth0
+```
 
 Then you can check with OVN on the main testbed host to see the client chassis appear with:
 
-.. code-block:: shell
-
-    sudo ovn-sbctl show
+``` bash
+sudo ovn-sbctl show
+```
 
 And you will see each chassis listed.
 

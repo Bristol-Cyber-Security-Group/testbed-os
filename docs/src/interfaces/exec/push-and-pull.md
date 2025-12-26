@@ -1,11 +1,9 @@
-Push and Pull files from guests
-===============================
+# Push and Pull files from guests
 
 Both these commands use the same format, one is to push files from the host into the guest.
 The other is to pull files from the guest onto the host.
 
-Push
-----
+## Push
 
 Pushing files into the guests is only supported for libvirt guests.
 For Docker, please use the file and folder mounts feature.
@@ -23,8 +21,7 @@ There is also currently no mechanism to defer back to the user to ask for a pass
 
 If you are using the CLI for more detailed command usage, please use `kvm-compose exec push --help`.
 
-Architecture
-************
+## Architecture
 
 The file pushing contains several steps to prepare the data, prepare the guest, move the data into the guest then clean up.
 Firstly the file or the folder is placed into an .iso file.
@@ -38,7 +35,6 @@ From here, the file or folder is copied to the target location specified by the 
 Once copied, the device is unmounted from `/mnt/filepush`, then the CD ROM is detached from the guest.
 The original .iso file is then deleted from `/tmp`.
 
-Pull
-----
+## Pull
 
 Not yet implemented.

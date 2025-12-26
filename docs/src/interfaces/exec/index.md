@@ -1,5 +1,4 @@
-Exec Commands
-=============
+# Exec Commands
 
 The kvm-compose CLI offers a way to run commands and tools against the guests.
 This facilitates accessing the guest for the user as the guest may be in a network namespace or on a client testbed host.
@@ -23,13 +22,5 @@ If this is a tool packages with the testbed, for example:
 
 this will install the frida server in the guest (android guests only).
 
-For more information on each possible command in `exec` see:
-
-.. toctree::
-    :maxdepth: 2
-    :caption: Contents:
-
-    tool
-    shell-command
-    push-and-pull
+For more information on each possible command in `exec` see the other docs in `exec`.
 

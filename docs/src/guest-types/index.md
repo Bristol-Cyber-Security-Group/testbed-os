@@ -1,5 +1,4 @@
-Guest Types
-===========
+# Guest Types
 
 The testbed supports three main types of guests in the yaml file:
 
@@ -16,8 +15,7 @@ However, if the use case requires it or there is some functionality that is not 
 
 The following subsections describe further the capabilities of the guest types, implementation details and limitations.
 
-Libvirt
--------
+## Libvirt
 
 The Libvirt virtual machines are split into three sub-types based on their mode of installation:
 
@@ -38,8 +36,7 @@ Depending on how the guest is configured, if getty is enabled inside the guest y
 See in the state.json file after you have executed `generate-artefacts` to see the port number for this TTY.
 You will need to log in to the guest using the username and password.
 
-Docker
-------
+## Docker
 
 The docker guests have little configuration needed, the testbed will provision the required networking for the running container.
 Note that since the container is assigned to the testbed network, the networking works slightly differently to how you expect if you were using just docker or docker-compose.
@@ -51,8 +48,7 @@ For example, if the project is called `analysis` and the docker machine name in 
 If you have used scaling in the machine definition, you will need to append the id of the scaled container.
 For example, if you have scaling set to 3 (where the ids start at 0) and you want to run a docker command on the second id (1) then you would use `analysis-webserver-1` as the container name.
 
-Android Virtual Device
-----------------------
+## Android Virtual Device
 
 The AVD guests can either be created and deployed on demand or you are able to bring a pre-configured image to the testbed.
 

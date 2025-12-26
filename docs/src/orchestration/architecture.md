@@ -1,12 +1,9 @@
-============
-Architecture
-============
+# Architecture
 
-The orchestration in testbed works off the |state JSON|, where the elements in this state will have a corresponding way to be provisioned in the testbed.
-The state is created through the process of creating a logical testbed from the |kvm-compose.yaml|.
+The orchestration in testbed works off the [state JSON](../kvm-compose/architecture.md#state-json), where the elements in this state will have a corresponding way to be provisioned in the testbed.
+The state is created through the process of creating a logical testbed from the [kvm-compose.yaml](../kvm-compose/kvm-compose-yaml/index.md#kvm-compose-yaml).
 
-Background
-----------
+## Background
 
 Orchestration is run on the server, the clients (the CLI, TUI and GUI) will send commands that will be processed by the server.
 The orchestration code uses the rust `async` syntax but rather than running the orchestration tasks in parallel, they are executed concurrently.
@@ -19,68 +16,69 @@ This means they all require the state file to have been created (via generate-ar
 Every command is built together as a series of instructions, as mentioned before, each instruction has an order and can batch on multiple resources.
 For example, all commands start with the `Init` instruction as an initial check of the system, then followed by the series of instruction(s) to complete the command, completed with the `End` instruction.
 
-GUI Technical Detail
---------------------
+## GUI Technical Detail
 
 The GUI works slightly differently to the CLI and TUI, where the command generation occurs on the server.
 Since the GUI does not have filesystem access, the GUI will make one extra call before command running to ask the server to read the state file and generate the commands on it's behalf.
 Once generated, the server will send the command list in order to the GUI.
 Then, the GUI will continue with the command running in the same way as the CLI and TUI.
 
-Command Running
----------------
+## Command Running
+
 The core functionality of this tool is to take a mapping from a hostname, which can either be a testbed guest or a testbed host and run a script/command or push a file to them.
 This enables the deployment across the distributed testbed using SSH.
 In this document, we will describe the execution of a command or script or pushing a file as a "task".
 
 There are four different scenarios for command running of tasks:
 
-:local testbed host: This is running a task on the current (main) testbed host.
-    Note: there is no need for SSH as it will be a local command.
-    Note: we do not need to push files since the artefacts will already be in this host's file system.
+Local testbed host
+: This is running a task on the current (main) testbed host.
+  <br>Note: there is no need for SSH as it will be a local command. 
+  <br>Note: we do not need to push files since the artefacts will already be in this host's file system.
 
-:local testbed guest: This is running a task on a testbed guest that is on the current (main) testbed host.
-    This uses SSH.
+Local testbed guest
+: This is running a task on a testbed guest that is on the current (main) testbed host.
+  <br>This uses SSH.
 
-:remote testbed host: This is running a task on a remote testbed host.
-    This uses SSH.
+Remote testbed host
+: This is running a task on a remote testbed host.
+  <br>This uses SSH.
 
-:remote testbed guest: This is running a task on a testbed guest that is on a remote testbed host.
-    This uses a proxied SSH, where we SSH onto the testbed host first then SSH onto the testbed guest.
+Remote testbed guest
+: This is running a task on a testbed guest that is on a remote testbed host.
+  <br>This uses a proxied SSH, where we SSH onto the testbed host first then SSH onto the testbed guest.
 
-Stages
-------
+## Stages
+
 There are several stages defined for each deployment stage of the testbed.
 Each stage, where possible will execute tasks on all target host/guest in parallel.
 These stages do have a dependency, as follows:
 
-1) Check for Artefacts Stage (ensures the state JSON and artefacts folder exist and deserialise the state JSON)
-2) Check if all testbeds to be used in the deployment are running
-3) Create project folders on client testbed hosts (if being used)
-4) Network Stage
-    1) deploy the libvirt network on the main testbed host
-    2) deploy the openvswitch bridges across all testbed hosts
-    3) deploy the openvswitch tunnels across all testbed hosts
-5) If clones are defined
-    1) provision the golden image if shared install script supplied
-    2) create .qcow2 linked clones from golden image
-6) Guest Deploy Stage
-    1) distribute artefacts for all testbed guest to the respective testbed hosts
-    2) rebase any linked clone images that are on remote testbed hosts
-    3) start all guests
-7) Guest Setup Stage
-    1) execute (if specified in the |kvm-compose.yaml| file) the setup scripts for all testbed guests
+1. Check for Artefacts Stage (ensures the state JSON and artefacts folder exist and deserialise the state JSON)
+2. Check if all testbeds to be used in the deployment are running
+3. Create project folders on client testbed hosts (if being used)
+4. Network Stage
+    1. deploy the libvirt network on the main testbed host
+    2. deploy the openvswitch bridges across all testbed hosts
+    3. deploy the openvswitch tunnels across all testbed hosts
+5. If clones are defined
+    1. provision the golden image if shared install script supplied
+    2. create .qcow2 linked clones from golden image
+6. Guest Deploy Stage
+    1. distribute artefacts for all testbed guest to the respective testbed hosts
+    2. rebase any linked clone images that are on remote testbed hosts
+    3. start all guests
+7. Guest Setup Stage
+    1. execute (if specified in the [kvm-compose.yaml](../kvm-compose/kvm-compose-yaml/index.md#kvm-compose-yaml) file) the setup scripts for all testbed guests
 
-Cancellation
-------------
+## Cancellation
 
 The orchestration and command running supports cancellation of commands.
 This means you are able to cancel or interrupt a command, while it is running on the server and have a graceful exist.
 For the CLI and TUI, there is a `ctrl+c` handler, which when triggered will cancel the command running and tell the server to stop.
 For the GUI, there is a cancel button on the command running page, which will do the same thing.
 
-Scaling
--------
+## Scaling
 
 Scaling is a feature in the testbed backed by the qemu linked clones functionality.
 The backing image for the clones will become .qcow2 images (qemu copy on write) so that they are efficient with space.
@@ -91,15 +89,14 @@ Given the use of the scaling parameter (see kvm-compose.yaml schema and kvm-comp
 There is an extra stage executed, if clones are present in the state.json to provision the golden image (backing image) and then create linked clones from it.
 The process to create the linked clones:
 
-1) start the golden image
-2) wait for it to be available
-3) execute share install script
-4) turn off guest
-5) wait for guest to be shut down for write lock to be removed
-6) create n number of clones as specified in the kvm-compose.yaml file
+1. start the golden image
+2. wait for it to be available
+3. execute share install script
+4. turn off guest
+5. wait for guest to be shut down for write lock to be removed
+6. create n number of clones as specified in the kvm-compose.yaml file
 
-Snapshots
----------
+## Snapshots
 
 The testbed also supports snapshots of libvirt guests.
 It supports multiple testbed hosts.
@@ -108,8 +105,7 @@ You can create/restore/delete/list snapshots through the `kvm-compose` CLI.
 The snapshots are stored on the respective testbed hosts the guests are created on.
 The CLI is merely a wrapper around the libvirt snapshot API, so if you create a snapshot outside of the testbed tools the snapshot will be available to the testbed.
 
-Existing Disk
-^^^^^^^^^^^^^
+### Existing Disk
 
 When you bring a pre-configured image to the testbed, we will not overwrite the original image to preserve it.
 Instead, by default the testbed will create a linked clone of this image in the project artefacts folder.
@@ -120,8 +116,7 @@ When the existing disk linked clone is going to be placed on a remote testbed ho
 This is because we cannot use linked clones over the network, and because we don't have a distributed filesystem at the moment to support this.
 
 
-General Notes
-^^^^^^^^^^^^^
+### General Notes
 
 Once the guest deploy stage is reached, the linked clones are started in the same way as non linked clones.
 Note that the golden image must be present on any testbed host that has a clone, if the clones are distributed over multiple testbed hosts.
@@ -130,18 +125,16 @@ Note that the clone guests are treated as an 'existing disk' guest type internal
 
 The timeout for waiting to connect to a guest is 2 minutes, this has been chosen arbitrarily with no consideration for a scaled setup where many guests are requested causing a big load on the CPU and could naturally push connection time to over 2 minutes.
 
-Delta Change
-^^^^^^^^^^^^
+### Delta Change
 
-The testbed currently does not yet factor in if you have made changes to the |kvm-compose.yaml| file, after deploying.
+The testbed currently does not yet factor in if you have made changes to the [kvm-compose.yaml](../kvm-compose/kvm-compose-yaml/index.md#kvm-compose-yaml) file, after deploying.
 This means you will encounter state drift if running `up`, then changing the yaml and then running `up` again.
 To be sure there is no state drift, make sure to run `down` first.
 Note that since you have already deployed something and a state file exists, you will need to run up with the `--provision` flag.
 
 We look to improve this state drift use case in the future.
 
-Technical Architecture
-======================
+## Technical Architecture
 
 The orchestration and command running are executed over a websocket from the client.
 The client will send a series of instructions that make up the orchestration command one by one until completion.
@@ -177,10 +170,3 @@ This logging would be outside of the protocol outlined above.
 To manage this, during the run of each instruction, the server also has a logging specific channel that is sent to the instruction processing code.
 If any logging events are emitted from the instruction, the serer will emit this log to the client through the websocket, and it will be handled concurrently to the protocol.
 
-
-
-
-
-.. |state JSON| replace:: :ref:`state JSON <kvm-compose/architecture:State JSON>`
-.. |artefacts| replace:: :ref:`artefacts <kvm-compose/architecture:artefacts>`
-.. |kvm-compose.yaml| replace:: :ref:`kvm-compose/kvm-compose-yaml/index:kvm-compose Yaml`

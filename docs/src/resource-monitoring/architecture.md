@@ -1,10 +1,8 @@
-Resource Monitoring Architecture
-================================
+# Resource Monitoring Architecture
 
 This architecture document contains info on the backend and frontend architectures.
 
-Backend
--------
+## Backend
 
 We deploy the resource monitoring stack using docker-compose.
 This stack contains 1) Grafana 2) Prometheus 3) Nginx.
@@ -29,27 +27,23 @@ While this can be tuned, we need to consider the time it takes for the main test
 Therefore the tuning must consider how this scales as we add more testbed hosts and more guests to the testbed cluster.
 
 
-Libvirt
-~~~~~~~
+### Libvirt
 
 A connection to the libvirt daemon is made to request metric data.
 
-Docker
-~~~~~~
+### Docker
 
 We look directly at the filesystem under `/sys/fs/cgroup/system.slice/docker-<container id>.scope/` for live metrics.
 Docker offers a `stats` endpoint, but this uses a 1s sample rate.
 Rather than connecting to the unix socket over and over for this, we have opted to directly inspect the files.
 This means we are at least consistent in the sampling rate of all guest types.
 
-Android
-~~~~~~~
+### Android
 
 N/A
 
 
-Frontend
---------
+## Frontend
 
 The testbed server resource monitoring dashboard endpoint takes in a named deployment.
 It will look at the state.json and get the names of the testbed hosts and guests that make up the deployment, then render an html page requesting graphs from grafane for each host/guest.

@@ -1,5 +1,4 @@
-Packet Capture
-==============
+# Packet Capture
 
 The testbed allows you to capture packets from OVN by providing a wrapper around `tcp-dump`.
 It works in a similar way to `ovs-tcpdump` in that it manages the lifecycle of creating and destroying the mirror port for you.

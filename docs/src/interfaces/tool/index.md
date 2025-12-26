@@ -1,5 +1,4 @@
-Tool Commands
-=============
+# Tool Commands
 
 The testbed offers tools to run against the environment, that isn't necessarily specific to a guest in a deployment.
 
@@ -9,10 +8,4 @@ To use tools they live under:
 
 Please refer to the `--help` information for each too for specific help documentation.
 
-For more information on each possible command in `tool` see:
-
-.. toctree::
-    :maxdepth: 2
-    :caption: Contents:
-
-    packet-capture
+For more information on each possible command in `tool` see [packet-capture](./packet-capture.md).
