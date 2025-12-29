@@ -1,3 +1,8 @@
+---
+title: INTERFACES-EXEC-SHELL-COMMAND
+section: 1
+---
+
 # shell-command
 
 This allows you to run ad-hoc commands in the guest.

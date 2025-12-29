@@ -1,3 +1,8 @@
+---
+title: KVM-COMPOSE-YAML-SCHEMA
+section: 1
+---
+
 # Schema
 
 The top level of the schema has four main sections:

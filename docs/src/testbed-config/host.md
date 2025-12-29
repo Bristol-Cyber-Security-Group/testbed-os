@@ -1,3 +1,8 @@
+---
+title: TESTBED-CONFIG-HOST
+section: 1
+---
+
 # Host JSON
 
 The host JSON contains basic information about how the testbed can use the network interfaces of the host for the guests it will create.

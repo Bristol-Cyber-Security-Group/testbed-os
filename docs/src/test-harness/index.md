@@ -1,3 +1,8 @@
+---
+title: TEST-HARNESS
+section: 1
+---
+
 # Test Harness
 
 The test harness is used to test all of the features of the testbed through integration tests.

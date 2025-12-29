@@ -1,3 +1,8 @@
+---
+title: TESTBEDOS-SERVER-API
+section: 1
+---
+
 # TestbedOS Server API
 
 The root of the REST API for the server can be found at `/api/` on the servers url, the default is `localhost:3355`.

@@ -31,27 +31,37 @@ poetry env use 3.10.5 || exit
 poetry install || exit
 #poetry update || exit
 
-# echo "building man pages"
-# # remove old doc build
-# rm -rf build/*
-# # build man pages (use kvm-orchestrate venv as it has sphinx and sphinx-click installed)
-# poetry run sphinx-build -M man docs build
-# # build html pages of documentation which can be useful
-# poetry run sphinx-build -M html docs build
-# # place documentation in server assets
-# sudo rm -rf /var/lib/testbedos/assets/documentation/
-# sudo mkdir /var/lib/testbedos/assets/documentation/
-# sudo cp -r build/html/ /var/lib/testbedos/assets/documentation/
-
-echo "building html pages"
-# remove old doc build
+# removing old doc build and make new structure
 rm -rf build/*
-# build html pages using mdbook
-mdbook build docs/ -d build
+mkdir build/html/
+mkdir build/man/
+
+echo "building man pages"
+# building the man pages for each md file
+find ./docs/src/ -type f -name "*.md" | while IFS= read -r file; do
+    relative_path=$(realpath --relative-to="./docs/src/" "$file")   # relative path from testbed-os including filename and extension
+    relative_dir=build/man/$(dirname $relative_path)    # path difference excluding filename and extension in /build/man
+    mkdir -p $relative_dir                              # create the same path difference in /build/man
+    relative_path=${relative_path%.md}.1                # changing the extension
+    pandoc $file -s -t man -M author="BCSG" -o ./build/man/$relative_path   # generating the man page
+    
+    cp $file ${file%.md}.bak            # making a backup for the file as this will be overwritten when removing the man pages metadata yaml declaration 
+    sed -i '/^---$/,/^---$/d' "$file"   # removing the metadata yaml declaration for the man pages metadata for pandoc
+done
+
+echo "building the html pages"
+mdbook build docs/ -d build/html/       # generating the html files from the md files
+
+# restoring the original md files with the pandoc man pages metadata yaml declaration and deleting the backup
+find ./docs/src/ -type f -name "*.bak" | while IFS= read -r file; do
+    cp $file ${file%.bak}.md
+    rm $file
+done
+
 # place documentation in server assets
 sudo rm -rf /var/lib/testbedos/assets/documentation/
 sudo mkdir /var/lib/testbedos/assets/documentation/
-sudo cp -r build/* /var/lib/testbedos/assets/documentation/
+sudo cp -r build/html/ /var/lib/testbedos/assets/documentation/
 
 # install man pages TODO
 

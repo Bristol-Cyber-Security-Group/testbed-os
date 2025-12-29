@@ -1,3 +1,8 @@
+---
+title: TESTBEDOS-SERVER-ARCHITECTURE
+section: 1
+---
+
 # TestbedOS Server
 
 ``TestbedOS Server`` is a server that runs in the background as a daemon to keep state of the testbed deployments.

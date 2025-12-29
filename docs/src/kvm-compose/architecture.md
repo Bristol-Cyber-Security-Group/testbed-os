@@ -1,3 +1,8 @@
+---
+title: KVM-COMPOSE-ARCHITECTURE
+section: 1
+---
+
 # Architecture
 
 `kvm-compose` is a binary CLI tool written in rust.

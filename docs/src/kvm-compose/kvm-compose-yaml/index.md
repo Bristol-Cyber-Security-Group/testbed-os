@@ -1,3 +1,8 @@
+---
+title: KVM-COMPOSE-YAML
+section: 1
+---
+
 # kvm-compose Yaml
 
 This YAML document contains the high level description of the intended testbed configuration.

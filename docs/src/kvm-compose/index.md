@@ -1,3 +1,8 @@
+---
+title: KVM-COMPOSE
+section: 1
+---
+
 # kvm-compose
 
 ``kvm-compose`` is a cli tool used to generate the configuration files and artefacts for [orchestration](../orchestration/index.md#orchestration), to deploy arbitrary network topologies and virtual machine configurations across any number of hosts.

@@ -1,3 +1,8 @@
+---
+title: EXAMPLES
+section: 1
+---
+
 # Examples
 
 This document will outline how to set up a test case for the testbed.

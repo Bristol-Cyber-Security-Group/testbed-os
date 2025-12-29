@@ -1,3 +1,8 @@
+---
+title: TESTBED-CONFIG-MODE
+section: 1
+---
+
 # Testbed Mode
 
 This is a simple file read on startup to dictate the mode, either main or client.

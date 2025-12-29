@@ -1,3 +1,8 @@
+---
+title: BENCHMARKING
+section: 1
+---
+
 # Benchmarking
 
 The benchmarking suite can be found in the `util/benchmarking` folder.

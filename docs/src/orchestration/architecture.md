@@ -1,3 +1,8 @@
+---
+title: ORCHESTRATION-ARCHITECTURE
+section: 1
+---
+
 # Architecture
 
 The orchestration in testbed works off the [state JSON](../kvm-compose/architecture.md#state-json), where the elements in this state will have a corresponding way to be provisioned in the testbed.

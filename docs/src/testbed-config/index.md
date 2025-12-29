@@ -1,3 +1,8 @@
+---
+title: TESTBED-CONFIG
+section: 1
+---
+
 # Testbed Config
 
 The testbed requires two JSON documents before it will be able to run.

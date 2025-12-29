@@ -1,3 +1,8 @@
+---
+title: NETWORKING-ARCHITECTURE
+section: 1
+---
+
 # TestbedOS Networking Architecture
 
 This document describe the components of the TestbedOS networking system and its components.

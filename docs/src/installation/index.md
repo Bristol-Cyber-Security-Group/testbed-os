@@ -1,4 +1,9 @@
-# Testbed OS Installation
+---
+title: INSTALLATION
+section: 1
+---
+
+# TestbedOS Installation
 
 There are various dependencies needed to be installed with some based configuration needed to get the testbed ready to deploy test cases.
 This installation guide will outline each component needed.

@@ -1,3 +1,8 @@
+---
+title: GETTING-STARTED
+section: 1
+---
+
 # Getting Started
 
 Before you can start deploying test cases on the testbed, there are a few required setup steps.

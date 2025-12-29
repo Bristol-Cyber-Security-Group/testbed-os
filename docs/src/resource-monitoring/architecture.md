@@ -1,3 +1,8 @@
+---
+title: RESOURCE-MONITORING-ARCHITECTURE
+section: 1
+---
+
 # Resource Monitoring Architecture
 
 This architecture document contains info on the backend and frontend architectures.

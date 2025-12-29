@@ -1,4 +1,9 @@
-# Push and Pull files from guests
+---
+title: INTERFACES-EXEC-PUSH-AND-PULL
+section: 1
+---
+
+# Push and Pull Files from Guests
 
 Both these commands use the same format, one is to push files from the host into the guest.
 The other is to pull files from the guest onto the host.

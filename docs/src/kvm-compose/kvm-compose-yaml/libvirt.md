@@ -1,3 +1,8 @@
+---
+title: KVM-COMPOSE-YAML-LIBVIRT
+section: 1
+---
+
 # Libvirt Type
 
 Each of the `libvirt_type` has restrictions in the options available.

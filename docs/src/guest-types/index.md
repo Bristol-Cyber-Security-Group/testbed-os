@@ -1,3 +1,8 @@
+---
+title: GUEST-TYPES
+section: 1
+---
+
 # Guest Types
 
 The testbed supports three main types of guests in the yaml file:

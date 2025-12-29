@@ -1,3 +1,8 @@
+---
+title: INTERFACES-GUI-ARCHITECTURE
+section: 1
+---
+
 # GUI Architecture
 
 The GUI is a web application that is hosted by the testbed server.

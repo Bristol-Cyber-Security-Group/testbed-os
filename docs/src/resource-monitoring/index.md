@@ -1,3 +1,8 @@
+---
+title: RESOURCE-MONITORING
+section: 1
+---
+
 # Resource Monitoring
 
 The testbed offers resource monitoring for the testbed hosts that are part of the cluster and for the testbed guests deployed via the testbed.
