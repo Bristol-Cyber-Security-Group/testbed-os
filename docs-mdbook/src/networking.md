@@ -1,15 +1,16 @@
 # TestbedOS Networking
 
-TestbedOS provides networking capabilities for the communication between the guests in a deployment to emulate real-world networks. In TestbedOS, this is implemented as a [Software-Defined Network (SDN)](https://en.wikipedia.org/wiki/Software-defined_networking) powered by [Open Virtual Networks (OVN)](https://www.ovn.org/en/), and [OpenvSwitch](https://www.openvswitch.org/), which operates at level 2 in the OSI model, underpins OVS. Via OVN and OVS, the SDN is constructed with components such as switches and routers, following familiar concepts in networking. To learn more about OVN and OVS, as well as how they work in TestbedOS, we provide a quick background on the topic in [OVN and OVS Brief Background](networking_background.md).
+TestbedOS provides networking capabilities for the communication between the guests in a deployment to emulate real-world networks. In TestbedOS, this is implemented as a [Software-Defined Network (SDN)](https://en.wikipedia.org/wiki/Software-defined_networking) powered by [Open Virtual Networks (OVN)](https://www.ovn.org/en/), and [OpenvSwitch (OVS)](https://www.openvswitch.org/), which operates at level 2 in the OSI model, underpins OVN. Via OVN and OVS, the SDN is constructed with components such as switches and routers, following familiar concepts in networking. To learn more about OVN and OVS, as well as how they work in TestbedOS, we provide a quick background on the topic in [OVN and OVS Brief Background](networking_background.md).
 
 ## TestbedOS Networking Components
 
 We provide a way to describe the SDN configuration and topology in the `kvm-compose.yaml` file. We have chosen the following basic networking components from OVN to be available for configuration in the `kvm-compose.yaml` file and thus for deployment. We discuss some limitations on the available (logical) networking components in [Limitations](networking_limitations.md).
 
 - Switches
-- External IP addresses
 - Routers
-- DHCP
+- External Guest IP addresses
+- Static Guest IP addresses
+- Dynamic Guest IP addresses via DHCP
 - NAT
 - DNS
 
@@ -29,14 +30,14 @@ sw0:
 ```
 
 This logical switch will have the subnet defined as metadata.
-The subnet doesn't limit the IP addresses you statically assign, but it is used for other features of OVN such as [DHCP](#dhcp).
+The subnet doesn't limit the IP addresses you statically assign, but it is used for other features of OVN such as [DHCP](#dynamic-guest-ip-addresses-via-dhcp).
 
 ## Routers
 
 Logical routers allow traffic to flow between logical switches.
 This can be achieved by creating router ports that will be connected to logical switches.
 You can also then set static routes to send traffic to specific ports, such as routing traffic to other logical switches or to the internet.
-These routers are also responsible for providing [network address translation (NAT)](#nat) and [dynamic host configuration protocol (DHCP)](#dhcp).
+These routers are also responsible for providing [network address translation (NAT)](#nat) and [dynamic host configuration protocol (DHCP)](#dynamic-guest-ip-addresses-via-dhcp).
 
 A basic router with a port on a logical switch can be defined with:
 
@@ -51,10 +52,10 @@ routers:
 ```
 
 This definition will create a router port connecting logical router `lr0` to logical switch `sw0`.
-The port needs a mac address and an IP address.
-These are important as guests need to know the gateway.
+The port needs a MAC address (`mac`) and an IP address for the gateway (`gateway_ip`).
+These are important details as guests need to know the gateway.
 
-## External IP Addresses
+## External Guest IP Addresses
 
 TestbedOS allows external networking from inside the logical network of a deployment and out to the internet. 
 This requires a couple of OVN components that need to be configured:
@@ -101,21 +102,74 @@ This means an extra element is required, similar to the logical switch example a
 You must use the same chassis name for the TestbedOS host that you want to expose the network on.
 In your `host.json` file, if the TestbedOS host is `main`, you must place `main` here as well.
 
-## DHCP
-<!-- Static and Dynamic Guest IP -->
+## Static Guest IP Addresses
 
-We provide the capability of either specifying an IP address to a guest, or relying on DHCP.
-OVN natively offers DHCP based on the subnet of the logical switch.
-Logical ports on this logical switch with ip="dynamic" will be allocated an IP starting from the next lowest value in the subnet.
+TestbedOS provides the capability of specifying a static IP address to a guest. This can be achieved for example with the following snippet in the `kvm-compose.yaml` file under the guest's declaration, with the complete file taken from the [MWE](welcome.md#minimal-working-example).
+
+``` yaml
+machines:
+  - name: server
+    network:
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:01"
+        ip: "10.0.0.10"
+```
+
+The static IP and MAC addresses for the guest has to be defined via `ip` and `mac` respectively, as well as the name of the switch `sw0` that serves the IP address for the gateway (`gateway`).
+
+## Dynamic Guest IP Addresses via DHCP
+
+TestbedOS also provides DHCP as a way to dynamically allocate IP addresses to the guests in a deployment.
+OVN, the underlying SDN provider for the SDN in TestbedOS, natively offers DHCP based on the subnet of the logical switch.
+
+In the `kvm-compose.yaml` file, to dynamically allocate an IP address for a certain guest through DHCP, the key-value `ip="dynamic"` has to be included in the networking declaration for that guest, as below and taken from [the MWE for an Android guest](avd.md#minimal-working-example), with the other fields being similar to the fields for [static IP address allocation](#static-ip-addresses).
+
+``` yaml
+machines:
+  - name: phone
+    network:
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:01"
+        ip: "dynamic"
+```
+
+DHCP can then be declared in the `kvm-compose.yaml` file through the following example snippet under the `network` and `routers` sections. In the following example, DHCP is applied to the switch `sw0`. The IP addresses listed under `excluded_ips` will not be assigned to a guest and an IP address starting from the next lowest value will be allocated to the guest, in this case `10.0.0.21`. 
+
+``` yaml
+network:
+    routers:
+        lr0:
+            dhcp:
+            - switch: sw0
+              exclude_ips:
+              from: "10.0.0.1"
+              to: "10.0.0.20"
+```
 
 Currently, there is some incompatibility in using OVN's native DHCP and giving guests a static external IP address.
 We look to resolve this in the future.
 
 ## NAT
 
-It is possible to assign both "Source NAT" (snat) and "Destination NAT and Source Nat" (dnat_and_snat), where the former just allows the guest to access the internet and the latter also allows the guest to be addressed from outside the logical network.
-For snat, this is compatible with guests with dynamic IP addresses.
-For dnat_and_snat, this is only compatible with guests with static IP addresses.
+TestbedOS offers Network Address Translation (NAT) for the networking in a deplyoment.
+It is possible to assign both "Source NAT" (`snat`) and "Destination NAT and Source Nat" (`dnat_and_snat`), where the former just allows the guest to access the internet and the latter also allows the guest to be addressed from outside the logical network.
+For `snat`, this is compatible with guests with dynamic IP addresses via [DHCP](#dynamic-ip-addresses-via-dhcp). 
+For `dnat_and_snat`, this is only compatible with guests with [static IP addresses](#static-ip-addresses).
+The following snippet shows how a NAT is declared in the `kvm-compose.yaml` file under the `network` and `routers` section.
+
+``` yaml
+network:
+    routers:
+        lr0:
+            nat:
+            - nat_type: snat
+              external_ip: "172.16.1.200"
+              logical_ip: "10.0.0.0/16"
+```
+
+The type of NAT is defined in `nat_type`, with the values being either `snat` or `snat_and_dnat`, and `external_ip` and `logical_ip` maps the IP addresses.
 
 ## DNS
 
@@ -128,4 +182,4 @@ It is possible for the user to host a DNS agent in the network, but there would 
 
 For external DNS, this will also require configuration on the user's side for the guests.
 We have added 8.8.8.8 as a DNS server for guests with dynamic IP addresses as a default.
-However, we are looking to generally improve the DNS story in the testbed in future updates.
+However, we are looking to generally improve the DNS story in TestbedOS in future updates.

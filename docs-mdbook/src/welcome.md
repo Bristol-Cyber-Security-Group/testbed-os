@@ -46,7 +46,7 @@ We will show a minimal working example (MWE) of a testbed deployment or a _test 
 
 The `kvm-compose.yaml` specification file for this MWE has been included in the TestbedOS repository from [`https://github.com/Bristol-Cyber-Security-Group/testbed-os`](https://github.com/Bristol-Cyber-Security-Group/testbed-os>). The `kvm-compose.yaml` file for this MWE contains the following:
 
-```
+``` yaml
 machines:
   - name: server
     network:
@@ -73,11 +73,11 @@ This MWE deploys a virtual machine (VM) assigned the identifier `server` in the 
 
 1. On your terminal, navigate to `/testbedos/examples/mwe` where the `kvm-compose.yaml` file for the MWE lives. Alternatively, if you prefer you can also create a new project directory outside of the cloned TestbedOS repository, which might be the more preferable case for your own custom TestbedOS deployments. For this, we will name the project `example`.
 
-    ```
+    ``` shell
     cd testbedos/examples/mwe
     ```
     or
-    ```
+    ``` shell
     mkdir example
     cp testbedos/examples/mwe/kvm-compose.yaml example/kvm-compose.yaml
     cd example
@@ -85,19 +85,19 @@ This MWE deploys a virtual machine (VM) assigned the identifier `server` in the 
 
 2. Before any TestbedOS command can be run, the TestbedOS server should be running with the following command.
 
-    ```
+    ``` shell
     sudo systemctl start testbedos-server
     ```
 
 3. TestbedOS will provision the required artefacts for the deployment from the following command. This will generate the `artefacts` folder and a state file for the deployment called `example-state.json`.
 
-    ```
+    ``` shell
     kvm-compose generate-artefacts
     ```
 
 4. The following command brings the deployment, i.e., the virtual machines and the networking component up and running.
 
-    ```
+    ``` shell
     kvm-compose up
     ```
 

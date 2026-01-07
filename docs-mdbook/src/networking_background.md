@@ -1,24 +1,30 @@
-## OVN and OVS Brief Background
+# OVN and OVS Brief Background
 
-OVN is used in `OpenStack <https://www.openstack.org/>`_ and is a capable networking tool for cloud scenarios, but it is also capable in the context of the testbed.
-The testbed will be creating and configuring both OVN and OVS to deploy the network, but once configured, OVN will be controlling the network behaviours.
+As previously mentioned in [TestbedOS Networking](networking.md), [Open Virtual Networks (OVN)](https://www.ovn.org/en/), underpinned by [OpenvSwitch (OVS)](https://www.openvswitch.org/), is the provider for TestbedOS's Software-Defined Networking (SDN) capability. 
 
+OVN is used in `OpenStack <https://www.openstack.org/>`_ and it is a capable networking tool for cloud infrastructure scenarios, but it is also capable in the more lightweight context of TestbedOS.
+TestbedOS creates and configures both OVN and OVS to deploy the network, but once configured, OVN will be controlling the network behaviours.
+
+## OVN as a Networking Abstraction Overlay Layer for Host Clusters
 
 OVN is a powerful for networking as it allows creating a cluster of many hosts running OVN, while providing a single API to control the network behaviours over all the hosts.
 This means you can scale out the testbed to provide more resources to host more virtual machines, without needing to worry about how you configure a distributed network.
 Furthermore, the physical location of these virtual machines is now not important since their vision of the network is defined in the logical network.
+
 For example, you have two hosts A and B, and on host A you have a virtual machine X and on host B you have a virtual machine Z.
 In your logical network, you place both virtual machines X and Z on the same logical switch.
 In the background, OVN will tunnel the network traffic between hosts A and B such that the virtual machines X and Z have no perception of the underlying physical network being over two hosts.
-This not only simplifies the network definition on the user's side, it also simplifies the technical backend that the testbed needs to configure as this is all handled by OVN.
-Additionally, scaling out the testbed is as simple as configuring the OVN daemon on the new host to point to the main OVN host, which is also managed by the testbed software for you.
 
-Theoretically, you could create a large cluster of hosts running the testbed with virtual machines load balanced across all hosts.
+This not only simplifies the network definition on the user's side, it also simplifies the technical backend that TestbedOS needs to configure as this is all handled by OVN.
+Additionally, scaling out a deployment in TestbedOS is as simple as configuring the OVN daemon on the new host to point to the main OVN host, which is also managed by TestbedOS for you.
+
+Theoretically, you could create a large cluster of hosts running a TestbedOS deployment with virtual machines load balanced across all hosts.
 These virtual machines could be configured in any way on the logical network level, in addition to many isolated logical networks in the same or different user deployments.
 This is essentially how cloud infrastructures work with the various tenancies sharing the underlying hypervisors for their workloads.
 
+## OVN and OVS TestbedOS Internals
 
-The following text will give a high level description of how we use OVN and OVS, but see the OVN `architecture man page <https://www.ovn.org/support/dist-docs/ovn-architecture.7.html>`_ for more details.
+We will give a high level description of how we use OVN and OVS, but see the OVN [architecture man page](https://www.ovn.org/support/dist-docs/ovn-architecture.7.html) for more details.
 To break down how the network is configured, we will first discuss how a network is defined in OVN, then how we configure OVS and then how the configuration in OVN will control OVS to provide the SDN.
 It is important to note that OVN is also the controller for the SDN, where the OVS bridges will be configured to use the OVN controller for the flow rules.
 
@@ -31,8 +37,8 @@ The OVS bridges in the network will then apply these flow rules on the network t
 
 OVS bridges are configured to use the OVN controller to obtain the flow rules.
 These bridges are where you attach the network interfaces of guests, such as a libvirt virtual machine.
-On each host that is part of the OVN cluster, OVN creates a single OVS bridge called "br-int" short for integration bridge.
-There is another bridge called "br-ex" which is short for external bridge, this is covered below in the external networking section.
+On each host that is part of the OVN cluster, OVN creates a single OVS bridge called `br-int` short for integration bridge.
+There is another bridge called `br-ex` which is short for external bridge, this is covered in the [External Guest IP Addresses](networking.md#external-guest-ip-addresses).
 Each host running OVN only needs one integration bridge, and all virtual machines will be attached to this bridge.
 Even if the virtual machines are part of separate logical networks, or on different logical switches, it does not matter as the network isolation is handled with flow rules.
 You do not need to create an OVS bridge per logical network or per logical switch, and this is why OVN is so powerful.

@@ -111,6 +111,8 @@ sudo ip netns exec android-test adb -s emulator-5554 shell
 
 where `android-test` is the name of the namespace.
 
+More details on this is provided in [Android Emulator Networking Internals](networking_guest_ovn.md#android-emulator).
+
 The example shown in [the previous section](#interacting-with-the-android-guest-via-testbedos) is the mechanism that TestbedOS provides for users to avoid having to manually work out the network namespaces. Note that this would have to be run from the root of the TestbedOS project where the `kvm-compose.yaml` file lives. Also, since the command runs from the TestbedOS server, you cannot open an interactive shell to the guest, only one-time commands.
 
 ## Existing Preconfigured AVD Images
