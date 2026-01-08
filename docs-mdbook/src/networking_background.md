@@ -2,7 +2,7 @@
 
 As previously mentioned in [TestbedOS Networking](networking.md), [Open Virtual Networks (OVN)](https://www.ovn.org/en/), underpinned by [OpenvSwitch (OVS)](https://www.openvswitch.org/), is the provider for TestbedOS's Software-Defined Networking (SDN) capability. 
 
-OVN is used in `OpenStack <https://www.openstack.org/>`_ and it is a capable networking tool for cloud infrastructure scenarios, but it is also capable in the more lightweight context of TestbedOS.
+OVN is used in [OpenStack](https://www.openstack.org) and it is a capable networking tool for cloud infrastructure scenarios, but it is also capable in the more lightweight context of TestbedOS.
 TestbedOS creates and configures both OVN and OVS to deploy the network, but once configured, OVN will be controlling the network behaviours.
 
 ## OVN as a Networking Abstraction Overlay Layer for Host Clusters

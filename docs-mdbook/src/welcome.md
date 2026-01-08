@@ -6,7 +6,7 @@ TestbedOS[^1] is a platform for launching a virtualised testbed on abstract topo
 
 ## Quick Installation
 
-The TestbedOS GitHub repository can be found at [`https://github.com/Bristol-Cyber-Security-Group/testbed-os`](https://github.com/Bristol-Cyber-Security-Group/testbed-os>) and we have packaged the installation into an Ansible playbook. The target supported platform for TestbedOS currently assumes that you have administrator privileges and that you are the single user on your machine. We will build and install TestbedOS based on this codebase using the following steps.
+The TestbedOS GitHub repository can be found at [`https://github.com/Bristol-Cyber-Security-Group/testbed-os`](https://github.com/Bristol-Cyber-Security-Group/testbed-os) and we have packaged the installation into an Ansible playbook. The target supported platform for TestbedOS currently assumes that you have administrator privileges and that you are the single user on your machine. We will build and install TestbedOS based on this codebase using the following steps.
 
 1. On your terminal, install the prerequisites for the installation if they are not already available on your machine.
     
@@ -15,7 +15,7 @@ The TestbedOS GitHub repository can be found at [`https://github.com/Bristol-Cyb
     sudo apt install ansible -y
     ```
 
-2. Clone the TestbedOS repository from [`https://github.com/Bristol-Cyber-Security-Group/testbed-os`](https://github.com/Bristol-Cyber-Security-Group/testbed-os>) onto your local system.
+2. Clone the TestbedOS repository from [`https://github.com/Bristol-Cyber-Security-Group/testbed-os`](https://github.com/Bristol-Cyber-Security-Group/testbed-os) onto your local system.
 
     ```
     git clone https://github.com/Bristol-Cyber-Security-Group/testbed-os.git
@@ -132,9 +132,9 @@ This will delete the artefacts folder and that means the next time the deploymen
 
 ## Uninstallation
 
-You should tear down any test cases before uninstalling the testbed, see :ref:`orchestration <orchestration/index:orchestration>` for more information on how to tear down a test case.
+You should tear down any test cases before uninstalling the testbed, see [orchestration](orchestration.md) for more information on how to tear down a test case.
 
-If you want to the testbed (assuming all vms and networking components have been destroyed), you can use the ``tear-down.sh`` script in the root of the testbed-or repo to remove the kvm-compose binary and python code+environments originally installed via setup.sh.
+If you want to the testbed (assuming all vms and networking components have been destroyed), you can use the `tear-down.sh` script in the root of the testbed-or repo to remove the kvm-compose binary and python code+environments originally installed via setup.sh.
 
 ## Further Details and Documentation
 
