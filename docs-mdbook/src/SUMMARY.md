@@ -4,6 +4,8 @@
 - [TestbedOS Dependencies](dependencies.md)
 - [TestbedOS Configurations](configurations.md)
 - [TestbedOS User Interface](user_interface.md)
+  - [TestbedOS `kvm-compose` Commands](user_interface_kvm_compose.md)
+  - [TestbedOS Exec Subcommands](user_interface_exec.md)
 - [TestbedOS Schema](schema.md)
   - [TestbedOS Guest Machines](machines.md)
     - [TestbedOS libvirt Guest Machines](libvirt.md)

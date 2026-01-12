@@ -35,7 +35,7 @@ Clicking the `Run command` button will provide the GUI tools that you can use to
 - `kvm-compose up`
 - `kvm-compose down`
 - `kvm-compose clear-artefacts`
-- `kvm-compose exec ...`
+- [`kvm-compose exec ...`](user_interface_exec.md) 
 
 On the left side of the page, the GUI also provides a pseudo terminal to emulate the CLI behaviour to display the logs of commands as they appear from the TestbedOS server.
 Note that the logging is exactly the same logging with what you would see if the command is executed on the CLI, the GUI logging is mostly a general indication of what is happening so that there is some activity to be seen by the user.
