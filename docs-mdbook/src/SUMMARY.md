@@ -1,11 +1,12 @@
 # Summary
 
 - [Welcome to the TestbedOS Documentation!](welcome.md)
-- [TestbedOS Dependencies](dependencies.md)
-- [TestbedOS Configurations](configurations.md)
 - [TestbedOS User Interface](user_interface.md)
   - [TestbedOS `kvm-compose` Commands](user_interface_kvm_compose.md)
   - [TestbedOS Exec Subcommands](user_interface_exec.md)
+    - [File Push and Pull](user_interface_exec_push_pull.md)
+    - [Shell Commands](user_interface_exec_shell_commands.md)
+    - [Tool](user_interface_exec_tool.md)
 - [TestbedOS Schema](schema.md)
   - [TestbedOS Guest Machines](machines.md)
     - [TestbedOS libvirt Guest Machines](libvirt.md)
@@ -18,4 +19,6 @@
     - [TestbedOS Guest Networking Limitations](networking_limitations.md)
   - [TestbedOS Tooling](tooling.md)
   - [TestbedOS Deployment Options](deployment_options.md)
+- [TestbedOS Dependencies](dependencies.md)
+- [TestbedOS Configurations](configurations.md)
 - [TestbedOS Clustering Mode](clustering_mode.md)
