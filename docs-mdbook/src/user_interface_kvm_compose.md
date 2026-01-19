@@ -8,6 +8,10 @@ We have previously seen examples of `kvm-compose` commands [Minimal Working Exam
 kvm-compose [--input] [--project-name] [-v|--verbosity] [--no-ask] [-h|--help] [-V|--version] <SUBCOMMANDS>
 ```
 
+The basic syntax is to be in a TestbedOS project folder with a `kvm-compose.yaml` file defined for the project and run ``kvm-compose generate-artefacts`` to generate config. Please refer to the different minimal working examples (MWEs): [Minimal Work Example](welcome.md#minimal-working-example), [AVD Minimal Working Example](avd.md#minimal-working-example), and [Docker Minimal Working Example](docker.md#minimal-working-example) to get started
+
+You should not need to use `sudo` with the `kvm-compose` commands, unless you are using a resource (such as an existing disk, file to push into a guest with `cloud-init`) that your user does not have permission for. Remember to also have [the TestbedOS server](server.md) running before running the `kvm-compose` commands, of how can be found [here](server.md#starting-the-testbedos-server-for-a-deployment).
+
 ## Description
 
 `kvm-compose` must be run in the desired project directory, where the `kvm-compose.yaml` file (or whichever filename used with `--input=`) file exists.
