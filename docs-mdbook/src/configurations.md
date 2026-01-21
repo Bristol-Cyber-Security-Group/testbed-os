@@ -27,7 +27,7 @@ The TestbedOS installation changes the `user` variable into the username of the 
 
 Once this is changed, the TestbedOS installation restarts the libvirt daemon with the following command.
 
-```
+``` bash
 sudo systemctl restart libvirtd
 ```
 
@@ -122,7 +122,7 @@ Note that the `chassis_name` value must be unique for each client host in a clus
 
 Once this is done, you can then run the following command to add the client host to the main host.
 
-```
+``` bash
 sudo testbedos-server client -m 10.50.0.1 -t eth0
 ```
 
@@ -140,6 +140,9 @@ This file can be manually created or will be made by the `testbedos-server` bina
 
 Then you can check with OVN on the main host with the following command to see if the client `chassis_name` appear in the list of chassis in the output.
 
-``` 
+``` bash
 sudo ovn-sbctl show
 ```
+
+### Overall Configurations
+

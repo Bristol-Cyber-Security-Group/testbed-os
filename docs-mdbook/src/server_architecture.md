@@ -12,6 +12,14 @@ During the TestbedOS [installation](welcome.md#quick-installation) and [uninstal
 
 Note that this service will use the default port (port 3355) so if you are developing the server you must disable/stop the systemd service.
 
+## Server-to-Server and Client-to-Server Communication
+
+<!-- Add more information later here -->
+
+The unidirectional communication from the TestbedOS server of [the `Main` TestbedOS host](configurations.md#singleton-mode-or-the-main-host) to the TestbedOS server of each [`Client` TestbedOS host](configurations.md#client-host) in the clustering mode occurs through a SSH channel. The server-to-server communication happens during the setup and orchestration stages where the server of the `Main` TestbedOS host manages and keeps track the hosts in the cluster. 
+
+Each TestbedOS host (regardless of `Main` or `Client` in the clustering mode) communicates with their corresponding server on their `localhost` through an API that each server provides. The list of available API endpoints is provided in [TestbedOS Server API](server_api.md) and it supports the different HTTP verbs such as `GET` and `POST`. The client-to-server communication initially first occurs through HTTP, which is then upgraded to WebSocket. 
+
 ## Database Provider
 
 The TestbedOS server needs a database to store and keep track the state of deployments.
