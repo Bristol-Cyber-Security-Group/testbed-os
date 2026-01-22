@@ -1,6 +1,6 @@
 # TestbedOS Configurations
 
-## Libvirt User Permissions Configuration
+## Libvirt User Permissions Configurations
 
 The installation process of TestbedOS will add the Linux user on your machine that will interface with the libvirt daemon to the libvirt QEMU configuration file and give it permission to use it.
 Specifically, the installation will edit the ``/etc/libvirt/qemu.conf`` file in the following section:
@@ -34,7 +34,7 @@ sudo systemctl restart libvirtd
 If you have multiple users for libvirt or a locked down linux system, please see the libvirt documentation on how to manage this.
 The target supported platform for TestbedOS currently assumes that you have administrator privileges and that you are the single user on your machine.
 
-## TestbedOS Host Configuration
+## TestbedOS Host Configurations
 
 TestbedOS needs to know the information of the hosts of a deployment, either as a *singleton* host or the main host in the clustering mode, or a client host in the clustering mode (please see [Clustering Mode](clustering_mode.md) for more on this). 
 

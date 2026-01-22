@@ -5,6 +5,12 @@ The root of the REST API for the server can be found at `/api/` on the server's 
 Ideally we would have OpenAPI schema generation, this is a TODO so the following is a brief introduction to the API endpoints.
 The `POST` and `PUT` variants accept a JSON payload to control specific actions on the server.
 
+The list of API endpoints is divided into two categories depending if the API is provided by the `Main` TestbedOS host's server or a client TestbedOS host's server. Please see the [TestbedOS Clustering Mode](clustering_mode.md) for more information on the types of TestbedOS host.
+
+## Main TestbedOS Host Server API
+
+The following is the list of API endpoints provided by the `Main` TestbedOS host's server.
+
 `/api/config/cluster`
 : For fetching or editing [the `kvm-compose-config` configuration](configurations.md#overall-configurations). This supports `GET` and `POST`, to get and update respectively the configuration.
 
@@ -50,41 +56,39 @@ The `POST` and `PUT` variants accept a JSON payload to control specific actions 
 : which is for applying commands to testbed deployments.
     This supports POST, to apply a specific testbed action such as generate-artefacts. -->
 
-`/api/metrics/dashboard/<project>`
-:
-
 `/api/metrics/host`
 : For fetching the performance metrics for a host, specifically CPU and memory usage. This only supports `GET`.
 
 `/api/metrics/state`
-:
+: For checking if the Docker containers where the [resource monitoring stack](resource_monitoring.md) live are up and running. This only supports `GET`.
 
 `/api/metrics/guest/<project>/<name>`
-:
+: For fetching the CPU and memory usage of a guest with the identifier `<name>` in a TestbedOS project with the identifier `<project>`. This only supports `GET`.
+
+`/api/metrics/dashboard/<project>`
+: For fetching the HTML page for the resource monitoring data dashboard for a TestbedOS project with the identifier `<project>`. This only supports `GET`.
 
 `/api/metrics/prometheus/hosts`
-:
+: For fetching the performance metrics (CPU and memory usage) for all TestbedOS hosts. This only supports `GET`.
 
 `/api/metrics/prometheus/libvirt`
-:
+: For fetching the performance metrics (CPU and memory usage) for all [libvirt guests](libvirt.md) for Prometheus. This only supports `GET`.
 
 `/api/metrics/prometheus/android`
-:
+: For fetching the performance metrics (CPU and memory usage) for all [AVD guests](avd.md) for Prometheus. This only supports `GET`.
 
 `/api/metrics/prometheus/docker`
-:
+: For fetching the performance metrics (CPU and memory usage) for all [Docker container guests](docker.md) for Prometheus. This only supports `GET`.
 
-`/api/orchestration`
-:
+## Client Host Server API
 
-
-## Client Server API
+The following is the list of API endpoints provided by a client TestbedOS host's server.
 
 `/api/config/status`
-:
+: For fetching the status of the client TestbedOS host and this only supports `GET`. At the moment this only returns 200 to show that this host is running.
 
 `/api/metrics/host`
-:
+: For fetching the performance metrics for a host, specifically CPU and memory usage, to a client TestbedOS host. This only supports `GET`.
 
 `/api/metrics/guest/<project>/<name>`
-:
+: For fetching the CPU and memory usage of a guest with the identifier `<name>` in a TestbedOS project with the identifier `<project>` to a client TestbedOS host. This only supports `GET`.
