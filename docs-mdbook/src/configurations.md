@@ -144,5 +144,38 @@ Then you can check with OVN on the main host with the following command to see i
 sudo ovn-sbctl show
 ```
 
-### Overall Configurations
+### Main Host Server Configurations
 
+The server on the `Main` TestbedOS host will has an additional configuration file `kvm-compose-config.json`. The `kvm-compose-config.json` configuration file keeps track of the information of other `Client` TestbedOS hosts in a cluster. The file also specifies the SSH keys that are used to SSH into the guest machines to interact with the guest machines for the [`kvm-compose` commands](user_interface_kvm_compose.md). An example of the contents of a `kvm-compose-config.json` is as follows.
+
+``` json
+{
+    "testbed_host_ssh_config": {
+        "main": {
+            "ip": "10.50.0.1",
+            "user": "wil",
+            "identity_file": "/home/wil/.ssh/id_ed25519",
+            "testbed_nic": "eth0",
+            "main_interface": "wlp0s20f3",
+            "is_main_host": true,
+            "ovn": {
+                "chassis_name": "main",
+                "bridge": "br-int",
+                "encap_type": "geneve",
+                "encap_ip": "10.50.0.1",
+                "main_ovn_remote": "unix:/usr/local/var/run/ovn/ovnsb_db.sock",
+                "client_ovn_remote": null,
+                "bridge_mappings": [
+                    [
+                        "public",
+                        "br-ex",
+                        "172.16.1.1/24"
+                    ]
+                ]
+            }
+        }
+    },
+    "ssh_public_key_location": "/var/lib/testbedos//keys/id_ed25519_testbed_insecure_key.pub",
+    "ssh_private_key_location": "/var/lib/testbedos//keys/id_ed25519_testbed_insecure_key"
+}
+```

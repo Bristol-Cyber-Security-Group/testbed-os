@@ -57,7 +57,9 @@ There will be log cleaning where the log files will be deleted if they are more 
 
 ## Server Log Streaming
 
-The TestbedOS server provides an endpoint for websockets, specifically to stream the output of [a `kvm-compose` command](user_interface_kvm_compose.md) interacting with the deployment. In the [CLI](user_interface.md#cli) and the [GUI](user_interface.md#gui) the output from the server is in the form of `INFO` or `ERROR` statements, which can be seen when running a specific `kvm-compose` command. 
+The TestbedOS server provides an endpoint for websockets, specifically to stream the output of [a `kvm-compose` command](user_interface_kvm_compose.md) interacting with the deployment as the command execution can be long-running. In the [CLI](user_interface.md#cli) and the [GUI](user_interface.md#gui) the output from the server is in the form of `INFO` or `ERROR` statements, which can be seen when running a specific `kvm-compose` command. 
+The `kvm-compose` commands use [the API offered by the server](server_api.md) for execution and deployment control.
+Currently the websocket is solely one directional, from the TestbedOS server to the client.
 
 For example, a `kvm-compose up` command from the CLI will make a request to the server which will set the state of the deployment to `"running"`, dispatch a blocking thread that handles [orchestration](orchestration.md), and return a UUID.
 This UUID is then used by the TestbedOS client to create a websocket session which the server will find the log file and stream line by line until the end of the file.
