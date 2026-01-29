@@ -67,9 +67,21 @@ For an `iso-guest` libvirt guest, with an additional parameter `path` to refer t
 
 ## Scaling
 
-TestbedOS optionally provides the capability to scale a libvirt guest from a single machine definition and create cloned instances of the libvirt guest. For example, this can be used to spawn multiple instances of a libvirt VM with the same role in the application of the deployment. 
+Scaling for libvirt guest machines is a feature provided by TestbedOS to speed up the provisioning of guests that share a common install and setup.
+This allows us to scale a libvirt guest from a single machine definition and create cloned instances of the libvirt guest with less overhead. 
+For example, this can be used to spawn multiple instances of a libvirt VM with the same role in the application of the deployment. 
 
-This is available via the `scaling` parameter under the `libvirt` subsection in the `kvm-compose.yaml` file. Please see [Scaling](orchestration.md#scaling) for more information on the scaling architecture. The `scaling` parameter supports further options:
+This scaling feature utilises the linked clone functionality offered by QCOW2 that offers disk usage optimisation. 
+QCOW2 which stands for QEMU Copy on Write and this means the cloned disks will only contain the difference from the original image which we call the 'golden image'. 
+For example, without linked clones, if we have 3 guests that share the same install and take up 10GB of space each, then we use a total of 30GB of space.
+With linked clones (3 to match the example), the golden image would take 10GB of space and the 3 guests would start with a few kilobytes in disk space used and only grow as the guest creates or edits files.
+Furthermore, if the common install was bandwidth or CPU intensive, using clones we only need to do this once rather than 3 times concurrently which is likely to compete for resources and take more time.
+
+The backing image for the clones will then become a .qcow2 file type.
+Therefore the state in the backing image will be available to clones.
+Some state will be overwritten by cloud-init (if using cloud-init) such as the hostname and any other post install scripts or any other cloud-init functionality.
+
+This feature is available via the `scaling` parameter under the `libvirt` subsection in the `kvm-compose.yaml` file. Please see [Scaling](orchestration.md#scaling) for more information on what happens under the hood when provisioning the linked clones during [the TestbedOS orchestration](orchestration.md). The `scaling` parameter supports further options:
 
 - **`count`**: the number of clone instances to be made,
 - **`interfaces`**: optional, a list of SDN bridges and the connected to the bridge, where each bridge can take a list of clone IDs,

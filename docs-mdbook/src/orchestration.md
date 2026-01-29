@@ -110,28 +110,26 @@ While the orchestration websocket is open on the server, there is:
 1) The send and receive websocket connection to and from the client for [the orchestration protocol](#orchestration-protocol), and
 2) The cancellation listener
     - For the GUI this comes over the websocket
-    - for the CLI this is another `async` task listening for interrupt signal by the user, i.e., the `Ctrl+C` keypress.
+    - For the CLI this is another `async` task listening for interrupt signal by the user, i.e., the `Ctrl+C` keypress.
 
-Cancellation
-------------
+### Cancellation
 
-The orchestration and command running supports cancellation of commands.
-This means you are able to cancel or interrupt a command, while it is running on the server and have a graceful exist.
-For the CLI and TUI, there is a `ctrl+c` handler, which when triggered will cancel the command running and tell the server to stop.
-For the GUI, there is a cancel button on the command running page, which will do the same thing.
+The orchestration supports the cancellation of commands.
+This means the users are able to cancel or interrupt a command while it is running on the server and have a graceful exit.
+For the CLI, there is a handler for the interrupt keypress by the user, i.e., `Ctrl+C`, which when triggered will cancel the command running and tell the TestbedOS server to stop.
+For the GUI, there is a cancellation button on the command running page, which will do the same thing.
 
-## Architecture from `kvm-compose`
+<!-- ## Architecture from `kvm-compose`
 
 Note: the testbed has been designed in this way to expose the artefacts generated before running the testbed orchestration to allow the user to inspect the artefacts.
 This also allows you to further customise the deployment if you wish or if the testbed tooling does not yet support a specific feature you are looking for.
 Additionally, since these are mostly text files, it allows you to version control your test case (don't forget to ignore the large binary files in your .gitignore if you use git).
 As long as you keep to the convention of the artefacts generated, the orchestration tool will just push and execute these scripts/config/images to the correct locations.
-The orchestration tool "doesn't care" what is inside these, as long as the generated |state JSON| file is valid.
+The orchestration tool "doesn't care" what is inside these, as long as the generated |state JSON| file is valid. -->
 
-`kvm-compose` needs access to the libvirt daemon to access information about existing libvirt networks.
 
-Command Running
----------------
+<!-- ## Orchestration Tasks
+
 The core functionality of this tool is to take a mapping from a hostname, which can either be a testbed guest or a testbed host and run a script/command or push a file to them.
 This enables the deployment across the distributed testbed using SSH.
 In this document, we will describe the execution of a command or script or pushing a file as a "task".
@@ -149,43 +147,26 @@ There are four different scenarios for command running of tasks:
     This uses SSH.
 
 :remote testbed guest: This is running a task on a testbed guest that is on a remote testbed host.
-    This uses a proxied SSH, where we SSH onto the testbed host first then SSH onto the testbed guest.
+    This uses a proxied SSH, where we SSH onto the testbed host first then SSH onto the testbed guest. -->
 
-Scaling
--------
+## Scaling
 
-To speed up the provisioning of guests that share a common install, the scaling features utilises the linked clone functionality offered by .qcow2 image file tipe.
-Qcow2 stands for qemu copy on write, which means the clone disks will only contain the difference from the original image we call 'golden image'.
-This offers disk usage optimisation, for example without linked clones if we have 3 guests that share the same install and take up 10GB of space each then we use a total of 30GB of space.
-With clones (3 to match the example), the golden image would take 10GB of space and the 3 guests would start with a few kilobytes in disk space used and only grow as the guest creates/edits files.
-Furthermore, if the common install was bandwidth or CPU intensive, using clones we only need to do this once rather than 3 times concurrently which is likely to compete for resources and take more time.
+TestbedOS provides a scaling capability for storage optimisation of libvirt guest machines by using QCOW2 linked clones through the `scaling` parameter in [the kvm-compose.yaml file schema](schema.md). 
 
-We implement this scaling feature by offering the `scaling` option in the kvm-compose.yaml file schema, see the schema doc for the limitation of the syntax.
-In the artefact generation stage, the clone guests have artefacts prepped ready for when the clone .qcow2 images are prepared in the orchestration stage.
-The cloned guests are treated like any other guest in the testbed, it is only their provisioning steps  (creating a clone from the golden image) that is different.
-Note that the golden image is also a guest but it will be turned off for the duration of the testbed test case as it's disk must not have a write lock, such that the guests may copy on write as they need.
+During the orchestration stage, the libvirt guest clones is provisioned similarly to other non-clone guests and the cloned guests are treated like any other guest in TestbedOS, it is only their provisioning steps  (creating a clone from the golden image) that is different.
+That is, there is an extra stage executed, if clones are present in the [state configuration file](#state-configuration-file) to first provision the golden image (backing image) and then to create linked clones from it.
 
-Scaling
--------
+Note that the golden image is also a guest but it will be turned off for the duration of the testbed test case as its disk must not have a write lock by the operating system, such that the clone guests may copy-on-write as they require. Expanding from Stage 5 in [deployment stages](#deployment-stages), the process to create the linked clones are as follows.
 
-Scaling is a feature in the testbed backed by the qemu linked clones functionality.
-The backing image for the clones will become .qcow2 images (qemu copy on write) so that they are efficient with space.
-Therefore the state in the backing image will be available to clones.
-Some state will be overwritten by cloud-init (if using cloud-init) such as the hostname and any other post install scripts or any other cloud-init functionality.
+1) Start the golden image.
+2) Wait for the golden image to be available.
+3) Execute share install script as defined by the [`shared_setup` parameter](libvirt.md#scaling) in [the kvm-compose.yaml file](schema.md). 
+4) Turn off the golden image guest.
+5) Wait for the golden image guest to be shut down for the write lock to be removed by the operating system.
+6) Create the number of clones as specified by [the `count` parameter](libvirt.md#scaling) in [the `kvm-compose.yaml` file](schema.md).
 
-Given the use of the scaling parameter (see kvm-compose.yaml schema and kvm-compose scaling architecture for more info) in the kvm-compose.yaml file, the orchestration of clones is similar to other non clone guests.
-There is an extra stage executed, if clones are present in the state.json to provision the golden image (backing image) and then create linked clones from it.
-The process to create the linked clones:
 
-1) start the golden image
-2) wait for it to be available
-3) execute share install script
-4) turn off guest
-5) wait for guest to be shut down for write lock to be removed
-6) create n number of clones as specified in the kvm-compose.yaml file
-
-Snapshots
----------
+## Snapshots
 
 The testbed also supports snapshots of libvirt guests.
 It supports multiple testbed hosts.
