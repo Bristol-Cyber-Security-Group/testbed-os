@@ -155,3 +155,9 @@ Snapshot guests
 
 `help`
 : Print this message or the help of the given subcommand(s)
+
+## Important Considerations
+
+Be aware that if you use `sudo` with the above commands, the file(s) generated as the output may required elevated permissions to use so you will thereafter need to continue to use `sudo` unless you manually edit the owner (`chown`) or permissions (`chmod`).
+If you use `kvm-compose up` with or without sudo and if you are using cloud-init images, then be aware that the images downloaded will either go to ``/root/.kvm-compose/`` if you use `sudo` or ``/home/<your home folder/.kvm-compose/`` if you do not.
+This means that you may end up downloading the images twice, once in each folder if you interchange the use of sudo.

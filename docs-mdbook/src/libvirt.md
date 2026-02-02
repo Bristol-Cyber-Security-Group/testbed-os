@@ -40,7 +40,8 @@ The following is an example snippet in the `kvm-compose.yaml` file on the releva
 For an `existing_disk` libvirt guest, these further options are available:
 - **`path`**: the TestbedOS host path to the pre-existing libvirt image
 - **`driver_type`**: an optional field for the image format of the pre-existing image. Possible values are `raw` or `qcow2`, with `raw` as the default value, 
-- **`device_type`**: an optional field for the type of storage device for the `existing_disk` libvirt guest. Possible values are `disk` or `cdrom`, with `disk` as the default value, and
+- **`device_type`**: an optional field for the type of storage device for the `existing_disk` libvirt guest. Possible values are `disk` or `cdrom`, with `disk` as the default value, 
+- **`create_deep_copy`**: an optional field to create a deep copy of an image instead of a QCOW2 image (see [scaling](#scaling) for more information on QCOW2), and
 - **`readonly`**: a `true` or `false` value that indicates if the disk image is read-only, with `false` as the default value.
 
 The following is an example snippet in the `kvm-compose.yaml` file on the relevant section for the `existing_disk` libvirt guest type.
@@ -52,6 +53,14 @@ The following is an example snippet in the `kvm-compose.yaml` file on the releva
       existing_disk:
         path: /path/to/prebuilt/image.img
 ```
+
+When you bring a pre-configured image to TestbedOS, the original image will not be overwritten to preserve it.
+Instead, by default TestbedOS will create a linked clone of this image in the TestbedOS project `artefacts` folder.
+This removes the need to create a deep copy of the image, saving time and space on disk.
+The user can still defer to a deep copy with the `create_deep_copy` option (please see earlier in the section for the available options).
+
+When the existing disk linked clone is going to be placed on a remote TestbedOS host in [the clustering mode](clustering_mode.md), TestbedOS  send a full copy to the remote host.
+This is because we cannot use linked clones over the network, and because TestbedOS does not have a distributed filesystem at the moment to support this.
 
 ## libvirt Guest Type: ISO Guest
 
@@ -127,10 +136,17 @@ The `scaling` parameter can only be used with libvirt guests of `cloud_image` an
 ...
 ```
 
+## Snapshots
+
+TestbedOS also supports snapshots of libvirt guests where you can create, list, restore, and delete the snapshots through the [`kvm-compose` command line interface (CLI)](user_interface.md#cli).
+Please refer to the [`snapshot` subcommands](user_interface_kvm_compose.md#subcommand---snapshot) for usage.
+The snapshots are stored on the respective TestbedOS hosts where the libvirt guests are created on.
+The CLI is merely a wrapper around the libvirt snapshot API, so if you create a snapshot outside of TestbedOS, the snapshot will still be available to be used with TestbedOS.
+
 ## Further Information on libvirt Guest Machines
 
 The `cloud_image` libvirt guests will have full automation capabilities offered by TestbedOS, due to the ability to initialise and customise the deployment using `cloud-init` functionality. Additionally, this allows us to insert SSH keys to be able to remotely control the guest and customise further and run scripts.
 
-Both `existing_disk` and `iso-guest` libvirt guests are limited to only be started in TestbedOS deployment and in the deployment network, and they will require manual intervention to set up. For example, if you set up SSH keys in an `existing_ disk` guest before being deployed then you will be able to control this guest remotely. However, if such a libvirt guests is only running a preconfigured server in the deployment then setting up SSH keys may not be necessary as the guest is ready to be used. Note that the user may need to configure the guest's networking in the `kvm-compose.yaml` file under the `networking` section (please see [TestbedOS Guest Networking](networking.md)) such as enabling DHCP or manually assigning an IP address. This is done automatically configured if for a `cloud-image` guest.
+Both `existing_disk` and `iso-guest` libvirt guests are limited to only be started in TestbedOS deployment and in the deployment network, and they will require manual intervention to set up. For example, if you set up SSH keys in an `existing_disk` guest before being deployed then you will be able to control this guest remotely. However, if such a libvirt guests is only running a preconfigured server in the deployment then setting up SSH keys may not be necessary as the guest is ready to be used. Note that the user may need to configure the guest's networking in the `kvm-compose.yaml` file under the `networking` section (please see [TestbedOS Guest Networking](networking.md)) such as enabling DHCP or manually assigning an IP address. This is done automatically configured if for a `cloud-image` guest.
 
 Depending on how a libvirt guest is configured, if getty is enabled inside the guest you will be able to make a TCP TTY based connection directly to the guest. See in the state.json file after you have executed generate-artefacts to see the port number for this TTY. You will need to log in to the guest using the username and the password as configured by TestbedOS, which are `no-cloud` and `password` respectively.

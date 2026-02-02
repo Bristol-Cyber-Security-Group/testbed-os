@@ -156,7 +156,7 @@ TestbedOS provides a scaling capability for storage optimisation of libvirt gues
 During the orchestration stage, the libvirt guest clones is provisioned similarly to other non-clone guests and the cloned guests are treated like any other guest in TestbedOS, it is only their provisioning steps  (creating a clone from the golden image) that is different.
 That is, there is an extra stage executed, if clones are present in the [state configuration file](#state-configuration-file) to first provision the golden image (backing image) and then to create linked clones from it.
 
-Note that the golden image is also a guest but it will be turned off for the duration of the testbed test case as its disk must not have a write lock by the operating system, such that the clone guests may copy-on-write as they require. Expanding from Stage 5 in [deployment stages](#deployment-stages), the process to create the linked clones are as follows.
+Note that the golden image is also a guest but it will be turned off for the duration of the deployment as its disk must not have a write lock by the operating system, such that the clone guests may copy-on-write as they require. Expanding from Stage 5 in [deployment stages](#deployment-stages), the process to create the linked clones are as follows.
 
 1) Start the golden image.
 2) Wait for the golden image to be available.
@@ -164,89 +164,55 @@ Note that the golden image is also a guest but it will be turned off for the dur
 4) Turn off the golden image guest.
 5) Wait for the golden image guest to be shut down for the write lock to be removed by the operating system.
 6) Create the number of clones as specified by [the `count` parameter](libvirt.md#scaling) in [the `kvm-compose.yaml` file](schema.md).
+7) The linked clones are started in the same way as non-linked clones.
+
+The timeout for waiting to connect to a guest is 2 minutes. This has been chosen arbitrarily with no consideration for a scaled setup where many guests are requested causing a big load on the CPU and could naturally push connection time to over 2 minutes.
+
+The golden image must be present on any TestbedOS host that has a clone, if the clones are distributed over multiple TestbedOS hosts.
+Therefore a copy of the golden image is pushed to any TestbedOS host that has a linked clone that needs it.
+Note that the clone guests are treated as an ['existing disk' guest type](libvirt.md#existing-disk) internally by TestbedOS.
 
 
-## Snapshots
+## Dynamic Deployment Changes
 
-The testbed also supports snapshots of libvirt guests.
-It supports multiple testbed hosts.
-You can create/restore/delete/list snapshots through the `kvm-compose` CLI.
-
-The snapshots are stored on the respective testbed hosts the guests are created on.
-The CLI is merely a wrapper around the libvirt snapshot API, so if you create a snapshot outside of the testbed tools the snapshot will be available to the testbed.
-
-Existing Disk
-^^^^^^^^^^^^^
-
-When you bring a pre-configured image to the testbed, we will not overwrite the original image to preserve it.
-Instead, by default the testbed will create a linked clone of this image in the project artefacts folder.
-This removed the need to create a deep copy of the image, saving time and space on disk.
-The user can still defer to a deep copy with the `create_deep_copy` option in the existing disk yaml section.
-
-When the existing disk linked clone is going to be placed on a remote testbed host, the testbed will need to send a full copy.
-This is because we cannot use linked clones over the network, and because we don't have a distributed filesystem at the moment to support this.
-
-
-General Notes
-^^^^^^^^^^^^^
-
-Once the guest deploy stage is reached, the linked clones are started in the same way as non linked clones.
-Note that the golden image must be present on any testbed host that has a clone, if the clones are distributed over multiple testbed hosts.
-Therefore the golden image is pushed (a copy) to any testbed host that has a linked clone that needs it.
-Note that the clone guests are treated as an 'existing disk' guest type internally.
-
-The timeout for waiting to connect to a guest is 2 minutes, this has been chosen arbitrarily with no consideration for a scaled setup where many guests are requested causing a big load on the CPU and could naturally push connection time to over 2 minutes.
-
-Delta Change
-^^^^^^^^^^^^
-
-The testbed currently does not yet factor in if you have made changes to the |kvm-compose.yaml| file, after deploying.
-This means you will encounter state drift if running `up`, then changing the yaml and then running `up` again.
-To be sure there is no state drift, make sure to run `down` first.
-Note that since you have already deployed something and a state file exists, you will need to run up with the `--provision` flag.
-
+TestbedOS currently does not yet factor in if you have made changes to the [`kvm-compose.yaml` file](schema.md), after the orchestration of a deployment.
+This means you will encounter state drift if running `kvm-compose up`, then changing the `kvm-compose.yaml` file and then running `kvm-compose up` again.
+To be sure there is no state drift, make sure to first run `kvm-compose down` before making any changes to the `kvm-compose.yaml` file.
+Once that is done, since the deployment is now an existing deployment and hence [a state configuration file](#state-configuration-file) exists for the deployment, you will need to run `kvm-compose up` with the `--provision` flag for the deployment to reflect the changes.
 We look to improve this state drift use case in the future.
 
-Load Balancing
---------------
+## Load Balancing
 
-Given an arbitrary network topology and machine definitions in the |kvm-compose.yaml| file, these will be distributed over the testbed hosts listed in the |kvm-compose-config.json| file.
+Given an arbitrary network topology and machine definitions in [the `kvm-compose.yaml` file](schema.md) for a deployment, their orchestration will be distributed over the TestbedOS hosts listed in [the `kvm-compose-config.json` file](configurations.md#main-host-server-configurations) in [clustering mode](clustering_mode.md).
+The following are the current possible load balancing algorithms with heuristics that can be used with the clustering mode:
 
-The following are the current possible load balancing algorithms with heuristics that can be used with the testbed:
-
-:round robin: The topology is distributed based on the bridges defined across the testbed hosts in a round robin allocation.
-    Starting on the first host in the |kvm-compose-config.json| file, each bridge is allocated until all bridges allocated.
-    The machines that have that bridge as an interface will then also be allocated to that testbed host.
-    This is a simple implementation with no consideration for resource usage and minimising potential number of tunnels between testbed hosts.
+Round robin
+: The topology is distributed based on the bridges defined across the TestbedOS hosts in a round robin allocation.
+    Starting with the first TestbedOS host in [the `kvm-compose-config.json` file](configurations.md#main-host-server-configurations), each bridge is allocated until all bridges allocated.
+    The machines that have that bridge as an interface will then also be allocated to that TestbedOS host.
+    This is a simple implementation with no consideration for resource usage and minimising potential number of tunnels between the TestbedOS hosts.
     Note: if a machine has multiple bridges as interfaces and the bridges are on different hosts, it will not work as there is no check for this.
 
-## Limitations
+## Technical Detail and Developer Notes
 
-Be aware that if you do use sudo, the files created may required elevated permissions to use so you will there-on need to continue to use sudo unless you manually edit the owner (`chown`) or permissions (`chmod`).
+The TestbedOS orchestration outlines the process taking place from [the `kvm-compose.yaml` file](schema.md) to the resulting [state configuration file](#state-configuration-file) and artefacts of the deployment as well as the process taking place when the user interacts with the deployment via [the `kvm-compose` commands](user_interface.md).
 
-If you use kvm-compose up with or without sudo, if you are using cloud-init images, then be aware that the images downloaded will either go to ``/root/.kvm-compose/`` if you use sudo or ``/home/<your home folder/.kvm-compose/`` if you do not.
-This means that you may end up downloading the images twice, once in each folder if you interchange the use of sudo.
+In the orchestration process, [the `kvm-compose.yaml` file](schema.md) is first deserialised and a `Config` struct is filled.
+With this struct, a logical deployment ([`LogicalTestbed`](https://github.com/Bristol-Cyber-Security-Group/testbed-os/blob/develop/kvm-compose/kvm-compose/src/components/mod.rs#L149)) is constructed, which is a class encompassing the different underlying components of a deployment, with their base class modelled by [`TestbedComponent`](https://github.com/Bristol-Cyber-Security-Group/testbed-os/blob/develop/kvm-compose/kvm-compose/src/components/mod.rs#L66).
 
-Technical Detail and Developer Notes
-------------------------------------
+These components can be of various types, e.g., a component to model a machine guest in the deployment, i.e., [`TestbedGuestComponent`](https://github.com/Bristol-Cyber-Security-Group/testbed-os/blob/develop/kvm-compose/kvm-compose/src/components/mod.rs#L134), or a component to model a networking component in the deployment, i.e., [`TestbedNetworkInterfaceComponent`](https://github.com/Bristol-Cyber-Security-Group/testbed-os/blob/develop/kvm-compose/kvm-compose/src/components/mod.rs#L139).
+The logical deployment is load balanced between the available TestbedOS hosts, based on [the load balancing algorithm](#load-balancing).
+Then each `TestbedComponent` will undergo a process called specialisation through the `specialise` method for the trait, so that these components will be populated with parameters that are specific to them such as paths that are specific to the TestbedOS host they are assigned to.
+A `State` object is in turn created for the deployment, which becomes [the state configuration file](#state-configuration-file) to be used by the orchestrator.
 
-This text outlines the process to go from the kvm-compose.yaml file to the resulting state json file and artefacts.
-The yaml file is deserialised and a `Config` struct is filled.
-With this struct, a logical testbed is started to be constructed, which works with testbed `components`.
-These `components` can be of various types, i.e. a `guest component` could be a Libvirt guest or Libvirt clone.
-The logical testbed is logically load balanced between the available testbed hosts, based on the load balancing algorithm.
-Then specialisation occurs on the testbed `components`, so that these components will have data generated such as paths that are specific to the testbed host they are assigned to.
-The `State` is created, which becomes the state json file to be used by the orchestrator.
-
-As a developer, you may want to add new components.
-The possible components:
+As a developer, you may want to add new components, possibly:
 
 - Testbed Host
 - Testbed Guest
 - Testbed Bridge
 - Testbed Network
 
-These components are traits, meaning your component must implement the trait.
-You will only need to implement the trait and the rest of the code will treat it like any other component, so you don't need to add extra code in the core codebase.
-You will need to also create a new entry for `Config` so that the new component is part of the yaml schema.
-This abstraction allows you to focus only in how a testbed `Component` is converted from a `Config` and into artefacts.
+These components must implement any of the `TestbedComponent` traits.
+You will only need to implement the trait and the rest of the TestbedOS code will treat it like any other component, so you do not need to add extra code into the TestbedOS core codebase.
+You will need to also create a new entry for `Config` so that the new component is part of the `kvm-compose.yaml` schema.
+Our abstraction allows you to focus only in how a `TestbedComponent` is converted from a `Config` and into artefacts.
