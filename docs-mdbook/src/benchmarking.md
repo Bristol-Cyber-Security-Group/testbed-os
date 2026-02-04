@@ -1,4 +1,4 @@
-# Benchmarking
+# TestbedOS Benchmarking
 
 The benchmarking suite can be found in the `util/benchmarking` folder from the TestbedOS source code [`testbed-os`](https://github.com/Bristol-Cyber-Security-Group/testbed-os).
 
