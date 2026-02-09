@@ -150,3 +150,37 @@ The `cloud_image` libvirt guests will have full automation capabilities offered 
 Both `existing_disk` and `iso-guest` libvirt guests are limited to only be started in TestbedOS deployment and in the deployment network, and they will require manual intervention to set up. For example, if you set up SSH keys in an `existing_disk` guest before being deployed then you will be able to control this guest remotely. However, if such a libvirt guests is only running a preconfigured server in the deployment then setting up SSH keys may not be necessary as the guest is ready to be used. Note that the user may need to configure the guest's networking in the `kvm-compose.yaml` file under the `networking` section (please see [TestbedOS Guest Networking](networking.md)) such as enabling DHCP or manually assigning an IP address. This is done automatically configured if for a `cloud-image` guest.
 
 Depending on how a libvirt guest is configured, if getty is enabled inside the guest you will be able to make a TCP TTY based connection directly to the guest. See in the state.json file after you have executed generate-artefacts to see the port number for this TTY. You will need to log in to the guest using the username and the password as configured by TestbedOS, which are `no-cloud` and `password` respectively.
+
+### Libvirt User Permissions Configurations
+
+[The installation process of TestbedOS](welcome.md#quick-installation) will add the Linux user on your machine that will interface with the libvirt daemon to the libvirt QEMU configuration file and give it permission to use it.
+Specifically, the installation will edit the ``/etc/libvirt/qemu.conf`` file in the following section:
+
+    #       user = "+0"     # Super user (uid=0)
+    #       user = "100"    # A user named "100" or a user with uid=100
+    #
+    #user = "root"
+
+    # The group for QEMU processes run by the system instance. It can be
+    # specified in a similar way to user.
+    #group = "root"
+
+The TestbedOS installation changes the `user` variable into the username of the current user, for example, if your username is `ubuntu`, and the `group` variable to `libvirt`, as follows. 
+
+    #       user = "+0"     # Super user (uid=0)
+    #       user = "100"    # A user named "100" or a user with uid=100
+    #
+    user = "ubuntu"
+
+    # The group for QEMU processes run by the system instance. It can be
+    # specified in a similar way to user.
+    group = "libvirt"
+
+Once this is changed, the TestbedOS installation restarts the libvirt daemon with the following command.
+
+``` bash
+sudo systemctl restart libvirtd
+```
+
+If you have multiple users for libvirt or a locked down linux system, please see the libvirt documentation on how to manage this.
+The target supported platform for TestbedOS currently assumes that you have administrator privileges and that you are the single user on your machine.
