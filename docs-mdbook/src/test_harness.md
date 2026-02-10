@@ -1,4 +1,4 @@
-# Test Harness
+# TestbedOS Test Harness
 
 We provide a test harness for TestbedOS in the TestbedOS code repository at [`testbed-os/test-harness`](https://github.com/Bristol-Cyber-Security-Group/testbed-os/tree/develop/test-harness) to test all of the features of the testbed through integration testing.
 Deployment configurations have been created, in the form of [the `kvm-compose.yaml`](schema.md) and the `kvm-compose-config.json` configuration files to describe each test case.

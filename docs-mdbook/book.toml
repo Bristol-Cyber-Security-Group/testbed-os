@@ -1,6 +1,6 @@
 [book]
-title = "Documentation"
-authors = ["wil25632"]
+title = "Testbed Operating System (TestbedOS)"
+authors = ["Bristol Cyber Security Group (BCSG)"]
 language = "en"
 
 [output.html]

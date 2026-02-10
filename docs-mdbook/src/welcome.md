@@ -132,23 +132,20 @@ This will delete the artefacts folder and that means the next time the deploymen
 
 ## Uninstallation
 
-You should tear down any test cases before uninstalling the testbed, see [orchestration](orchestration.md) for more information on how to tear down a test case.
-
-If you want to the testbed (assuming all vms and networking components have been destroyed), you can use the `tear-down.sh` script in the root of the testbed-or repo to remove the kvm-compose binary and python code+environments originally installed via setup.sh.
+You should bring down any deployment before uninstalling TestbedOS by running the `kvm-compose down` command. Assuming all VMs and networking components have been destroyed, the uninstallation of TestbedOS can be initiated with the `tear-down.sh` script at the root of the TestbedOS code repository `testbed-os`. The uninstallation removes the components  originally installed via [the installation](#quick-installation).
 
 ## Further Details and Documentation
 
 For more details on what TestbedOS offers and topics on how TestbedOS works under the hood, please refer to the following documentation.
  
+- [TestbedOS User Interface](user_interface.md) for the different user interfaces that TestbedOS provides, including the options for the CLI that we have seen in the [Minimal Working Example](#minimal-working-example).
+- [TestbedOS Schema](schema.md) to see the full available options for the deployment specification file `kvm-compose.yaml`, including the different guest types and networking options available for a deployment.
+- [TestbedOS Resource Monitoring](resource_monitoring.md) for the resource monitoring tools provided when a deployment is up.
+- [TestbedOS Clustering Mode](clustering_mode.md) for the configurations and steps to start a cluster of TestbedOS hosts for running a deployment.
 - [TestbedOS Dependencies](dependencies.md) for more details on what dependencies are being installed and the installation setup on your machine.
-- [TestbedOS Configurations](configurations.md) for more details on the configurations done during installation, the required configuration for having TestbedOS in the clustering mode, and also custom configurations to suit your specific needs.
-- [TestbedOS User Interface](user_interface.md) for the different user interfaces that TestbedOS provides, including the CLI that we have seen in the [MWE](#minimal-working-example).
-- [TestbedOS Schema](schema.md) to see the full available options for `kvm-compose.yaml`, including the different guest types and networking settings available for deployment.
-- [TestbedOS Clustering Mode](clustering_mode.md) for having a cluster of hosts to run a deployment in TestbedOS.
-- [TestbedOS Server](server.md) for more information on the TestbedOS server in the deployment and how it works.
-- [TestbedOS Orchestration](orchestration.md) section for the deployment approach.
-- |networking| section for information on the network architecture of the testbed
-- |installation|, |host.json| sections for initial setup before using yaml files to create testbed deployments
+- [TestbedOS Server](server.md) for more information on the role of the TestbedOS server in the deployment and how it works.
+- [TestbedOS Orchestration](orchestration.md) for the orchestration process that runs behind the scenes to interact with a deployment.
+- [TestbedOS Benchmarking](benchmarking.md) for running the performance benchmarks that come prebundled with the TestbedOS source code.
+- [TestbedOS Test Harness](test_harness.md) for the test harness used in the development of TestbedOS.
 
-
-[^1]: The term testbed operating system was being used by Professor Steve Wong at the Singapore Institute of Technology.
+[^1]: The term Testbed Operating System was being used by Professor Steve Wong at the Singapore Institute of Technology.
