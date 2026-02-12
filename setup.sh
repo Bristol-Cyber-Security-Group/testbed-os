@@ -61,7 +61,7 @@ done
 # place documentation in server assets
 sudo rm -rf /var/lib/testbedos/assets/documentation/
 sudo mkdir /var/lib/testbedos/assets/documentation/
-sudo cp -r build/html/ /var/lib/testbedos/assets/documentation/
+sudo cp -r build/html/. /var/lib/testbedos/assets/documentation/
 
 # install man pages TODO
 
