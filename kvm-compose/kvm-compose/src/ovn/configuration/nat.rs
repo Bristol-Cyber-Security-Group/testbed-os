@@ -74,7 +74,7 @@ impl OvnCommand for OvnNat {
     {
         tracing::info!("creating nat rule ({:?}, {:?}, {:?}) on LR {}", &self.external_ip, &self.logical_ip, &self.nat_type, &self.logical_router_name);
         f(vec_of_strings![
-            "ovn-nbctl", "--may-exist", "lr-nat-add", &self.logical_router_name,
+            "ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "--may-exist", "lr-nat-add", &self.logical_router_name,
             &self.nat_type.to_string(), &self.external_ip.to_string(), &self.logical_ip
         ], config).await
     }
@@ -85,7 +85,7 @@ impl OvnCommand for OvnNat {
     {
         tracing::info!("destroying nat rule ({:?}, {:?}, {:?}) on LR {}", &self.external_ip, &self.logical_ip, &self.nat_type, &self.logical_router_name);
         f(vec_of_strings![
-            "ovn-nbctl", "lr-nat-del", &self.logical_router_name,
+            "ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "lr-nat-del", &self.logical_router_name,
             &self.nat_type.to_string(), &self.external_ip.to_string()
         ], config).await
     }

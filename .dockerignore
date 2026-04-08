@@ -1,0 +1,10 @@
+# ignore rust target folders
+**/target/
+
+# ignore the example folder which contains large artefacts
+examples/*
+
+.git/
+
+.vscode/
+.idea/

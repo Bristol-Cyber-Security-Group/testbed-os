@@ -8,12 +8,12 @@ pub struct OVSConfig {
 impl OVSConfig {
     pub async fn setup(
         tcpdump_config: &TCPDumpConfig,
+        ovs_db_socket: String,
     ) -> anyhow::Result<()> {
 
         // create dummy interface
         tracing::info!("create OS dummy interface {}", tcpdump_config.mirror_interface);
-        tokio::process::Command::new("sudo")
-            .arg("ip")
+        tokio::process::Command::new("ip")
             .arg("link")
             .arg("add")
             .arg(&tcpdump_config.mirror_interface)
@@ -25,8 +25,7 @@ impl OVSConfig {
 
         // enable interface
         tracing::info!("set up OS dummy interface {}", tcpdump_config.mirror_interface);
-        tokio::process::Command::new("sudo")
-            .arg("ip")
+        tokio::process::Command::new("ip")
             .arg("link")
             .arg("set")
             .arg("dev")
@@ -38,8 +37,8 @@ impl OVSConfig {
 
         // add a port to this new interface on the ovs bridge
         tracing::info!("set up OVS port for OS dummy interface {}", tcpdump_config.mirror_interface);
-        tokio::process::Command::new("sudo")
-            .arg("ovs-vsctl")
+        tokio::process::Command::new("ovs-vsctl")
+            .arg(&ovs_db_socket)
             .arg("add-port")
             .arg(&tcpdump_config.ovs_bridge)
             .arg(&tcpdump_config.mirror_interface)
@@ -49,9 +48,9 @@ impl OVSConfig {
 
         // create mirror
         tracing::info!("set up OVS port mirror for OS dummy interface {}", tcpdump_config.mirror_interface);
-        let mut cmd = tokio::process::Command::new("sudo");
+        let mut cmd = tokio::process::Command::new("ovs-vsctl");
         cmd
-            .arg("ovs-vsctl")
+            .arg(&ovs_db_socket)
             .arg("--")
             .arg("--id=@target")
             .arg("get")
@@ -96,12 +95,13 @@ impl OVSConfig {
 
     pub async fn teardown(
         tcpdump_config: &TCPDumpConfig,
+        ovs_db_socket: String,
     ) -> anyhow::Result<()> {
 
         // remove mirror object
         tracing::info!("destroy OVS mirror {}", tcpdump_config.mirror_name);
-        tokio::process::Command::new("sudo")
-            .arg("ovs-vsctl")
+        tokio::process::Command::new("ovs-vsctl")
+            .arg(&ovs_db_socket)
             .arg("--if-exists")
             .arg("destroy")
             .arg("mirror")
@@ -112,8 +112,8 @@ impl OVSConfig {
 
         // remove mirror
         tracing::info!("clear OVS mirror port for {}", tcpdump_config.mirror_interface);
-        tokio::process::Command::new("sudo")
-            .arg("ovs-vsctl")
+        tokio::process::Command::new("ovs-vsctl")
+            .arg(&ovs_db_socket)
             .arg("clear")
             .arg("bridge")
             .arg(&tcpdump_config.ovs_bridge)
@@ -124,8 +124,8 @@ impl OVSConfig {
 
         // delete port
         tracing::info!("delete OVS port for {}", tcpdump_config.mirror_interface);
-        tokio::process::Command::new("sudo")
-            .arg("ovs-vsctl")
+        tokio::process::Command::new("ovs-vsctl")
+            .arg(&ovs_db_socket)
             .arg("--if-exists")
             .arg("del-port")
             .arg(&tcpdump_config.ovs_bridge)
@@ -136,8 +136,7 @@ impl OVSConfig {
 
         // delete dummy interface
         tracing::info!("delete OS dummy interface {}", tcpdump_config.mirror_interface);
-        tokio::process::Command::new("sudo")
-            .arg("ip")
+        tokio::process::Command::new("ip")
             .arg("link")
             .arg("del")
             .arg(&tcpdump_config.mirror_interface)

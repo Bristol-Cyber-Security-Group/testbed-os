@@ -1,0 +1,33 @@
+{
+  "testbed_host_ssh_config": {
+    "main": {
+      "ip": "10.50.0.1",
+      "user": "root",
+      "identity_file": "/home/root/.ssh/id_ed25519",
+      "testbed_nic": "eth0",
+      "main_interface": "eth0",
+      "is_main_host": true,
+      "ovn": {
+        "chassis_name": "main",
+        "bridge": "br-int",
+        "encap_type": "geneve",
+        "encap_ip": "10.50.0.1",
+        "main_ovn_remote": "unix:/usr/local/var/run/ovn/ovnsb_db.sock",
+        "client_ovn_remote": null,
+        "bridge_mappings": [
+          [
+            "public",
+            "br-ex",
+            "172.16.1.1/24"
+          ]
+        ]
+      }
+    }
+  },
+  "ssh_public_key_location": "/var/lib/testbedos//keys/id_ed25519_testbed_insecure_key.pub",
+  "ssh_private_key_location": "/var/lib/testbedos//keys/id_ed25519_testbed_insecure_key",
+  "ovs_db_socket": "--db=unix:/testbed_sandbox/openvswitch/db.sock",
+  "ovn_nb_db_docket": "--db=unix:/testbed_sandbox/ovn/ovnnb_db.sock",
+  "ovn_sb_db_socket": "--db=unix:/testbed_sandbox/ovn/ovnsb_db.sock",
+  "docker_socket": "/testbed_sandbox/docker.sock"
+}

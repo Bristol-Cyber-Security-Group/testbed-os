@@ -241,7 +241,7 @@ pub async fn orchestration_parse_command(
             let previous_state = read_previous_state_request(&http_client, &server_conn, &project_name).await;
             match previous_state {
                 Ok(old_state) => {
-                    let common = get_orchestration_common(&old_state, false, false, false, kvm_compose_config).await?;
+                    let common = get_orchestration_common(&old_state, false, false, false, kvm_compose_config, ).await?;
                     match old_state.request_destroy_action(&common, sender).await {
                         Ok(_) => deployment.state = DeploymentState::Down,
                         Err(err) => {

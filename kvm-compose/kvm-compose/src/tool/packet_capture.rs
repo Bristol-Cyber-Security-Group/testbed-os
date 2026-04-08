@@ -5,6 +5,7 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use kvm_compose_schemas::cli_models::{ToolCmd, ToolSubCmd};
 use crate::orchestration::api::{OrchestrationLogger, OrchestrationLoggerLevel};
+use crate::orchestration::OrchestrationCommon;
 
 /// Run the packet capture. This function needs to work out which testbed host this capture needs to
 /// run on. This function also needs to work out if the
@@ -12,6 +13,7 @@ pub async fn packet_capture(
     tool_cmd: &ToolCmd,
     cancel_token_recv: Arc<Mutex<Receiver<()>>>,
     logging_send: &Sender<OrchestrationLogger>,
+    orchestration_common: &OrchestrationCommon,
 ) -> anyhow::Result<()> {
 
     // channel that will be used to send and listen for the stop instruction
@@ -36,9 +38,10 @@ pub async fn packet_capture(
         level: OrchestrationLoggerLevel::Info,
     }).await?;
 
+    let ovs_db_socket = orchestration_common.kvm_compose_config.ovs_db_socket.clone();
     // packet capture future start, this wraps the blocking thread call in `packet_capture`
     let packet_capture_handle: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
-        tb_packet_capture.capture(config, stop_rx).await?;
+        tb_packet_capture.capture(config, stop_rx, ovs_db_socket).await?;
         Ok(())
     });
 

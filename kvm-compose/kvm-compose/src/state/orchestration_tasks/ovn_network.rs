@@ -21,23 +21,23 @@ pub async fn ovn_run_cmd(
     remote_config: (Option<String>, OrchestrationCommon),
 ) -> anyhow::Result<String> {
     // convert input to Vec<&str>
-    let cmd = cmd.iter()
+    let cmd: Vec<&str> = cmd.iter()
         .map(|x| x.as_str())
         .collect();
     if let Some(testbed_name) = remote_config.0 {
         let res = run_testbed_orchestration_command(
             &remote_config.1,
             &testbed_name,
-            "sudo",
-            cmd,
+            cmd[0],
+            cmd[1..].to_owned(),
             false,
             None,
         ).await;
         res
     } else {
         let res = run_subprocess_command(
-            "sudo",
-            cmd,
+            cmd[0],
+            cmd[1..].to_owned(),
             false,
             None,
         ).await;
@@ -54,7 +54,7 @@ pub async fn ovn_run_cmd_allow_fail(
     remote_config: (Option<String>, OrchestrationCommon),
 ) -> anyhow::Result<String> {
     // convert input to Vec<&str>
-    let cmd = cmd.iter()
+    let cmd: Vec<&str> = cmd.iter()
         .map(|x| x.as_str())
         .collect();
     // allow fail as consecutive up/down could mean we try to do something twice
@@ -62,16 +62,16 @@ pub async fn ovn_run_cmd_allow_fail(
         let res = run_testbed_orchestration_command_allow_fail(
             &remote_config.1,
             &testbed_name,
-            "sudo",
-            cmd,
+            cmd[0],
+            cmd[1..].to_owned(),
             false,
             None,
         ).await;
         res
     } else {
         let res = run_subprocess_command_allow_fail(
-            "sudo",
-            cmd,
+            cmd[0],
+            cmd[1..].to_owned(),
             false,
             None,
         ).await;

@@ -4,6 +4,7 @@ use axum::response::{IntoResponse, Response};
 use axum::http::StatusCode;
 use sysinfo::System;
 use tera::Tera;
+use kvm_compose_schemas::settings::TestbedClusterConfig;
 use service_clients::docker::DockerUnixClient;
 use crate::config::provider::TestbedConfigProvider;
 use crate::deployments::providers::DeploymentProvider;
@@ -27,10 +28,10 @@ pub struct ServiceClients {
 
 impl ServiceClients {
     pub async fn new(
-
+        cluster_config: &TestbedClusterConfig,
     ) -> Self {
         Self {
-            docker_conn: RwLock::new(DockerUnixClient::new("/var/run/docker.sock")
+            docker_conn: RwLock::new(DockerUnixClient::new(&cluster_config.docker_socket)
                 .await
                 .expect("could not connect to docker client")),
         }

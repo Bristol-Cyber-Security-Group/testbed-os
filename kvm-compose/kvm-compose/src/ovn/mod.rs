@@ -66,18 +66,25 @@ pub async fn run_cmd(
     cmd: Vec<String>,
     allow_fail: bool,
 ) -> anyhow::Result<String> {
-    let args: Vec<_> = cmd.iter()
-        .map(|s| s.as_str())
-        .collect();
+    // let args: Vec<_> = cmd.iter()
+    //     .map(|s| s.as_str())
+    //     .collect();
     println!("{:?}", cmd);
-    let command = Command::new("sudo")
-        .args(args)
-        .output()
-        .await?;
-    if !command.status.success() && !allow_fail {
-        bail!("{:?}", String::from_utf8(command.stderr)?);
+
+    // TODO - what if it is just one command no arguments?
+    if let Some((cmd_file, arguments)) = cmd.split_first() {
+        let command = Command::new(cmd_file)
+            .args(arguments)
+            .output()
+            .await?;
+        if !command.status.success() && !allow_fail {
+            bail!("{:?}", String::from_utf8(command.stderr)?);
+        }
+        Ok(String::from_utf8(command.stdout)?)
+    } else{
+        bail!("could not get command and arguments from command: {cmd:?}")
     }
-    Ok(String::from_utf8(command.stdout)?)
+
 }
 
 /// used in tests instead of `ovn_run_cmd`, just pass through the command

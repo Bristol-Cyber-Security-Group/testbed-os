@@ -52,7 +52,7 @@ impl LogicalRouterPort {
     //         None => None,
     //         Some(chassis_name) => {
     //             // TODO - priority for port rather than hardcode 20 or no priority
-    //             Some(vec_of_strings!["ovn-nbctl", "lrp-set-gateway-chassis", &self.name, chassis_name, "20"])
+    //             Some(vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET, "lrp-set-gateway-chassis", &self.name, chassis_name, "20"])
     //         }
     //     }
     // }
@@ -63,7 +63,7 @@ impl LogicalRouterPort {
     //     match &self.chassis_name {
     //         None => None,
     //         Some(chassis_name) => {
-    //             Some(vec_of_strings!["ovn-nbctl", "lrp-del-gateway-chassis", &self.name, chassis_name])
+    //             Some(vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET, "lrp-del-gateway-chassis", &self.name, chassis_name])
     //         }
     //     }
     // }
@@ -77,7 +77,7 @@ impl OvnCommand for LogicalRouterPort {
     {
         tracing::info!("creating LRP {}", &self.name);
         f(vec_of_strings![
-            "ovn-nbctl", "--may-exist", "lrp-add", &self.parent_router, &self.name, self.mac_address.get_string(), self.ip.to_string()
+            "ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "--may-exist", "lrp-add", &self.parent_router, &self.name, self.mac_address.get_string(), self.ip.to_string()
         ], config).await
     }
 
@@ -86,7 +86,7 @@ impl OvnCommand for LogicalRouterPort {
             F: Future<Output=anyhow::Result<String>> + Send
     {
         tracing::info!("destroying LRP {}", &self.name);
-        f(vec_of_strings!["ovn-nbctl", "lrp-del", &self.name], config).await
+        f(vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "lrp-del", &self.name], config).await
     }
 }
 
@@ -108,7 +108,7 @@ mod tests {
         );
         let create_cmd = lrp0.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
         let expected_cmd = vec_of_strings![
-            "ovn-nbctl", "--may-exist", "lrp-add", "lr0", "lr0-port0", "00:00:00:00:ff:01", "10.0.0.1/24"
+            "ovn-nbctl", OVN_NB_DB_SOCKET, "--may-exist", "lrp-add", "lr0", "lr0-port0", "00:00:00:00:ff:01", "10.0.0.1/24"
         ].join(" ");
         assert_eq!(create_cmd, expected_cmd);
 

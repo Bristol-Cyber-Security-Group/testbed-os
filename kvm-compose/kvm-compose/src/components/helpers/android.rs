@@ -23,8 +23,7 @@ pub fn download_system_image(
         .context("getting the 'echo y' pipe")?;
 
     // TODO - is there a way to stream the download log to the user?
-    let output = Command::new("sudo")
-        .arg("/opt/android-sdk/cmdline-tools/latest/bin/sdkmanager")
+    let output = Command::new("/opt/android-sdk/cmdline-tools/latest/bin/sdkmanager")
         .arg("--install")
         .arg(sdk_string)
         .stdin(Stdio::from(yes_stdout))
@@ -76,27 +75,33 @@ pub fn create_avd(
 ) -> anyhow::Result<()> {
     tracing::info!("creating avd {avd_name}");
 
-    // we need to pipe the no to setting up a hardware config
-    let echo_no_command = Command::new("echo")
-        .arg("no")
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
+    if let Some((avd_cmd, arguments)) = build_avd_command.split_first() {
+        // we need to pipe the no to setting up a hardware config
+        let echo_no_command = Command::new("echo")
+            .arg("no")
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
 
-    // we pipe in the "echo no" to the start of the command like:
-    // echo no | avd create ...
-    let output = Command::new("sudo")
-        .args(build_avd_command)
-        .stdin(Stdio::from(echo_no_command.stdout.unwrap()))
-        .stdout(Stdio::piped())
-        .spawn()
-        .with_context(|| format!("creating avd {avd_name}"))?;
-    let cmd_output = output.wait_with_output()?;
-    tracing::info!("create avd log: {cmd_output:?}");
-    if !cmd_output.status.success() {
-        // nothing useful in err, goes to out
-        let std_out = std::str::from_utf8(&cmd_output.stdout)?;
-        bail!("could not create avd {avd_name}, error {std_out:#}");
+        // we pipe in the "echo no" to the start of the command like:
+        // echo no | avd create ...
+        let output = Command::new(avd_cmd)
+            .args(arguments)
+            .stdin(Stdio::from(echo_no_command.stdout.unwrap()))
+            .stdout(Stdio::piped())
+            .spawn()
+            .with_context(|| format!("creating avd {avd_name}"))?;
+        let cmd_output = output.wait_with_output()?;
+        tracing::info!("create avd log: {cmd_output:?}");
+        if !cmd_output.status.success() {
+            // nothing useful in err, goes to out
+            let std_out = std::str::from_utf8(&cmd_output.stdout)?;
+            bail!("could not create avd {avd_name}, error {std_out:#}");
+        }
+    } else {
+        bail!("could not create build avd command: {build_avd_command:?}")
     }
+
+
     Ok(())
 }

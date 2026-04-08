@@ -39,7 +39,7 @@ impl OvnCommand for OvnExternalGateway {
     {
         tracing::info!("creating external gateway ({:?}, {:?}) on LRP {}", &self.router_port_name, &self.chassis_name, &self.router_port_name);
         // TODO - priority for port rather than hardcode 20 or no priority
-        f(vec_of_strings!["ovn-nbctl", "--may-exist", "lrp-set-gateway-chassis", &self.router_port_name, &self.chassis_name, "20"], config).await
+        f(vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "--may-exist", "lrp-set-gateway-chassis", &self.router_port_name, &self.chassis_name, "20"], config).await
     }
 
     async fn destroy_command<F>(&self, f: impl Fn(Vec<String>, (Option<String>, OrchestrationCommon)) -> F + Send + Sync, config: (Option<String>, OrchestrationCommon)) -> anyhow::Result<String>
@@ -47,7 +47,7 @@ impl OvnCommand for OvnExternalGateway {
             F: Future<Output=anyhow::Result<String>> + Send
     {
         tracing::info!("destroying external gateway ({:?}, {:?}) on LRP {}", &self.router_port_name, &self.chassis_name, &self.router_port_name);
-        f(vec_of_strings!["ovn-nbctl", "lrp-del-gateway-chassis", &self.router_port_name, &self.chassis_name], config).await
+        f(vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "lrp-del-gateway-chassis", &self.router_port_name, &self.chassis_name], config).await
     }
 }
 
@@ -63,10 +63,10 @@ mod tests {
             "ovn".into(),
         );
         let set_gateway = gw.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
-        let expected_cmd = vec_of_strings!["ovn-nbctl", "--may-exist", "lrp-set-gateway-chassis", "lr0-public", "ovn", "20"].join(" ");
+        let expected_cmd = vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET, "--may-exist", "lrp-set-gateway-chassis", "lr0-public", "ovn", "20"].join(" ");
         assert_eq!(set_gateway, expected_cmd);
         let del_gateway = gw.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
-        let expected_cmd = vec_of_strings!["ovn-nbctl", "lrp-del-gateway-chassis", "lr0-public", "ovn"].join(" ");
+        let expected_cmd = vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET, "lrp-del-gateway-chassis", "lr0-public", "ovn"].join(" ");
         assert_eq!(del_gateway, expected_cmd);
     }
 }

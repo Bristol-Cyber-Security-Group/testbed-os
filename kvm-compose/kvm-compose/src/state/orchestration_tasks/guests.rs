@@ -87,11 +87,11 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                 res
             }?;
 
-            let cmd = vec!["qemu-img", "create", "-f", "qcow2", "-b", backing_image_location.to_str().unwrap(), "-F", "qcow2", &clone_image_location];
+            let cmd = vec!["create", "-f", "qcow2", "-b", backing_image_location.to_str().unwrap(), "-F", "qcow2", &clone_image_location];
             let clone_create_res = run_testbed_orchestration_command(
                 &common,
                 &main_testbed,
-                "sudo",
+                "qemu-img",
                 cmd,
                 false,
                 None,
@@ -273,11 +273,11 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
             LibvirtGuestOptions::ExistingDisk { path, .. } => path.to_str().unwrap(),
             LibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
         };
-        let cmd = vec!["qemu-img", "rebase", "-u", "-f", "qcow2", "-b", &remote_backing_image_path, "-F", "qcow2", clone_remote_path];
+        let cmd = vec!["rebase", "-u", "-f", "qcow2", "-b", &remote_backing_image_path, "-F", "qcow2", clone_remote_path];
         run_testbed_orchestration_command(
             &common,
             target_testbed,
-            "sudo",
+            "qemu-img",
             cmd,
             false,
             None,
@@ -306,11 +306,11 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         tracing::info!("guest {} local_xml_path {}", &machine_config.guest_type.name,local_xml_path);
         // to start the guest, we need to create the guest so that it's interface is made then add
         // the interface to the OVN integration bridge
-        let cmd = vec!["virsh", "create", &local_xml_path];
+        let cmd = vec!["create", &local_xml_path];
         let create_guest_res = run_testbed_orchestration_command(
             &common,
             testbed_host,
-            "sudo",
+            "virsh",
             cmd,
             false,
             None,
@@ -366,14 +366,14 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                     .unwrap().ovn.bridge;
 
                 let cmd = vec![
-                    "ovs-vsctl", "add-port", integration_bridge, &interface,
+                    &common.kvm_compose_config.ovs_db_socket, "add-port", integration_bridge, &interface,
                     "--", "set", "Interface", &interface,
                     &ext_id,
                 ];
                 let create_guest_port_res = run_testbed_orchestration_command(
                     &common,
                     testbed_host,
-                    "sudo",
+                    "ovs-vsctl",
                     cmd,
                     false,
                     None,
@@ -475,7 +475,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                         true,
                     ).await?;
 
-                    // run the setup script inthe background
+                    // run the setup script in the background
                     let (res_str, _) = libvirt::shell_command(
                         // IMPORTANT - we run the script in the background, and also write a complete
                         //  flag once it is done, which we will look for below to signal the command completed
@@ -675,11 +675,11 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         } else {
             tracing::info!("turning off guest {}", &machine_config.guest_type.name);
         }
-        let cmd = vec!["virsh", "destroy", &guest_name];
+        let cmd = vec!["destroy", &guest_name];
         run_testbed_orchestration_command_allow_fail(
             &common,
             machine_config.testbed_host.as_ref().unwrap(),
-            "sudo",
+            "virsh",
             cmd,
             false,
             None,
@@ -692,11 +692,11 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 
         for (idx, _) in machine_config.guest_type.network.iter().enumerate() {
             let interface = get_guest_interface_name(&common.project_name, machine_config.guest_id, idx);
-            let cmd = vec!["ovs-vsctl", "del-port", &interface];
+            let cmd = vec![&common.kvm_compose_config.ovs_db_socket, "del-port", &interface];
             run_testbed_orchestration_command_allow_fail(
                 &common,
                 machine_config.testbed_host.as_ref().unwrap(),
-                "sudo",
+                "ovs-vsctl",
                 cmd,
                 false,
                 None,
@@ -715,11 +715,11 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
 
-        let cmd = vec!["virsh", "dominfo", &guest_name];
+        let cmd = vec!["dominfo", &guest_name];
         let res = run_testbed_orchestration_command(
             &common,
             testbed_host,
-            "sudo",
+            "virsh",
             cmd,
             false,
             None,
@@ -829,7 +829,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
 
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
-        let mut cmd_string = vec!["sudo".to_string(), "docker".to_string(), "run".to_string(), "--rm".to_string(), "--name".to_string(), guest_name.clone(), "-it".to_string(), "-d".to_string()];
+        let mut cmd_string = vec!["docker".to_string(), "run".to_string(), "--rm".to_string(), "--name".to_string(), guest_name.clone(), "-it".to_string(), "-d".to_string()];
         // add entrypoint if set
         if let Some(entrypoint) = &self.entrypoint {
             cmd_string.push("--entrypoint".to_string());
@@ -851,6 +851,11 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
             for device in devices.iter() {
                 cmd_string.push(format!("--device={device}"))
             }
+        }
+
+
+        if let Some(gpus) = &self.gpus {
+            cmd_string.push(format!("--gpus={gpus}"))
         }
 
         // add privileged, if set
@@ -935,7 +940,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
             cmd_string.push(command.clone());
         }
 
-        let mut ovs_cmd = vec!["sudo".to_string(), "ovs-docker".to_string(), "add-port".to_string()];
+        let mut ovs_cmd = vec!["ovs-docker".to_string(), "add-port".to_string()];
 
         let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
             .unwrap().ovn.bridge;
@@ -984,11 +989,11 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
 
         // in the case when container is already defined on target host, but is not running we need
         // to remove the container and then continue with the code below
-        let cmd = vec!["docker", "container", "inspect", "-f", "{{.State.Running}}", &guest_name];
+        let cmd = vec!["container", "inspect", "-f", "{{.State.Running}}", &guest_name];
         let guest_inspect_res = run_testbed_orchestration_command(
             &common,
             testbed_host,
-            "sudo",
+            "docker",
             cmd,
             false,
             None,
@@ -1002,11 +1007,11 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
                     if ok.contains("false") {
                         // container created but not running, remove it
                         tracing::warn!("guest container {guest_name} found but not running, removing before continuing");
-                        let cmd = vec!["docker", "container", "rm", &guest_name];
+                        let cmd = vec!["container", "rm", &guest_name];
                         run_testbed_orchestration_command(
                             &common,
                             testbed_host,
-                            "sudo",
+                            "docker",
                             cmd,
                             false,
                             None,
@@ -1014,11 +1019,11 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
                     } else {
                         // container created and running, stop and remove it
                         tracing::warn!("guest container {guest_name} found running, removing before continuing");
-                        let cmd = vec!["docker", "container", "rm", "-f", &guest_name];
+                        let cmd = vec!["container", "rm", "-f", &guest_name];
                         run_testbed_orchestration_command(
                             &common,
                             testbed_host,
-                            "sudo",
+                            "docker",
                             cmd,
                             false,
                             None,
@@ -1027,11 +1032,11 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
                     if !net.is_empty() {
                         // and remove the ovs bridge - assume one interface
                         let port = format!("{}-{}-{}-0", common.project_name, &net[0].switch, &machine_config.guest_type.name);
-                        let cmd = vec!["ovs-docker", "del-port", &port, "eth0", &guest_name];
+                        let cmd = vec!["del-port", &port, "eth0", &guest_name];
                         run_testbed_orchestration_command(
                             &common,
                             testbed_host,
-                            "sudo",
+                            "ovs-docker",
                             cmd,
                             false,
                             None,
@@ -1065,8 +1070,8 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
             let create_guest_res = run_testbed_orchestration_command(
                 &common,
                 testbed_host,
-                "sudo",
-                cmd,
+                cmd[0],
+                cmd[1..].to_owned(),
                 false,
                 None,
             ).await;
@@ -1082,8 +1087,8 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
                     run_testbed_orchestration_command(
                         &common,
                         testbed_host,
-                        "sudo",
-                        cmd,
+                        cmd[0],
+                        cmd[1..].to_owned(),
                         false,
                         None,
                     ).await?;
@@ -1101,7 +1106,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
             // id of the port on the integration bridge
             let container_id = format!("external_ids:container_id={}", &guest_name);
             let port_uuid_cmd = vec![
-                "ovs-vsctl", "--data=bare", "--no-heading", "--columns=name", "find", "interface",
+                &common.kvm_compose_config.ovs_db_socket, "--data=bare", "--no-heading", "--columns=name", "find", "interface",
                 &container_id,
                 // we hardcoded eth0 above so no need to derive it
                 "external_ids:container_iface=eth0"
@@ -1109,7 +1114,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
             let port_uuid = run_testbed_orchestration_command(
                 &common,
                 testbed_host,
-                "sudo",
+                "ovs-vsctl",
                 port_uuid_cmd,
                 false,
                 None,
@@ -1123,13 +1128,13 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
                 // assume one interface
                 let iface_id = format!("external_ids:iface-id={}-{}-{}-0", &common.project_name, &net[0].switch, &machine_config.guest_type.name);
                 let set_interface_cmd = vec![
-                    "ovs-vsctl", "set", "interface", &port_uuid, &iface_id
+                    &common.kvm_compose_config.ovs_db_socket, "set", "interface", &port_uuid, &iface_id
                 ];
                 tracing::debug!("docker set interface cmd: {:?}", set_interface_cmd);
                 run_testbed_orchestration_command(
                     &common,
                     testbed_host,
-                    "sudo",
+                    "ovs-vsctl",
                     set_interface_cmd,
                     false,
                     None,
@@ -1168,7 +1173,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
         let testbed_host = machine_config.testbed_host.as_ref().unwrap();
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
 
-        let mut cmd_ovs = vec!["sudo".to_string(), "ovs-docker".to_string(), "del-port".to_string()];
+        let mut cmd_ovs = vec!["ovs-docker".to_string(), "del-port".to_string()];
         let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
             .unwrap().ovn.bridge;
         cmd_ovs.push(integration_bridge.clone());
@@ -1180,8 +1185,8 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
         let destroy_guest_ovs_res = run_testbed_orchestration_command(
             &common,
             testbed_host,
-            "sudo",
-            cmd,
+            cmd[0],
+            cmd[1..].to_owned(),
             false,
             None,
         ).await;
@@ -1197,11 +1202,11 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
         }
 
 
-        let cmd = vec!["sudo", "docker", "stop", &guest_name];
+        let cmd = vec!["stop", &guest_name];
         let destroy_guest_res = run_testbed_orchestration_command(
             &common,
             testbed_host,
-            "sudo",
+            "docker",
             cmd,
             false,
             None,
@@ -1294,18 +1299,17 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
 
         // checking if the Android emulator is already running
         let cmd = vec![
-            "ps", 
             "aux",
         ];
         let cmd_result = run_testbed_orchestration_command_allow_fail(
                 &common,
                 testbed_host,
-                "sudo",
+                "ps",
                 cmd,
                 false,
                 None,
             ).await?;
-        let process_name = format!("sudo ip netns exec {} /opt/android-sdk/emulator/emulator -avd {}", namespace, guest_project_name);
+        let process_name = format!("ip netns exec {} /opt/android-sdk/emulator/emulator -avd {}", namespace, guest_project_name);
         let existing_android_emulator = cmd_result.contains(&process_name);
         
         if existing_android_emulator {
@@ -1337,14 +1341,15 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
             let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
                 .unwrap().ovn.bridge;
             let cmd = vec![
-                "ovs-vsctl", "--may-exist", "add-port", integration_bridge, &guest_interface,
+                &common.kvm_compose_config.ovs_db_socket,
+                "--may-exist", "add-port", integration_bridge, &guest_interface,
                 "--", "set", "Interface", &guest_interface, "type=internal",
                 "--", "set", "Interface", &guest_interface, &iface_id,
             ];
             run_testbed_orchestration_command_allow_fail(
                 &common,
                 testbed_host,
-                "sudo",
+                "ovs-vsctl",
                 cmd,
                 false,
                 None,
@@ -1352,45 +1357,45 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
 
 
             // create namespace
-            let cmd = vec!["ip", "netns", "add", &namespace];
+            let cmd = vec!["netns", "add", &namespace];
             run_testbed_orchestration_command_allow_fail(
                 &common,
                 testbed_host,
-                "sudo",
+                "ip",
                 cmd,
                 false,
                 None,
             ).await?;
             // make sure loopback is up
-            let cmd = vec!["ip", "netns", "exec", &namespace, "ip", "link", "set", "dev", "lo", "up"];
+            let cmd = vec!["netns", "exec", &namespace, "ip", "link", "set", "dev", "lo", "up"];
             run_testbed_orchestration_command_allow_fail(
                 &common,
                 testbed_host,
-                "sudo",
+                "ip",
                 cmd,
                 false,
                 None,
             ).await?;
             // put ovs port into namespace
             let cmd = vec![
-                "ip", "link", "set", &guest_interface, "netns", &namespace,
+                "link", "set", &guest_interface, "netns", &namespace,
             ];
             run_testbed_orchestration_command_allow_fail(
                 &common,
                 testbed_host,
-                "sudo",
+                "ip",
                 cmd,
                 false,
                 None,
             ).await?;
             // set mac address of ovs port
             let cmd = vec![
-                "ip", "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "address", &mac
+                "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "address", &mac
             ];
             run_testbed_orchestration_command_allow_fail(
                 &common,
                 testbed_host,
-                "sudo",
+                "ip",
                 cmd,
                 false,
                 None,
@@ -1406,12 +1411,12 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
             // TODO - get mask for this ip
             let namespace_ip = format!("{ip}/24");
             let cmd = vec![
-                "ip", "netns", "exec", &namespace, "ip", "addr", "add", &namespace_ip, "dev", &guest_interface,
+                "netns", "exec", &namespace, "ip", "addr", "add", &namespace_ip, "dev", &guest_interface,
             ];
             run_testbed_orchestration_command_allow_fail(
                 &common,
                 testbed_host,
-                "sudo",
+                "ip",
                 cmd,
                 false,
                 None,
@@ -1419,24 +1424,24 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
 
             // set ovs port up
             let cmd = vec![
-                "ip", "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "up"
+                "netns", "exec", &namespace, "ip", "link", "set", &guest_interface, "up"
             ];
             run_testbed_orchestration_command_allow_fail(
                 &common,
                 testbed_host,
-                "sudo",
+                "ip",
                 cmd,
                 false,
                 None,
             ).await?;
             // set default route for ovs port
             let cmd = vec![
-                "ip", "netns", "exec", &namespace, "ip", "route", "add", "default", "via", gateway, "dev", &guest_interface,
+                "netns", "exec", &namespace, "ip", "route", "add", "default", "via", gateway, "dev", &guest_interface,
             ];
             run_testbed_orchestration_command_allow_fail(
                 &common,
                 testbed_host,
-                "sudo",
+                "ip",
                 cmd,
                 false,
                 None,
@@ -1446,7 +1451,7 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
 
         // finally, deploy avd in background
         let cmd = vec![
-            "ip", "netns", "exec", &namespace, "/opt/android-sdk/emulator/emulator",
+            "netns", "exec", &namespace, "/opt/android-sdk/emulator/emulator",
             "-avd", &guest_project_name,
             // qemu options
 
@@ -1454,7 +1459,7 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
         run_testbed_orchestration_command(
             &common,
             testbed_host,
-            "sudo",
+            "ip",
             cmd,
             true,
             None,
@@ -1563,11 +1568,11 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
 
         // kill avd using ADB - will be the only emulator in namespace so will be called emulator-5554
         // with respect to the ADB server, since it is isolated
-        let cmd = vec!["ip", "netns", "exec", &namespace, "/opt/android-sdk/platform-tools/adb", "-s", "emulator-5554", "emu", "kill"];
+        let cmd = vec!["netns", "exec", &namespace, "/opt/android-sdk/platform-tools/adb", "-s", "emulator-5554", "emu", "kill"];
         run_testbed_orchestration_command_allow_fail(
             &common,
             testbed_host,
-            "sudo",
+            "ip",
             cmd,
             false,
             None,
@@ -1575,21 +1580,21 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
         // destroy the ovs port for the namespace
         let integration_bridge = &common.kvm_compose_config.testbed_host_ssh_config.get(testbed_host)
             .unwrap().ovn.bridge;
-        let cmd = vec!["ovs-vsctl", "del-port", integration_bridge, &guest_interface];
+        let cmd = vec![&common.kvm_compose_config.ovs_db_socket, "del-port", integration_bridge, &guest_interface];
         run_testbed_orchestration_command_allow_fail(
             &common,
             testbed_host,
-            "sudo",
+            "ovs-vsctl",
             cmd,
             false,
             None,
         ).await?;
         // destroy the namespace which will delete the veth as well
-        let cmd = vec!["ip", "netns", "delete", &namespace];
+        let cmd = vec!["netns", "delete", &namespace];
         run_testbed_orchestration_command_allow_fail(
             &common,
             testbed_host,
-            "sudo",
+            "ip",
             cmd,
             false,
             None,
@@ -1825,8 +1830,8 @@ async fn get_lsp_dynamic_ip(
     let res = run_testbed_orchestration_command(
         orchestration_common,
         testbed_host,
-        "sudo",
-        vec!["ovn-nbctl", "--bare", "--columns=dynamic_addresses", "find", "Logical_Switch_Port", &name],
+        "ovn-nbctl",
+        vec![&orchestration_common.kvm_compose_config.ovn_nb_db_docket, "--bare", "--columns=dynamic_addresses", "find", "Logical_Switch_Port", &name],
         false,
         None,
     ).await?;

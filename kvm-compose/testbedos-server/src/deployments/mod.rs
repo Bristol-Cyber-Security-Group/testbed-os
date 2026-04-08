@@ -13,19 +13,6 @@ pub mod providers;
 pub mod db;
 pub mod deployments;
 
-pub fn run_orchestration_command(
-    log_file_path: &String,
-    deployment_name: &String,
-    deployment_command_string: &String,
-) -> anyhow::Result<Child> {
-    Command::new("sudo")
-        .arg("testbedos-orchestrate")
-        .arg(log_file_path)
-        .arg(deployment_name)
-        .arg(deployment_command_string)
-        .spawn()
-        .with_context(|| "running orchestrator")
-}
 
 /// This function will get the state json for the deployment. It will check if it exists due to an
 /// artefact generation being run previously.

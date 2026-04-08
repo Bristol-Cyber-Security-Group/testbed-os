@@ -174,7 +174,7 @@ async fn _run_subprocess_command(
     working_dir: Option<String>,
 ) -> anyhow::Result<String> {
     // TODO - pretty print this so it doesnt look like a vector of strings
-    tracing::debug!("running command: {:?}", command_string);
+    tracing::debug!("running command: {:?} {:?}", starting_command, command_string);
     if !in_background {
 
         // apply working_dir if is Some
@@ -183,12 +183,12 @@ async fn _run_subprocess_command(
                 .args(&command_string)
                 .current_dir(working_dir.unwrap())
                 .output()
-                .await?
+                .await.context(format!("could not run command with working dir {:?} {:?}", starting_command, command_string))?
         } else {
             Command::new(starting_command)
                 .args(&command_string)
                 .output()
-                .await?
+                .await.context(format!("could not run command without working dir {:?} {:?}", starting_command, command_string))?
         };
 
         // if the command failed and not allowing fail
@@ -200,7 +200,7 @@ async fn _run_subprocess_command(
         // command failed but allowed to fail, log the reason
         if !sub_process.status.success() && allow_fail {
             let std_err = std::str::from_utf8(&sub_process.stderr)?;
-            let err_string = format!("command running failed but allowed to fail for command ({:?}), error: {:#}", &command_string, std_err);
+            let err_string = format!("command running failed but allowed to fail for command ({:?} {:?}), error: {:#}", &starting_command, &command_string, std_err);
             tracing::warn!("{}", err_string.trim());
         }
         // return the result as a string in case it is needed
@@ -448,8 +448,8 @@ pub async fn destroy_remote_project_folders(
             run_testbed_orchestration_command(
                 common,
                 host_name,
-                "sudo",
-                vec!["rm", "-rf", &folder],
+                "rm",
+                vec!["-rf", &folder],
                 false,
                 None).await?;
         }

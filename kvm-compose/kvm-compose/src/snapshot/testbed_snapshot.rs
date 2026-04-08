@@ -98,11 +98,11 @@ async fn zip_project(
     // store the zip contents in /tmp during the zip
     // set the working folder so that we don't get the parent directories (awkward technical detail
     // of zip)
-    let cmd = vec!["zip", "-r", &zip_name, ".", "-x", &state_file, "-b", "/tmp"];
+    let cmd = vec!["-r", &zip_name, ".", "-x", &state_file, "-b", "/tmp"];
     run_testbed_orchestration_command(
         common,
         main_host[0],
-        "sudo",
+        "zip",
         cmd,
         false,
         Some(project_folder.clone()),

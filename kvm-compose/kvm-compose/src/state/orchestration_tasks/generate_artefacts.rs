@@ -258,11 +258,11 @@ async fn libvirt(
                         ).await?;
                     } else {
                         // create a linked clone, unless user has specified to make a raw copy
-                        let cmd = vec!["qemu-img", "create", "-f", "qcow2", "-b", reference_image, "-F", "qcow2", &disk_path_on_main];
+                        let cmd = vec!["create", "-f", "qcow2", "-b", reference_image, "-F", "qcow2", &disk_path_on_main];
                         run_testbed_orchestration_command(
                             &common,
                             &main_host,
-                            "sudo",
+                            "qemu-img",
                             cmd,
                             false,
                             None,

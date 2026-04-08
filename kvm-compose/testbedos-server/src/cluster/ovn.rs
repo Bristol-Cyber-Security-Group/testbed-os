@@ -94,8 +94,7 @@ pub async fn set_up_cluster_main_check_cron_jobs(
                 .await
                 .expect("could not read client config for re-join cluster check");
             // ask for the cluster config
-            let cmd_res = Command::new("sudo")
-                .arg("curl")
+            let cmd_res = Command::new("curl")
                 .arg("-s")
                 .arg("-w")
                 .arg("'%{http_code}'")
@@ -116,8 +115,7 @@ pub async fn set_up_cluster_main_check_cron_jobs(
                         // convert to json
                         let client_config = serde_json::to_string_pretty(&client_config)
                             .expect("converting client config to json to send to main");
-                        Command::new("sudo")
-                            .arg("curl")
+                        Command::new("curl")
                             .arg("-X")
                             .arg("POST")
                             .arg(&server_url)
@@ -154,68 +152,68 @@ pub async fn configure_host_ovn(
     host_config: &SshConfig,
 ) -> anyhow::Result<()> {
 
-    tracing::info!("making sure OVS is up");
-    let chassis_name = format!("--system-id={}", host_config.ovn.chassis_name);
-    run_subprocess_command_allow_fail(
-        "sudo",
-        vec!["/usr/local/share/openvswitch/scripts/ovs-ctl", "start", &chassis_name],
-        false,
-        None,
-    ).await?;
+    // tracing::info!("making sure OVS is up");
+    // let chassis_name = format!("--system-id={}", host_config.ovn.chassis_name);
+    // run_subprocess_command_allow_fail(
+    //     "sudo",
+    //     vec!["/usr/local/share/openvswitch/scripts/ovs-ctl", "start", &chassis_name],
+    //     false,
+    //     None,
+    // ).await?;
 
-    tracing::info!("making sure ovn controller is up");
-    run_subprocess_command_allow_fail(
-        "sudo",
-        vec!["/usr/local/share/ovn/scripts/ovn-ctl", "start_controller"],
-        false,
-        None,
-    ).await?;
-    tracing::info!("making sure ovn northbound database is up");
-    run_subprocess_command_allow_fail(
-        "sudo",
-        vec!["/usr/local/share/ovn/scripts/ovn-ctl", "start_northd"],
-        false,
-        None,
-    ).await?;
+    // tracing::info!("making sure ovn controller is up");
+    // run_subprocess_command_allow_fail(
+    //     "sudo",
+    //     vec!["/usr/local/share/ovn/scripts/ovn-ctl", "start_controller"],
+    //     false,
+    //     None,
+    // ).await?;
+    // tracing::info!("making sure ovn northbound database is up");
+    // run_subprocess_command_allow_fail(
+    //     "sudo",
+    //     vec!["/usr/local/share/ovn/scripts/ovn-ctl", "start_northd"],
+    //     false,
+    //     None,
+    // ).await?;
 
     // TODO - if an external bridge is removed from config, it should be destroyed (delta change)
     // make sure the external bridge(s) exist and have an ip address and up and have NAT rule
     for (_, ext, ip) in ovn.bridge_mappings.iter() {
         // add external bridge
-        tracing::info!("making sure external bridge {ext} exists");
-        run_subprocess_command(
-            "sudo",
-            vec!["ovs-vsctl", "--may-exist", "add-br", ext],
-            false,
-            None,
-        ).await?;
-        // if input has no mask, we need to add a default
-        let ip_and_mask = match subnet_to_ip_and_mask(ip) {
-            Ok(_) => ip.clone(), // has ip and mask
-            Err(_) => format!("{ip}/24") // no mask, so default to /24
-        };
-        // add ip
-        tracing::info!("making sure {ext} has ip {ip}");
-        run_subprocess_command_allow_fail(
-            "sudo",
-            vec!["ip", "addr", "add", &ip_and_mask, "dev", ext],
-            false,
-            None,
-        ).await?;
-        // make sure its up
-        tracing::info!("making sure {ext} is up");
-        run_subprocess_command_allow_fail(
-            "sudo",
-            vec!["ip", "link", "set", ext, "up"],
-            false,
-            None,
-        ).await?;
+        // tracing::info!("making sure external bridge {ext} exists");
+        // run_subprocess_command(
+        //     "ovs-vsctl",
+        //     vec![OVS_DB_SOCKET, "--may-exist", "add-br", ext],
+        //     false,
+        //     None,
+        // ).await?;
+        // // if input has no mask, we need to add a default
+        // let ip_and_mask = match subnet_to_ip_and_mask(ip) {
+        //     Ok(_) => ip.clone(), // has ip and mask
+        //     Err(_) => format!("{ip}/24") // no mask, so default to /24
+        // };
+        // // add ip
+        // tracing::info!("making sure {ext} has ip {ip}");
+        // run_subprocess_command_allow_fail(
+        //     "ip",
+        //     vec!["addr", "add", &ip_and_mask, "dev", ext],
+        //     false,
+        //     None,
+        // ).await?;
+        // // make sure its up
+        // tracing::info!("making sure {ext} is up");
+        // run_subprocess_command_allow_fail(
+        //     "ip",
+        //     vec!["link", "set", ext, "up"],
+        //     false,
+        //     None,
+        // ).await?;
         // only do this if main
         if is_main {
             // check if NAT rule exists
             tracing::info!("checking if NAT rule for {ext} {ip} to forward to {main_interface} exists");
-            let cmd = Command::new("sudo")
-                .args(vec!["iptables", "-t", "nat", "-C", "POSTROUTING", "-o", main_interface, "-s", &infer_subnet(ip)?, "-j", "MASQUERADE"])
+            let cmd = Command::new("iptables")
+                .args(vec!["-t", "nat", "-C", "POSTROUTING", "-o", main_interface, "-s", &infer_subnet(ip)?, "-j", "MASQUERADE"])
                 .output()
                 .await;
             let exists = match cmd {
@@ -233,22 +231,22 @@ pub async fn configure_host_ovn(
                 tracing::info!("adding NAT rule for {ext} {ip}");
                 // TODO - do we need to change the octets to 0 depending on mask?
                 run_subprocess_command_allow_fail(
-                    "sudo",
-                    vec!["iptables", "-t", "nat", "-A", "POSTROUTING", "-o", main_interface, "-s", &infer_subnet(ip)?, "-j", "MASQUERADE"],
+                    "iptables",
+                    vec!["-t", "nat", "-A", "POSTROUTING", "-o", main_interface, "-s", &infer_subnet(ip)?, "-j", "MASQUERADE"],
                     false,
                     None,
                 ).await?;
                 // add forward rules
                 tracing::info!("adding forward rules for {ext} {ip}");
                 run_subprocess_command_allow_fail(
-                    "sudo",
-                    vec!["iptables", "-A", "FORWARD", "-i", main_interface, "-o", ext, "-m", "state", "--state", "RELATED,ESTABLISHED", "-j", "ACCEPT"],
+                    "iptables",
+                    vec!["-A", "FORWARD", "-i", main_interface, "-o", ext, "-m", "state", "--state", "RELATED,ESTABLISHED", "-j", "ACCEPT"],
                     false,
                     None,
                 ).await?;
                 run_subprocess_command_allow_fail(
-                    "sudo",
-                    vec!["iptables", "-A", "FORWARD", "-i", ext, "-o", main_interface, "-j", "ACCEPT"],
+                    "iptables",
+                    vec!["-A", "FORWARD", "-i", ext, "-o", main_interface, "-j", "ACCEPT"],
                     false,
                     None,
                 ).await?;
@@ -261,7 +259,7 @@ pub async fn configure_host_ovn(
     // TODO make sure OVN settings are correct (chassis) - only on main
 
     // make sure OVS settings are correct (external ids) for either main or client, based on host config
-    set_ovs_external_ids(ovn).await?;
+    // set_ovs_external_ids(ovn).await?;
 
     // TODO ask remote testbeds if their local settings are correct? or is this in their join script
 
@@ -278,7 +276,7 @@ pub async fn configure_ovn_cluster(
     // get config
     let cluster_config = db_config.read().await.get_cluster_config().await?;
     // check which hosts exist in kvm-compose-config
-    let chassis_list = get_chassis_list().await?;
+    let chassis_list = get_chassis_list(&cluster_config).await?;
     // compare chassis in OVN to kvm-compose-config
     let mut unknown_chassis = vec![];
     for (host_name, _) in chassis_list {
@@ -292,8 +290,8 @@ pub async fn configure_ovn_cluster(
     for chassis in unknown_chassis {
         tracing::info!("removing chassis {} from OVN southbound database", &chassis);
         run_subprocess_command(
-            "sudo",
-            vec!["ovn-sbctl", "chassis-del", &chassis],
+            "ovn-sbctl",
+            vec![&cluster_config.ovn_sb_db_socket, "chassis-del", &chassis],
             false,
             None,
         ).await?;
@@ -305,12 +303,12 @@ pub async fn configure_ovn_cluster(
 /// Return a list of chassis registered in OVN southbound database. The data is requested in csv
 /// format and parsed with serde.
 async fn get_chassis_list(
-
+    config: &TestbedClusterConfig,
 ) -> anyhow::Result<HashMap<String, OvnChassisCsvRecord>> {
     // get chassis list as a csv
     let chassis_csv_raw = run_subprocess_command(
-        "sudo",
-        vec!["ovn-sbctl", "-f", "csv", "list", "chassis"],
+        "ovn-sbctl",
+        vec![&config.ovn_sb_db_socket, "-f", "csv", "list", "chassis"],
         false,
         None,
     ).await?;
@@ -335,14 +333,15 @@ struct OvnChassisCsvRecord {
 
 async fn set_ovs_external_ids(
     ovn: &OvnConfig,
+    cluster_config: &TestbedClusterConfig,
 ) -> anyhow::Result<()> {
     tracing::info!("setting OVS external ids");
 
     let encap_type = format!("external-ids:ovn-encap-type={}", &ovn.encap_type);
     tracing::info!("setting {}", &encap_type);
     run_subprocess_command_allow_fail(
-        "sudo",
-        vec!["ovs-vsctl", "set", "open", ".", &encap_type],
+        "ovs-vsctl",
+        vec![&cluster_config.ovs_db_socket, "set", "open", ".", &encap_type],
         false,
         None,
     ).await?;
@@ -350,8 +349,8 @@ async fn set_ovs_external_ids(
     let encap_ip = format!("external-ids:ovn-encap-ip={}", &ovn.encap_ip);
     tracing::info!("setting {}", &encap_ip);
     run_subprocess_command_allow_fail(
-        "sudo",
-        vec!["ovs-vsctl", "set", "open", ".", &encap_ip],
+        "ovs-vsctl",
+        vec![&cluster_config.ovs_db_socket, "set", "open", ".", &encap_ip],
         false,
         None,
     ).await?;
@@ -359,8 +358,8 @@ async fn set_ovs_external_ids(
     let remote = format!("external-ids:ovn-remote={}", &ovn.main_ovn_remote);
     tracing::info!("setting {}", &remote);
     run_subprocess_command_allow_fail(
-        "sudo",
-        vec!["ovs-vsctl", "set", "open", ".", &remote],
+        "ovs-vsctl",
+        vec![&cluster_config.ovs_db_socket, "set", "open", ".", &remote],
         false,
         None,
     ).await?;
@@ -368,8 +367,8 @@ async fn set_ovs_external_ids(
     let bridge = format!("external-ids:ovn-bridge={}", &ovn.bridge);
     tracing::info!("setting {}", &bridge);
     run_subprocess_command_allow_fail(
-        "sudo",
-        vec!["ovs-vsctl", "set", "open", ".", &bridge],
+        "ovs-vsctl",
+        vec![&cluster_config.ovs_db_socket, "set", "open", ".", &bridge],
         false,
         None,
     ).await?;
@@ -385,8 +384,8 @@ async fn set_ovs_external_ids(
     let mapping = format!("external-ids:ovn-bridge-mappings={}", &bridge_mappings);
     tracing::info!("setting {}", &mapping);
     run_subprocess_command_allow_fail(
-        "sudo",
-        vec!["ovs-vsctl", "set", "open", ".", &mapping],
+        "ovs-vsctl",
+        vec![&cluster_config.ovs_db_socket, "set", "open", ".", &mapping],
         false,
         None,
     ).await?;

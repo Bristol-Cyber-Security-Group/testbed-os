@@ -13,12 +13,13 @@ impl TestbedPacketCapture {
         &self,
         config: TCPDumpConfig,
         stop_rx: tokio::sync::oneshot::Receiver<()>,
+        ovs_db_socket: String,
     ) -> anyhow::Result<()> {
-        match capture::packet_capture(&config, stop_rx).await {
+        match capture::packet_capture(&config, stop_rx, ovs_db_socket.clone()).await {
             Ok(_) => {}
             Err(err) => {
                 tracing::warn!("forcing cleanup due to setup error");
-                OVSConfig::teardown(&config).await
+                OVSConfig::teardown(&config, ovs_db_socket).await
                     .context("tearing down mirror port infrastructure due to error in setup")?;
                 anyhow::bail!(err)
             }
@@ -88,8 +89,7 @@ impl TCPDumpConfig {
             let maybe_name = generate_name(&in_name);
 
             // check if there was a collision, if there is, this will Err and will loop again
-            if let Ok(_) = tokio::process::Command::new("sudo")
-                .arg("ip")
+            if let Ok(_) = tokio::process::Command::new("ip")
                 .arg("link")
                 .arg("show")
                 .arg("dev")
@@ -115,8 +115,7 @@ impl TCPDumpConfig {
         // TODO - what if the interface/port is on a remote testbed
 
         // check interface exists, this is the ovs side, and error if it doesn't
-        tokio::process::Command::new("sudo")
-            .arg("ovs-vsctl")
+        tokio::process::Command::new("ovs-vsctl")
             .arg("--id=@target")
             .arg("get")
             .arg("port")
@@ -126,8 +125,7 @@ impl TCPDumpConfig {
             .context("Getting existing interface/port")?;
 
         // check mirror doesn't already exist
-        if tokio::process::Command::new("sudo")
-            .arg("ovs-vsctl")
+        if tokio::process::Command::new("ovs-vsctl")
             .arg("--id=@target")
             .arg("get")
             .arg("mirror")

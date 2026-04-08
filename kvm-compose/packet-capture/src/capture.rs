@@ -52,10 +52,11 @@ impl PacketCodec for Codec {
 pub async fn packet_capture(
     config: &TCPDumpConfig,
     stop_rx: tokio::sync::oneshot::Receiver<()>,
+    ovs_db_socket: String,
 ) -> anyhow::Result<()> {
 
     // create the OVS mirroring
-    OVSConfig::setup(&config).await
+    OVSConfig::setup(&config, ovs_db_socket.clone()).await
         .context("Setting up mirror port infrastructure")?;
 
     // open connection to interface
@@ -118,7 +119,7 @@ pub async fn packet_capture(
     }
 
     // destroy the mirror port and dummy interface
-    OVSConfig::teardown(&config).await
+    OVSConfig::teardown(&config, ovs_db_socket).await
         .context("tearing down mirror port infrastructure")?;
 
     tracing::info!("capture complete");

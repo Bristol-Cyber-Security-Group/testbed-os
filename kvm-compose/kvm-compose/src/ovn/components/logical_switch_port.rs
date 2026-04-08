@@ -113,7 +113,7 @@ impl OvnCommand for LogicalSwitchPort {
                 let ip = ip.to_string();
                 let mac_address = mac_address.get_string();
                 let mut cmd = vec_of_strings![
-                    "ovn-nbctl", "--may-exist", "lsp-add", &self.parent_switch, &self.name,
+                    "ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "--may-exist", "lsp-add", &self.parent_switch, &self.name,
                     "--", "set", "Logical_Switch_Port", &self.name,
                     format!("addresses=\"{mac_address} {ip}\"")
                 ];
@@ -136,7 +136,7 @@ impl OvnCommand for LogicalSwitchPort {
                 let mac_address = mac_address.get_string();
                 // run command
                 f(vec_of_strings![
-                    "ovn-nbctl", "--may-exist", "lsp-add", &self.parent_switch, &self.name,
+                    "ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "--may-exist", "lsp-add", &self.parent_switch, &self.name,
                     "--", "set", "Logical_Switch_Port", &self.name, "type=router",
                     format!("options:router-port={router_port_name}"),
                     format!("addresses=\"{mac_address}\"")
@@ -148,7 +148,7 @@ impl OvnCommand for LogicalSwitchPort {
                 tracing::info!("creating LSP type localnet {} on LS {}", &self.name, &self.parent_switch);
                 // run command
                 f(vec_of_strings![
-                    "ovn-nbctl", "--may-exist", "lsp-add", &self.parent_switch, &self.name,
+                    "ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "--may-exist", "lsp-add", &self.parent_switch, &self.name,
                     "--", "set", "Logical_Switch_Port", &self.name, "type=localnet",
                     format!("options:network_name={provider_network_name}"),
                     format!("addresses=\"unknown\"")
@@ -162,7 +162,7 @@ impl OvnCommand for LogicalSwitchPort {
             F: Future<Output=anyhow::Result<String>> + Send
     {
         tracing::info!("destroying LSP type {:?} {} on LS {}", self.port_type, &self.name, &self.parent_switch);
-        f(vec_of_strings!["ovn-nbctl", "lsp-del", &self.name], config).await
+        f(vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "lsp-del", &self.name], config).await
     }
 }
 
@@ -188,7 +188,7 @@ mod tests {
             internal,
         );
         let expected_cmd = vec_of_strings![
-            "ovn-nbctl", "--may-exist", "lsp-add", "sw0", "sw0-port0",
+            "ovn-nbctl", OVN_NB_DB_SOCKET, "--may-exist", "lsp-add", "sw0", "sw0-port0",
             "--", "set", "Logical_Switch_Port", "sw0-port0",
             "addresses=\"00:00:00:00:00:01 10.0.0.2\"", "options:chassis=ovn"
         ].join(" ");
@@ -197,7 +197,7 @@ mod tests {
 
         // test delete
         let delete_cmd = lsp.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
-        let expected_cmd = vec_of_strings!["ovn-nbctl", "lsp-del", "sw0-port0"].join(" ");
+        let expected_cmd = vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET, "lsp-del", "sw0-port0"].join(" ");
         assert_eq!(delete_cmd, expected_cmd);
     }
 
@@ -217,7 +217,7 @@ mod tests {
             internal,
         );
         let expected_cmd = vec_of_strings![
-            "ovn-nbctl", "--may-exist", "lsp-add", "sw0", "sw0-port0",
+            "ovn-nbctl", OVN_NB_DB_SOCKET, "--may-exist", "lsp-add", "sw0", "sw0-port0",
             "--", "set", "Logical_Switch_Port", "sw0-port0",
             "addresses=\"00:00:00:00:00:01 10.0.0.2\"", "options:network_name=public,chassis=ovn"
         ].join(" ");
@@ -226,7 +226,7 @@ mod tests {
 
         // test delete
         let delete_cmd = lsp.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
-        let expected_cmd = vec_of_strings!["ovn-nbctl", "lsp-del", "sw0-port0"].join(" ");
+        let expected_cmd = vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET, "lsp-del", "sw0-port0"].join(" ");
         assert_eq!(delete_cmd, expected_cmd);
     }
 
@@ -243,7 +243,7 @@ mod tests {
             router,
         );
         let expected_cmd = vec_of_strings![
-            "ovn-nbctl", "--may-exist", "lsp-add", "sw0", "sw0-port0",
+            "ovn-nbctl", OVN_NB_DB_SOCKET, "--may-exist", "lsp-add", "sw0", "sw0-port0",
             "--", "set", "Logical_Switch_Port", "sw0-port0", "type=router",
             "options:router-port=lr0-port0", "addresses=\"00:00:00:00:ff:01\""
         ].join(" ");
@@ -252,7 +252,7 @@ mod tests {
 
         // test delete
         let delete_cmd = lsp.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
-        let expected_cmd = vec_of_strings!["ovn-nbctl", "lsp-del", "sw0-port0"].join(" ");
+        let expected_cmd = vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET, "lsp-del", "sw0-port0"].join(" ");
         assert_eq!(delete_cmd, expected_cmd);
     }
 
@@ -268,7 +268,7 @@ mod tests {
             localnet,
         );
         let expected_cmd = vec_of_strings![
-            "ovn-nbctl", "--may-exist", "lsp-add", "sw0", "sw0-port0",
+            "ovn-nbctl", OVN_NB_DB_SOCKET, "--may-exist", "lsp-add", "sw0", "sw0-port0",
             "--", "set", "Logical_Switch_Port", "sw0-port0", "type=localnet",
             "options:network_name=public", "addresses=\"unknown\""
         ].join(" ");
@@ -277,7 +277,7 @@ mod tests {
 
         // test delete
         let delete_cmd = lsp.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
-        let expected_cmd = vec_of_strings!["ovn-nbctl", "lsp-del", "sw0-port0"].join(" ");
+        let expected_cmd = vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET, "lsp-del", "sw0-port0"].join(" ");
         assert_eq!(delete_cmd, expected_cmd);
     }
 

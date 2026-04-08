@@ -75,6 +75,7 @@ impl DhcpDatabaseEntry {
 }
 
 fn get_rule_uuid_cmd(
+    nb_socket: &String,
     cidr: &String,
     lease: &String,
     router: &String,
@@ -84,7 +85,7 @@ fn get_rule_uuid_cmd(
     dns: &String,
 ) -> Vec<String> {
     vec_of_strings![
-        "ovn-nbctl", "--bare", "--columns=_uuid", "find", "dhcp_options",
+        "ovn-nbctl", nb_socket, "--bare", "--columns=_uuid", "find", "dhcp_options",
         format!("cidr=\"{cidr}\""),
         format!("options=\"lease_time\"=\"{lease}\" \"router\"=\"{router}\" \"server_id\"=\"{server_id}\" \"server_mac\"=\"{mac}\" \"dns_server\"=\"{dns}\""),
         format!("external_ids:testbedos-project={project}")
@@ -139,7 +140,7 @@ impl OvnCommand for DhcpDatabaseEntry {
         // create the rule in OVN, we also add 1.1.1.1 as the DNS server for external access
         tracing::info!("creating DHCP Options database rule cidr: {} router: {}", &self.cidr.to_string(), &self.router);
         let rule_create_res = f(vec_of_strings![
-            "ovn-nbctl", "create", "dhcp_options", format!("cidr={}", self.cidr.to_string()),
+            "ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "create", "dhcp_options", format!("cidr={}", self.cidr.to_string()),
             format!("options=\"lease_time\"=\"{}\" \"router\"=\"{}\" \"server_id\"=\"{}\" \"server_mac\"=\"{}\" \"dns_server\"=\"{}\"",
                 &self.lease_time, &self.router, &self.server_id, &self.server_mac.address.to_string(), "{1.1.1.1}"),
             &external_ids
@@ -159,7 +160,7 @@ impl OvnCommand for DhcpDatabaseEntry {
         };
         // take the rule uuid and add to every switch port
         for lsp in switch_ports {
-            let cmd = vec_of_strings!["ovn-nbctl", "lsp-set-dhcpv4-options", lsp.name, rule_uuid.clone()];
+            let cmd = vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "lsp-set-dhcpv4-options", lsp.name, rule_uuid.clone()];
             f(cmd, config.clone()).await?;
         }
 
@@ -174,6 +175,7 @@ impl OvnCommand for DhcpDatabaseEntry {
 
         // lookup the dhcp_options table
         let uuid_lookup_cmd = f(get_rule_uuid_cmd(
+            &config.1.kvm_compose_config.ovn_nb_db_docket,
             &self.cidr.to_string(),
             &self.lease_time,
             &self.router,
@@ -212,7 +214,7 @@ impl OvnCommand for DhcpDatabaseEntry {
             .collect();
 
         for rule in rules {
-            f(vec_of_strings!["ovn-nbctl", "destroy", "dhcp_options", rule?.to_string()], config.clone()).await?;
+            f(vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "destroy", "dhcp_options", rule?.to_string()], config.clone()).await?;
         }
 
         // remove rule

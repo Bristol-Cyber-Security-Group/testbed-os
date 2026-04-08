@@ -57,7 +57,8 @@ impl OvnCommand for LogicalRouter {
             F: Future<Output=anyhow::Result<String>> + Send
     {
         tracing::info!("creating LR {}", &self.name);
-        f(vec_of_strings!["ovn-nbctl", "--may-exist", "lr-add", &self.name], config).await
+        f(vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket
+, "--may-exist", "lr-add", &self.name], config).await
     }
 
     async fn destroy_command<F>(&self, f: impl Fn(Vec<String>, (Option<String>, OrchestrationCommon)) -> F + Send + Sync, config: (Option<String>, OrchestrationCommon)) -> anyhow::Result<String>
@@ -65,7 +66,7 @@ impl OvnCommand for LogicalRouter {
             F: Future<Output=anyhow::Result<String>> + Send
     {
         tracing::info!("destroying LR {}", &self.name);
-        f(vec_of_strings!["ovn-nbctl", "lr-del", &self.name], config).await
+        f(vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "lr-del", &self.name], config).await
     }
 }
 
@@ -78,10 +79,10 @@ mod tests {
     async fn test_logical_router() {
         let lr0 = LogicalRouter::new("lr0".into());
         let create_cmd = lr0.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
-        let expected_cmd = vec_of_strings!["ovn-nbctl", "--may-exist", "lr-add", "lr0"].join(" ");
+        let expected_cmd = vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET, "--may-exist", "lr-add", "lr0"].join(" ");
         assert_eq!(create_cmd, expected_cmd);
         let destroy_cmd = lr0.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap();
-        let expected_cmd = vec_of_strings!["ovn-nbctl", "lr-del", "lr0"].join(" ");
+        let expected_cmd = vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET, "lr-del", "lr0"].join(" ");
         assert_eq!(destroy_cmd, expected_cmd);
     }
 }

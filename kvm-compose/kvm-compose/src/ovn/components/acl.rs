@@ -86,7 +86,7 @@ impl OvnCommand for LogicalACLRecord {
         tracing::info!("creating ACL on {:?}", &self.entity_name);
 
         let name = format!("--name={}", &self.ovn_resource_name);
-        let cmd = vec_of_strings!["ovn-nbctl", "--may-exist", &name, "acl-add", &self.entity_name, &self.direction, &self.priority, &self._match, &self.action];
+        let cmd = vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "--may-exist", &name, "acl-add", &self.entity_name, &self.direction, &self.priority, &self._match, &self.action];
 
         f(cmd, config).await
     }
@@ -97,7 +97,7 @@ impl OvnCommand for LogicalACLRecord {
     {
         tracing::info!("destroying ACL {:?}", &self);
 
-        let cmd = vec_of_strings!["ovn-nbctl", "acl-del",  &self.entity_name, &self.direction, &self.priority, &self._match];
+        let cmd = vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "acl-del",  &self.entity_name, &self.direction, &self.priority, &self._match];
 
         f(cmd, config).await
     }
@@ -119,9 +119,11 @@ mod tests {
             ACLAction::Drop,
             "resource_name".to_string(),
         );
-        let expected_add = vec_of_strings!["ovn-nbctl", "--may-exist", "--name=resource_name", "acl-add", "ovn-sw0", "to-lport", "10", "match", "drop"].join(" ");
+        let expected_add = vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET
+, "--may-exist", "--name=resource_name", "acl-add", "ovn-sw0", "to-lport", "10", "match", "drop"].join(" ");
         assert_eq!(expected_add, record.create_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
-        let expected_del = vec_of_strings!["ovn-nbctl", "acl-del", "ovn-sw0", "to-lport", "10", "match"].join(" ");
+        let expected_del = vec_of_strings!["ovn-nbctl", OVN_NB_DB_SOCKET
+, "acl-del", "ovn-sw0", "to-lport", "10", "match"].join(" ");
         assert_eq!(expected_del, record.destroy_command(&test_ovn_run_cmd, (None, OrchestrationCommon::default())).await.unwrap());
     }
 }

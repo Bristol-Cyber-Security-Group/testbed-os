@@ -122,7 +122,7 @@ pub async fn mount_cdrom_in_guest(
 
     // create the mount point before we mount the iso, make sure not to error if it exists
     let _ = shell_command(
-        vec!["sudo", "mkdir", "-p", "/mnt/filepush"],
+        vec!["mkdir", "-p", "/mnt/filepush"],
         5_000,
         guest_data,
         guest_name_with_project,
@@ -134,7 +134,7 @@ pub async fn mount_cdrom_in_guest(
 
     // then mount the dev to an intermediate location
     let (output, exit_code) = shell_command(
-        vec!["sudo", "mount", "-o", "ro", &dev, "/mnt/filepush"],
+        vec!["mount", "-o", "ro", &dev, "/mnt/filepush"],
         5_000,
         guest_data,
         guest_name_with_project,

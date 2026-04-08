@@ -66,6 +66,7 @@ async fn main() {
             // inside the handlers - this should become a match statement when multiple providers exist
             let deployment_db = get_deployment_db();
             let config_db = get_cluster_config_db();
+            let cluster_config = config_db.get_cluster_config().await.expect("getting cluster config for main");
             // the database is wrapped in a read/write lock to prevent race conditions - the handlers will
             //  request the appropriate lock in their context
             // the database is also wrapped in an atomically referenced counter to ensure there is only one
@@ -85,7 +86,7 @@ async fn main() {
                 server_url,
                 system_monitor: Arc::new(RwLock::new(System::new_all())),
                 template_env: get_tera_env(),
-                service_clients: Arc::new(ServiceClients::new().await),
+                service_clients: Arc::new(ServiceClients::new(&cluster_config).await),
             });
 
             // TODO - use router combination syntax?
@@ -122,6 +123,7 @@ async fn main() {
         ServerModeCmd::Client(ref client_mode) => {
             // start server in client mode
             let config_db = get_cluster_config_db();
+            let cluster_config = config_db.get_cluster_config().await.expect("getting cluster config for client");
             let config_db: Arc<RwLock<Box<dyn TestbedConfigProvider + Sync + Send>>> =
                 Arc::new(RwLock::new(config_db));
             // given the mode, make sure settings are correct
@@ -131,7 +133,7 @@ async fn main() {
                 config_db,
                 main_server_url: client_mode.main_ip.clone(),
                 system_monitor: Arc::new(RwLock::new(System::new_all())),
-                service_clients: Arc::new(ServiceClients::new().await)
+                service_clients: Arc::new(ServiceClients::new(&cluster_config).await)
             });
             // set up cron job to check main is online
             match set_up_cluster_main_check_cron_jobs(
@@ -155,8 +157,7 @@ async fn main() {
             // take user through creating a config
             create_config_wizard();
             tracing::info!("restarting testbed server daemon to reflect changes");
-            let output = Command::new("sudo")
-                .arg("systemctl")
+            let output = Command::new("systemctl")
                 .arg("restart")
                 .arg("testbedos-server.service")
                 .output()

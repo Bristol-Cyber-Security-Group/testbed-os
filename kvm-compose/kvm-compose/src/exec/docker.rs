@@ -13,13 +13,13 @@ pub async fn shell_command(
 ) -> anyhow::Result<(String, i32)> {
 
     // join the user command to the docker exec command
-    let mut docker_cmd = vec!["docker", "exec", guest_name_with_project, "/bin/sh", "-c"];
+    let mut docker_cmd = vec!["exec", guest_name_with_project, "/bin/sh", "-c"];
     let cmd = command.join(" ");
     docker_cmd.push(&cmd);
 
     // run the command
     let cmd_res = run_subprocess_command(
-        "sudo",
+        "docker",
         docker_cmd,
         false,
         None,

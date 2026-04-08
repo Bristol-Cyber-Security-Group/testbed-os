@@ -50,7 +50,7 @@ impl OvnCommand for OvnRoute {
             F: Future<Output=anyhow::Result<String>> + Send
     {
         tracing::info!("creating route ({:?}, {:?}) on LR {}", &self.prefix, &self.next_hop, &self.router_name);
-        f(vec_of_strings!["ovn-nbctl", "--may-exist", "lr-route-add", &self.router_name, &self.prefix.to_string(), self.next_hop.to_string()], config).await
+        f(vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "--may-exist", "lr-route-add", &self.router_name, &self.prefix.to_string(), self.next_hop.to_string()], config).await
     }
 
     async fn destroy_command<F>(&self, f: impl Fn(Vec<String>, (Option<String>, OrchestrationCommon)) -> F + Send + Sync, config: (Option<String>, OrchestrationCommon)) -> anyhow::Result<String>
@@ -58,6 +58,6 @@ impl OvnCommand for OvnRoute {
             F: Future<Output=anyhow::Result<String>> + Send
     {
         tracing::info!("destroying route ({:?}, {:?}) on LR {}", &self.prefix, &self.next_hop, &self.router_name);
-        f(vec_of_strings!["ovn-nbctl", "lr-route-del", &self.router_name, &self.prefix.to_string(), self.next_hop.to_string()], config).await
+        f(vec_of_strings!["ovn-nbctl", &config.1.kvm_compose_config.ovn_nb_db_docket, "lr-route-del", &self.router_name, &self.prefix.to_string(), self.next_hop.to_string()], config).await
     }
 }

@@ -25,6 +25,7 @@ pub struct ConfigDockerMachine {
     pub scaling: Option<DockerScaling>,
     pub user: Option<String>,
     pub device: Option<Vec<String>>,
+    pub gpus: Option<String>,
     #[serde(skip_deserializing)]
     pub hostname: String,
 

@@ -7,10 +7,10 @@ use tokio::process::Command;
 /// be used outside the libvirt images folder. This is necessary for libvirt guests in the
 /// testbed as we place the images in the deployment folder.
 pub async fn get_qemu_conf_user_and_group() -> anyhow::Result<(Option<String>, Option<String>)> {
-    let user_grep = vec!["grep", "^user = \"", "/etc/libvirt/qemu.conf"];
-    let group_grep = vec!["grep", "^group = \"", "/etc/libvirt/qemu.conf"];
+    let user_grep = vec!["^user = \"", "/etc/libvirt/qemu.conf"];
+    let group_grep = vec!["^group = \"", "/etc/libvirt/qemu.conf"];
 
-    let user_command = Command::new("sudo")
+    let user_command = Command::new("grep")
         .args(user_grep)
         .stdout(Stdio::piped())
         .spawn()?
@@ -22,7 +22,7 @@ pub async fn get_qemu_conf_user_and_group() -> anyhow::Result<(Option<String>, O
     // println!("stdout: {std_out_user:?}");
     // println!("stderr: {std_err:?}");
 
-    let group_command = Command::new("sudo")
+    let group_command = Command::new("grep")
         .args(group_grep)
         .stdout(Stdio::piped())
         .spawn()?
@@ -76,25 +76,25 @@ pub async fn get_host_resolv_conf_top_nameserver() {
 pub async fn get_resource_monitoring_state() -> anyhow::Result<Map<String, Value>> {
     // TODO - this should ideally use the docker service socket connection rather than subprocess
 
-    let grafana_cmd = vec!["docker", "inspect", "-f", "{{.State.Running}}", "resource_monitoring-grafana-1"];
-    let prometheus_cmd = vec!["docker", "inspect", "-f", "{{.State.Running}}", "resource_monitoring-prometheus-1"];
-    let nginx_cmd = vec!["docker", "inspect", "-f", "{{.State.Running}}", "resource_monitoring-proxy-1"];
+    let grafana_cmd = vec!["inspect", "-f", "{{.State.Running}}", "resource_monitoring-grafana-1"];
+    let prometheus_cmd = vec!["inspect", "-f", "{{.State.Running}}", "resource_monitoring-prometheus-1"];
+    let nginx_cmd = vec!["inspect", "-f", "{{.State.Running}}", "resource_monitoring-proxy-1"];
 
-    let grafana_out = Command::new("sudo")
+    let grafana_out = Command::new("docker")
         .args(grafana_cmd)
         .stdout(Stdio::piped())
         .spawn()?
         .wait_with_output()
         .await?;
 
-    let prometheus_out = Command::new("sudo")
+    let prometheus_out = Command::new("docker")
         .args(prometheus_cmd)
         .stdout(Stdio::piped())
         .spawn()?
         .wait_with_output()
         .await?;
 
-    let nginx_out = Command::new("sudo")
+    let nginx_out = Command::new("docker")
         .args(nginx_cmd)
         .stdout(Stdio::piped())
         .spawn()?

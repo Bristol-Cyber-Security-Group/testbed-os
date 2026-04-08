@@ -17,8 +17,8 @@ pub async fn load_qemu_img(
     let json_data = run_testbed_orchestration_command(
         &common,
         &testbed_host,
-        "sudo",
-        vec!["qemu-img", "info", "--output=json", &img_path, "--force-share"],
+        "qemu-img",
+        vec!["info", "--output=json", &img_path, "--force-share"],
         false,
         None,
     ).await?;
@@ -81,11 +81,11 @@ impl QemuImg {
 
     async fn is_running(&self, guest_name: &String, testbed_host: &String, common: &OrchestrationCommon) -> anyhow::Result<bool> {
         tracing::info!("checking if guest {guest_name} is up");
-        let cmd = vec!["virsh", "dominfo", &guest_name];
+        let cmd = vec!["dominfo", &guest_name];
         let res = run_testbed_orchestration_command_allow_fail(
             &common,
             testbed_host,
-            "sudo",
+            "virsh",
             cmd,
             false,
             None,
@@ -134,8 +134,8 @@ impl QemuImg {
         run_testbed_orchestration_command(
             common,
             &testbed_host,
-            "sudo",
-            vec!["virsh", "shutdown", guest_name],
+            "virsh",
+            vec!["shutdown", guest_name],
             false,
             None,
         ).await?;
@@ -149,8 +149,8 @@ impl QemuImg {
         run_testbed_orchestration_command(
             common,
             &testbed_host,
-            "sudo",
-            vec!["virsh", "create", &self.get_domain_xml_path()?],
+            "virsh",
+            vec!["create", &self.get_domain_xml_path()?],
             false,
             None,
         ).await?;
@@ -203,11 +203,11 @@ impl GuestDiskSnapshot for QemuImg {
         // if guest is running, we can use virsh snapshot so we don't have to turn off the guest
         // if it is not running, we have to use qemu-img
         if is_running {
-            let cmd = vec!["virsh", "snapshot-create-as", &guest_name, "--name", snapshot_name, self.get_path()];
+            let cmd = vec!["snapshot-create-as", &guest_name, "--name", snapshot_name, self.get_path()];
             let res = run_testbed_orchestration_command(
                 common,
                 &testbed_host,
-                "sudo",
+                "virsh",
                 cmd,
                 false,
                 None,
@@ -221,11 +221,11 @@ impl GuestDiskSnapshot for QemuImg {
                 }
             }
         } else {
-            let cmd = vec!["qemu-img", "snapshot", "-c", snapshot_name, &self.get_path()];
+            let cmd = vec!["snapshot", "-c", snapshot_name, &self.get_path()];
             let res = run_testbed_orchestration_command(
                 common,
                 &testbed_host,
-                "sudo",
+                "qemu-img",
                 cmd,
                 false,
                 None,
@@ -249,11 +249,11 @@ impl GuestDiskSnapshot for QemuImg {
             tracing::info!("guest is running, turning off to release write lock on image before continuing...");
             self.stop_vm(guest_name,  testbed_host, common).await?;
         }
-        let cmd = vec!["qemu-img", "snapshot", "-d", snapshot_name, &self.get_path()];
+        let cmd = vec!["snapshot", "-d", snapshot_name, &self.get_path()];
         let res = run_testbed_orchestration_command(
             common,
             &testbed_host,
-            "sudo",
+            "qemu-img",
             cmd,
             false,
             None,
@@ -276,11 +276,11 @@ impl GuestDiskSnapshot for QemuImg {
             }
             for snap in snapshots {
                 tracing::info!("deleting snapshot {}", &snap.name);
-                let cmd = vec!["qemu-img", "snapshot", "-d", &snap.name, &self.get_path()];
+                let cmd = vec!["snapshot", "-d", &snap.name, &self.get_path()];
                 let res = run_testbed_orchestration_command(
                     common,
                     &testbed_host,
-                    "sudo",
+                    "qemu-img",
                     cmd,
                     false,
                     None,
@@ -303,11 +303,11 @@ impl GuestDiskSnapshot for QemuImg {
             tracing::info!("guest is running, turning off to release write lock on image before continuing...");
             self.stop_vm(guest_name,  testbed_host, common).await?;
         }
-        let cmd = vec!["qemu-img", "snapshot", "-a", snapshot_name, &self.get_path()];
+        let cmd = vec!["snapshot", "-a", snapshot_name, &self.get_path()];
         let res = run_testbed_orchestration_command(
             common,
             &testbed_host,
-            "sudo",
+            "qemu-img",
             cmd,
             false,
             None,

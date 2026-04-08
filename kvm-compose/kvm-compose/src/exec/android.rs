@@ -38,12 +38,12 @@ pub async fn adb_command(
         namespace.to_string()
     ];
 
-    args.push("/opt/android-sdk/platform-tools/adb".to_string());
+    // args.push("/opt/android-sdk/platform-tools/adb".to_string());
     args.extend_from_slice(command);
 
-    tracing::info!("Running command: sudo {}", args.join(" "));
+    tracing::info!("Running command: {}", args.join(" "));
 
-    let output = Command::new("sudo")
+    let output = Command::new("/opt/android-sdk/platform-tools/adb")
         .args(&args)
         .output()
         .await
@@ -121,8 +121,7 @@ pub async fn frida_setup(
     // Install frida server if it doesn't exist
     if !Path::new(&format!("/var/lib/testbedos/tools/frida-server-17.2.15-android-{abi}")).exists() {
         tracing::info!("Installing frida server");
-        let output = Command::new("sudo")
-            .arg("wget")
+        let output = Command::new("wget")
             .arg(format!("https://github.com/frida/frida/releases/download/17.2.15/frida-server-17.2.15-android-{abi}.xz"))
             .arg("-P")
             .arg("/var/lib/testbedos/tools/")
@@ -134,8 +133,7 @@ pub async fn frida_setup(
             bail!("ADB error: {:?}", String::from_utf8_lossy(&output.stderr));
         }
 
-        Command::new("sudo")
-            .arg("unxz")
+        Command::new("unxz")
             .arg(format!("/var/lib/testbedos/tools/frida-server-17.2.15-android-{abi}.xz"))
             .output()
             .await
@@ -198,14 +196,14 @@ pub async fn test_permissions(
         namespace.to_string()
     ];
 
-    args.push(venv_path.to_string());
+    // args.push(venv_path.to_string());
     args.push("/var/lib/testbedos/tools/Frida-Tools/permissions/log-permissions.py".to_string());
 
     args.extend_from_slice(command);
 
-    tracing::info!("Running command: sudo {}", args.join(" "));
+    tracing::info!("Running command: {}", args.join(" "));
 
-    let output = Command::new("sudo")
+    let output = Command::new(venv_path)
         .args(&args)
         .output()
         .await
@@ -242,17 +240,17 @@ pub async fn tls_intercept(
         namespace.to_string()
     ];
 
-    args.push(venv_path.to_string());
+    // args.push(venv_path.to_string());
     args.push("/var/lib/testbedos/tools/Frida-Tools/TLS-intercept/intercept.py".to_string());
 
     args.extend_from_slice(command);
 
-    tracing::info!("Running command: sudo {}", args.join(" "));
+    tracing::info!("Running command: {}", args.join(" "));
 
     // TODO - how to fix relative paths given to the CLI/GUI and then what the script sees, so
     //  currently a relative path will try to put the output in the Frida-Tools folder
 
-    let mut child = Command::new("sudo")
+    let mut child = Command::new(venv_path)
         .args(&args)
         .current_dir("/var/lib/testbedos/tools/Frida-Tools")
         .stdout(Stdio::piped())
@@ -331,13 +329,13 @@ pub async fn test_privacy(
         namespace.to_string()
     ];
 
-    args.push("/var/lib/testbedos/tools/Frida-Tools/test-privacy.sh".to_string());
+    // args.push("/var/lib/testbedos/tools/Frida-Tools/test-privacy.sh".to_string());
 
     args.extend_from_slice(command);
 
-    tracing::info!("Running command: sudo {}", args.join(" "));
+    tracing::info!("Running command: {}", args.join(" "));
 
-    let output = Command::new("sudo")
+    let output = Command::new("/var/lib/testbedos/tools/Frida-Tools/test-privacy.sh")
         .args(&args)
         .output()
         .await

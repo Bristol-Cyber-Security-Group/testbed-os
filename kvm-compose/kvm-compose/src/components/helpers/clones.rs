@@ -207,6 +207,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                                 scaling: None,
                                 user: docker_guest.user.clone(),
                                 device: docker_guest.device.clone(),
+                                gpus: docker_guest.gpus.clone(),
                                 hostname: docker_guest.hostname.clone(),
                                 static_ip: None,
                             }),

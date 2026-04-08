@@ -236,13 +236,13 @@ pub async fn clear_artefacts(
                 }
                 tracing::info!("deleting avd {avd_name}");
                 let cmd = vec![
-                    "/opt/android-sdk/cmdline-tools/latest/bin/avdmanager", "delete", "avd",
+                    "delete", "avd",
                     "-n", &avd_name
                 ];
                 run_testbed_orchestration_command_allow_fail(
                     &common,
                     &guest_data.testbed_host.as_ref().unwrap(),
-                    "sudo",
+                    "/opt/android-sdk/cmdline-tools/latest/bin/avdmanager",
                     cmd,
                     false,
                     None,
@@ -381,10 +381,10 @@ pub async fn turn_on_temporary_network(
     ).await?;
     // create network
     let cmd = vec![
-        "virsh", "net-create", &xml_dest,
+        "net-create", &xml_dest,
     ];
     run_subprocess_command_allow_fail(
-        "sudo",
+        "virsh",
         cmd,
         false,
         None,
@@ -403,10 +403,10 @@ pub async fn turn_off_temporary_network(
     );
     // destroy network
     let cmd = vec![
-        "virsh", "net-destroy", &network_name,
+        "net-destroy", &network_name,
     ];
     run_subprocess_command_allow_fail(
-        "sudo",
+        "virsh",
         cmd,
         false,
         None,

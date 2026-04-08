@@ -74,7 +74,7 @@ impl OvnCommand for OvsPort {
         tracing::info!("creating OVS port {} on chassis {}", &self.name, &self.chassis);
         let lsp_port = &self.lsp_name;
         f(vec_of_strings![
-            "ovs-vsctl", "--may-exist", "add-port", &self.integration_bridge_name, &self.name,
+            "ovs-vsctl", &config.1.kvm_compose_config.ovs_db_socket, "--may-exist", "add-port", &self.integration_bridge_name, &self.name,
             "--", "set", "Interface", &self.name, "type=internal",
             "--", "set", "Interface", &self.name, format!("external_ids:iface-id={lsp_port}")
         ], config).await
@@ -85,7 +85,7 @@ impl OvnCommand for OvsPort {
             F: Future<Output=anyhow::Result<String>> + Send
     {
         tracing::info!("destroying OVS port {} on chassis {}", &self.name, &self.chassis);
-        f(vec_of_strings!["ovs-vsctl", "del-port", &self.integration_bridge_name, &self.name], config).await
+        f(vec_of_strings!["ovs-vsctl", &config.1.kvm_compose_config.ovs_db_socket, "del-port", &self.integration_bridge_name, &self.name], config).await
     }
 }
 

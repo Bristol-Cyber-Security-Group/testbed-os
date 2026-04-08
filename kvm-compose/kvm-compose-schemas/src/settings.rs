@@ -20,6 +20,11 @@ pub struct TestbedClusterConfig {
     #[serde(skip_deserializing)]
     pub ssh_private_key_location: String,
 
+    pub ovs_db_socket: String,
+    pub ovn_nb_db_docket: String,
+    pub ovn_sb_db_socket: String,
+    pub docker_socket: String,
+
 }
 
 /// This is the hosts configuration, it has to be filled in based on the host's environment. There
@@ -158,6 +163,7 @@ impl TestbedClusterConfig {
             TestbedClusterConfig::insert_default_values(&mut config);
             Ok(config)
         } else {
+            // TODO - write a default file
             bail!("could not read kvm-compose-config.json")
         }
     }
@@ -165,5 +171,9 @@ impl TestbedClusterConfig {
     pub fn insert_default_values(tbcc: &mut TestbedClusterConfig) {
         tbcc.ssh_private_key_location = format!("{TESTBED_SETTINGS_FOLDER}/keys/id_ed25519_testbed_insecure_key");
         tbcc.ssh_public_key_location = format!("{TESTBED_SETTINGS_FOLDER}/keys/id_ed25519_testbed_insecure_key.pub");
+        tbcc.ovs_db_socket = "--db=unix:/testbed_sandbox/openvswitch/db.sock".to_string();
+        tbcc.ovn_nb_db_docket = "--db=unix:/testbed_sandbox/ovn/ovnnb_db.sock".to_string();
+        tbcc.ovn_sb_db_socket = "--db=unix:/testbed_sandbox/ovn/ovnsb_db.sock".to_string();
+        tbcc.docker_socket = "/testbed_sandbox/docker.sock".to_string();
     }
 }

@@ -1,0 +1,125 @@
+version: '3.8'
+
+volumes:
+    testbed_sandbox: #
+    testbed_config:
+    dind_data: # docker in docker volume
+    ovs_etc:
+    libvirt_data:
+
+services:
+
+    # the main process where everything will spawn
+    sandbox-net:
+        image: alpine:latest
+        init: true # prevent the sleep command from being PID 1, so when we down the compose it works immediately
+        cap_add:
+            - NET_ADMIN # allow forwarding traffic to enable br-ex to let guests access outside of this compose sandbox
+        sysctls:
+            - net.ipv4.ip_forward=1
+        ports:
+            - 3355:3355
+            # TODO - OVN ports for clustering
+#        profiles: ["main", "client"] # TODO profiles for main and client, but requires .env file
+        command: >
+            sh -c "apk add --no-cache iptables iproute2 &&
+                   iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE &&
+                   sleep infinity"
+
+    dind: # docker-in-docker
+        image: docker:dind
+        privileged: true
+        network_mode: "service:sandbox-net"
+        pid: "service:sandbox-net"
+        environment:
+            - DOCKER_TLS_CERTDIR=""
+        depends_on:
+            sandbox-net:
+                condition: service_started
+        volumes:
+            - testbed_sandbox:/testbed_sandbox
+            - dind_data:/var/lib/docker # place docker config in separate volume since we dont have an entrypoint.sh for this yet
+            - dind_data:/var/run/docker
+        command: ["--host=unix:///testbed_sandbox/docker.sock"]
+
+    ovn-central:
+        build: setup/container_conf/ovn-central/
+        privileged: true
+        network_mode: "service:sandbox-net"
+        pid: "service:sandbox-net"
+        depends_on:
+            sandbox-net:
+                condition: service_started
+            ovn-chassis:
+                condition: service_started
+        volumes:
+            - testbed_sandbox:/testbed_sandbox  # expose the north and southbound databases
+            - ovs_etc:/etc/openvswitch
+
+    ovn-chassis:
+        build: setup/container_conf/ovn-chassis/
+        privileged: true
+        network_mode: "service:sandbox-net"
+        pid: "service:sandbox-net"
+        depends_on:
+            sandbox-net:
+                condition: service_started
+        volumes:
+            - testbed_sandbox:/testbed_sandbox  # save ovs state in the persistent volume
+            - ovs_etc:/etc/openvswitch # put ovs config db in another volume since we already used /testbed_sandbox/openvswitch
+#            - ovs_lib:/var/lib/openvswitch
+            - /lib/modules:/lib/modules:ro      # need access to host's kernel modules - read only
+
+    libvirt:
+        build: setup/container_conf/libvirt/
+        privileged: true
+        network_mode: "service:sandbox-net"
+        pid: "service:sandbox-net"
+        depends_on:
+            sandbox-net:
+                condition: service_started
+        volumes:
+            - testbed_sandbox:/testbed_sandbox
+            - libvirt_data:/run/libvirt
+            - libvirt_data:/var/run/libvirt
+            - /dev/kvm:/dev/kvm
+#            - /sys/fs/cgroup:/sys/fs/cgroup:rw  # this is using the host's resources, so do not make the testbed public facing
+            - ./setup/container_conf/libvirt/qemu.conf:/etc/libvirt/qemu.conf:ro
+            # testing purposes, this is the intended workspace style approach for the testbed
+            - ./examples:/workspace
+
+    testbed-server:
+        build:
+            context: .
+            dockerfile: setup/container_conf/testbed/Dockerfile
+        network_mode: "service:sandbox-net"
+        pid: "service:sandbox-net"
+        cap_add:
+            - NET_ADMIN
+        depends_on:
+            sandbox-net:
+                condition: service_started
+            ovn-chassis:
+                condition: service_started
+            dind:
+                condition: service_started
+            libvirt:
+                condition: service_started
+        environment:
+            - LIBVIRT_DEFAULT_URI=qemu+unix:///system
+            - DOCKER_HOST=unix:///testbed_sandbox/docker.sock
+        restart: always
+        volumes:
+            - testbed_sandbox:/testbed_sandbox
+            - testbed_config:/var/lib/testbedos
+            - libvirt_data:/run/libvirt
+            - libvirt_data:/var/run/libvirt
+            - dind_data:/var/lib/docker
+            - dind_data:/var/run/docker
+            # testing purposes, this is the intended workspace style approach for the testbed
+            - ./examples:/workspace
+
+
+
+# TODO - resource monitoring stack can also go here as a freebie
+

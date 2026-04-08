@@ -580,7 +580,7 @@ impl OrchestrationInstruction {
             OrchestrationInstruction::AnalysisTool(at) => {
                 let analysis_tool_res = match at.tool {
                     ToolSubCmd::TcpDump { .. } => {
-                        packet_capture(at, cancel_token_recv, logging_send).await
+                        packet_capture(at, cancel_token_recv, logging_send, orchestration_common).await
                     }
                 };
                 match analysis_tool_res {
