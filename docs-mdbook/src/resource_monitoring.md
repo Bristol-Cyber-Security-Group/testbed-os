@@ -11,6 +11,8 @@ As an overview, the resource monitoring stack consists of the following:
 
 ## Architecture
 
+![TestbedOS Resource Monitoring Stack Architecture Diagram](resource_monitoring_architecture.png)
+
 TestbedOS resource monitoring is split into a frontend and a backend.
 
 ### Frontend

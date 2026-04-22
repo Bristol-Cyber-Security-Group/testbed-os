@@ -2,8 +2,14 @@
 
 Here we explain in more details how the TestbedOS server works under the hood and its architecture. 
 The server is running as a normal HTTP server at the moment, we have aspirations to run this in a socket so that we can protect it with user permissions.
+The architectural layout of a TestbedOS deployment with the TestbedOS server of each host is shown in the diagram below.
 
-## Systemd Service
+![TestbedOS Deployment Architecture Diagram](testbedos_architecture.png)
+<!-- <p align="center">
+<img src="./testbedos_architecture.png" />
+</p> -->
+
+## `systemd` Service
 
 The TestbedOS server is set up as a `systemd` service called `testbedos-server.service`.
 
@@ -13,8 +19,6 @@ During the TestbedOS [installation](welcome.md#quick-installation) and [uninstal
 Note that this service will use the default port (port 3355) so if you are developing the server you must disable/stop the systemd service.
 
 ## Server-to-Server and Client-to-Server Communication
-
-<!-- Add more information later here -->
 
 The unidirectional communication from the TestbedOS server of [the `Main` TestbedOS host](configurations.md#singleton-mode-or-the-main-host) to the TestbedOS server of each [`Client` TestbedOS host](configurations.md#client-host) in the clustering mode occurs through a SSH channel. The server-to-server communication happens during the setup and orchestration stages where the server of the `Main` TestbedOS host manages and keeps track the hosts in the cluster. 
 

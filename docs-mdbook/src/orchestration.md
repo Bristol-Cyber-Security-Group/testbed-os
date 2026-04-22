@@ -1,6 +1,9 @@
 # TestbedOS Orchestration
 
 The TestbedOS orchestration is a process to break down and execute the tasks required for the successful execution of a deployment command as entered by a user for a TestbedOS project. The orchestration is executed by the [the TestbedOS server](server.md) and it depends on the deployment command as entered by the user to bring up, interact with, or shut down the deployment. For example, the orchestration will download the required libvirt virtual machine images for the deployment command `kvm-compose generate-artefacts`.
+As a quick recap, the architecture of a TestbedOS deployment with [a cluster of TestbedOS hosts](clustering_mode.md) and [the TestbedOS servers](server.md) over which the orchestration is executed can be viewed as follows.
+
+![TestbedOS Deployment Architecture Diagram](testbedos_architecture.png)
 
 ## Orchestration Overview
 
