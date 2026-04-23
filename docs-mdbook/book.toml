@@ -1,7 +1,9 @@
 [book]
-title = "Testbed Operating System (TestbedOS)"
-authors = ["Bristol Cyber Security Group (BCSG)"]
+title = "TestbedOS"
+authors = ["Bristol Cyber Security Group"]
 language = "en"
 
 [output.html]
-default-theme = "Rust"
+theme = "theme"
+# default-theme = "navy"
+# additional-head = "theme"
