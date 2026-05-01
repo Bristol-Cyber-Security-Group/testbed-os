@@ -1,6 +1,6 @@
 # Summary
 
-- [Welcome to the TestbedOS Documenation!](./index.md)
+- [Welcome to the TestbedOS Documentation!](./welcome.md)
 - [Getting Started](./getting-started/index.md)
 - [TestbedOS Installation](./installation/index.md)
 - [Testbed Config](./testbed-config/index.md)
