@@ -9,7 +9,7 @@ use tokio::task::JoinHandle;
 use kvm_compose_lib::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationProtocol, OrchestrationProtocolResponse};
 use kvm_compose_lib::orchestration::{OrchestrationCommon};
 use kvm_compose_lib::state::orchestration_tasks::get_orchestration_common;
-use kvm_compose_lib::state::State;
+use kvm_compose_lib::state::schema::State;
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand, DeploymentState};
 use crate::AppState;
 

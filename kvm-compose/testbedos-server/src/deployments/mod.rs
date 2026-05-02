@@ -4,7 +4,7 @@ use tokio::process::{Child, Command};
 use anyhow::{bail, Context};
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
-use kvm_compose_lib::state::State;
+use kvm_compose_lib::state::schema::State;
 use kvm_compose_schemas::deployment_models::Deployment;
 
 pub mod handlers;

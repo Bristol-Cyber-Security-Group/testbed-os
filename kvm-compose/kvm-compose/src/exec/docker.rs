@@ -2,7 +2,7 @@ use anyhow::bail;
 use tokio::sync::mpsc::Sender;
 use crate::orchestration::api::OrchestrationLogger;
 use crate::orchestration::{run_subprocess_command, OrchestrationCommon};
-use crate::state::StateTestbedGuest;
+use crate::state::schema::StateTestbedGuest;
 
 pub async fn shell_command(
     command: Vec<&str>,

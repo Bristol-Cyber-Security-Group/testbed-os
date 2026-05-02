@@ -10,7 +10,7 @@ use nix::unistd::{Gid, Uid};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
-use tokio::sync::mpsc::{Sender};
+use tokio::sync::mpsc::Sender;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use tokio_tungstenite::tungstenite::Message;
 use kvm_compose_schemas::deployment_models::Deployment;
@@ -19,7 +19,7 @@ use crate::components::LogicalTestbed;
 use crate::orchestration::api::{OrchestrationLogger, OrchestrationProtocol};
 use crate::orchestration::ssh::SSHClient;
 use crate::parse_config;
-use crate::state::{State, StateNetwork, StateTestbedGuest, StateTestbedGuestList, StateTestbedGuestSharedConfig, StateTestbedHost};
+use crate::state::schema::{State, StateNetwork, StateTestbedGuest, StateTestbedGuestList, StateTestbedGuestSharedConfig, StateTestbedHost};
 
 pub mod ssh;
 pub mod orchestrator;

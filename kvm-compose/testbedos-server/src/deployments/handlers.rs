@@ -9,7 +9,7 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use kvm_compose_schemas::handlers::PrettyQueryParams;
 use crate::deployments::deployments::{ProjectAndPath, validate_project_name, validate_yaml};
-use kvm_compose_lib::state::State as KvmComposeState;
+use kvm_compose_lib::state::schema::State as KvmComposeState;
 
 /// List all deployments the database contains.
 /// Requires a read lock on the database.

@@ -5,7 +5,7 @@ use crate::orchestration::api::{OrchestrationInstruction, OrchestrationProtocol,
 use crate::orchestration::websocket::{send_orchestration_instruction_over_channel};
 use crate::orchestration::{OrchestrationCommon};
 use crate::state::orchestration_tasks::guests::{get_main_testbed_name};
-use crate::state::State;
+use crate::state::schema::State;
 
 pub async fn deploy_guest_stage(
     state: &State,

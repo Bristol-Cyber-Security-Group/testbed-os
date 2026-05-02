@@ -5,7 +5,7 @@ use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::LibvirtGuestOptions;
 use kvm_compose_schemas::cli_models::Common;
 use crate::orchestration::OrchestrationCommon;
-use crate::state::{StateTestbedGuest, StateTestbedHost};
+use crate::state::schema::{StateTestbedGuest, StateTestbedHost};
 
 /// This is a struct that contains the implementation and management of SSH for the testbed.
 /// Although there is the sophisticated SSH crate `russh`, we just want to run remote commands.

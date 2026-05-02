@@ -2,15 +2,15 @@ use std::collections::HashSet;
 use anyhow::{bail, Context};
 use async_trait::async_trait;
 use reqwest::Client;
-use tokio::sync::mpsc::{Sender};
+use tokio::sync::mpsc::Sender;
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use crate::components::LogicalTestbed;
 use crate::components::network::LogicalNetwork;
-use crate::orchestration::{OrchestrationCommon, OrchestrationTask, read_previous_state_request, run_subprocess_command, run_subprocess_command_allow_fail, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail, write_state_request};
+use crate::orchestration::{read_previous_state_request, run_subprocess_command, run_subprocess_command_allow_fail, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail, write_state_request, OrchestrationCommon, OrchestrationTask};
 use crate::orchestration::api::*;
-use crate::orchestration::websocket::{send_orchestration_instruction_over_channel};
+use crate::orchestration::websocket::send_orchestration_instruction_over_channel;
 use crate::ovn::OvnCommand;
-use crate::state::{State, StateNetwork};
+use crate::state::schema::{State, StateNetwork};
 
 /// This is a pre-prepared command running function inside the Fn closure that is sent to each OVN
 /// component's `OvnCommand` implementation. It takes in the command string from `OvnCommand` and

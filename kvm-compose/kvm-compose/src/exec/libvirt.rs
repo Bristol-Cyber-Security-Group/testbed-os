@@ -15,7 +15,7 @@ use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::exec::file_transfer::*;
 use crate::orchestration::api::OrchestrationLogger;
 use crate::orchestration::OrchestrationCommon;
-use crate::state::StateTestbedGuest;
+use crate::state::schema::StateTestbedGuest;
 
 /// Enum to define the different states the PTY could be in when we first try to open it. Virsh
 /// could either let us open it or complain that there is already a session open.

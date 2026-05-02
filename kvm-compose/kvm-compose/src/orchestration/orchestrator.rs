@@ -6,7 +6,7 @@ use kvm_compose_schemas::cli_models::Opts;
 use crate::orchestration::{create_logical_testbed, OrchestrationTask, read_previous_state_request, write_state_request};
 use crate::parse_config;
 use crate::state::orchestration_tasks::{check_if_guest_images_exist, get_orchestration_common};
-use crate::state::State;
+use crate::state::schema::State;
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand, DeploymentState};
 use kvm_compose_schemas::settings::TestbedClusterConfig;
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationProtocol};

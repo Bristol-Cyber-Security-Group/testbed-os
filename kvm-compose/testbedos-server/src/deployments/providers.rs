@@ -6,7 +6,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-use kvm_compose_lib::state::State;
+use kvm_compose_lib::state::schema::State;
 use crate::deployments::{get_state_json, set_state_json};
 
 /// The `DeploymentProvider` is a trait to describe the database that backs the server. This is used

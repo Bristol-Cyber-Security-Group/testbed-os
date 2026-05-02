@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use anyhow::{Context};
-use futures_util::future::{try_join_all};
+use anyhow::Context;
+use futures_util::future::try_join_all;
 use serde_json::{json, Value};
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
 use tokio::sync::RwLockWriteGuard;
-use kvm_compose_lib::state::{State};
+use kvm_compose_lib::state::schema::State;
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentList, DeploymentState};
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
-use kvm_compose_schemas::settings::{TestbedClusterConfig};
+use kvm_compose_schemas::settings::TestbedClusterConfig;
 use crate::resource_monitoring::guest::{get_android_guest_metrics, get_docker_guest_metrics, get_libvirt_guest_metrics};
 use crate::ServiceClients;
 

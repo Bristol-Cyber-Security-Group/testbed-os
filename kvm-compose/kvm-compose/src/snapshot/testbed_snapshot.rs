@@ -3,9 +3,9 @@ use chrono::{DateTime, Utc};
 use futures_util::future::try_join_all;
 use tokio::sync::mpsc::Sender;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
-use crate::orchestration::{is_main_testbed, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command};
+use crate::orchestration::{is_main_testbed, run_testbed_orchestration_command, OrchestrationCommon, OrchestrationGuestTask};
 use crate::orchestration::api::OrchestrationLogger;
-use crate::state::{State};
+use crate::state::schema::State;
 
 /// This function will create the whole testbed snapshot by preparing all the artefacts of the
 /// guest VMs and the yaml file into a zip file in the project folder. This does not include the

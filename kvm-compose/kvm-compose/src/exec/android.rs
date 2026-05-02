@@ -10,7 +10,7 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Mutex;
 use crate::orchestration::api::{OrchestrationLogger};
 use crate::orchestration::OrchestrationCommon;
-use crate::state::StateTestbedGuest;
+use crate::state::schema::StateTestbedGuest;
 
 pub async fn shell_command(
     _command: Vec<&str>,

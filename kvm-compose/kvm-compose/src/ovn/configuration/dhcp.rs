@@ -8,7 +8,7 @@ use crate::orchestration::api::{OrchestrationResource, OrchestrationResourceNetw
 use crate::orchestration::OrchestrationCommon;
 use crate::ovn::components::{MacAddress, OvnIpAddr};
 use crate::ovn::OvnCommand;
-use crate::state::StateNetwork;
+use crate::state::schema::StateNetwork;
 use crate::vec_of_strings;
 
 /// This represents DHCP options for a logical switch

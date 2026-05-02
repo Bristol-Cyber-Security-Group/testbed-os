@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
-use futures_util::future::{try_join_all};
-use glob::{glob};
+use futures_util::future::try_join_all;
+use glob::glob;
 use nix::unistd::{Gid, Uid};
 use tokio::sync::mpsc::Sender;
 use kvm_compose_schemas::exec::ExecCmdFileTransfer;
@@ -14,13 +14,13 @@ use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::{ConfigLibvirtMachine, LibvirtGuestOptions};
 use crate::components::get_guest_interface_name;
 use crate::exec;
-use crate::exec::{libvirt};
-use crate::orchestration::{is_main_testbed, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail};
+use crate::exec::libvirt;
+use crate::orchestration::{is_main_testbed, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail, OrchestrationCommon, OrchestrationGuestTask};
 use crate::orchestration::api::OrchestrationLogger;
 use crate::orchestration::ssh::SSHClient;
 use crate::ovn::components::logical_switch_port::LogicalSwitchPortType;
-use crate::state::{State, StateNetwork, StateTestbedGuest, StateTestbedGuestList};
 use crate::state::orchestration_tasks::parse_path_with_deployment_config;
+use crate::state::schema::{State, StateNetwork, StateTestbedGuest, StateTestbedGuestList};
 
 #[async_trait]
 impl OrchestrationGuestTask for ConfigLibvirtMachine {

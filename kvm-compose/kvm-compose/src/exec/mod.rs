@@ -9,9 +9,9 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Mutex;
 use kvm_compose_schemas::exec::{ExecCmd, ExecCmdType, TestbedTools};
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
-use crate::state::{State, StateTestbedGuest};
-use crate::orchestration::{OrchestrationCommon};
-use crate::orchestration::api::{OrchestrationLogger};
+use crate::orchestration::OrchestrationCommon;
+use crate::orchestration::api::OrchestrationLogger;
+use crate::state::schema::{State, StateTestbedGuest};
 
 /// Before running the exec command, we need to prepare some data and make sure that the guest
 /// exists.

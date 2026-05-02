@@ -10,7 +10,7 @@ use futures_util::future::try_join_all;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::LibvirtGuestOptions;
 use crate::orchestration::{OrchestrationCommon};
-use crate::state::State;
+use crate::state::schema::State;
 
 // The definitions in this file abstract over the qemu-img command and the guests in a given
 // deployment.

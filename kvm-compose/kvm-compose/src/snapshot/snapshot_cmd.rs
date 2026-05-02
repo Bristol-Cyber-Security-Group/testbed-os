@@ -5,7 +5,7 @@ use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::orchestration::api::OrchestrationLogger;
 use crate::orchestration::OrchestrationCommon;
 use crate::snapshot::TestbedSnapshots;
-use crate::state::State;
+use crate::state::schema::State;
 
 /// The snapshot action will run the respective command for snapshots. This will be called by either
 /// the CLI or GUI, so to ensure compatability with both, we are both logging the output to stdout

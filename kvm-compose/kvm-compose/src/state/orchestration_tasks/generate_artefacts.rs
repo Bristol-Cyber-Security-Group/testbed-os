@@ -13,9 +13,9 @@ use crate::components::helpers::android::{create_avd, download_system_image, get
 use crate::components::helpers::artefact_generation::{copy_and_set_permissions_orchestration, resize};
 use crate::components::helpers::cloud_init::{create_meta_data, create_network_config, create_user_data};
 use crate::components::helpers::xml::render_libvirt_domain_xml;
-use crate::orchestration::{OrchestrationCommon, run_testbed_orchestration_command};
-use crate::state::{State, StateTestbedGuest};
+use crate::orchestration::{run_testbed_orchestration_command, OrchestrationCommon};
 use crate::state::orchestration_tasks::parse_path_with_deployment_config;
+use crate::state::schema::{State, StateTestbedGuest};
 
 /// This is the generate artefacts version for State rather than Logical testbed
 pub async fn generate_artefacts(

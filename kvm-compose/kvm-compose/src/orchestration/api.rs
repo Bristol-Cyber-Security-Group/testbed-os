@@ -6,7 +6,7 @@ use nix::unistd::{Gid, Uid};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Mutex;
-use kvm_compose_schemas::cli_models::{ToolCmd, ToolSubCmd, SnapshotSubCommand};
+use kvm_compose_schemas::cli_models::{SnapshotSubCommand, ToolCmd, ToolSubCmd};
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use kvm_compose_schemas::exec::ExecCmd;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
@@ -32,9 +32,8 @@ use crate::snapshot::TestbedSnapshots;
 use crate::state::orchestration_tasks::*;
 use crate::state::orchestration_tasks::guests::*;
 use crate::state::orchestration_tasks::ovn_network::*;
-use crate::state::{State, StateTestbedGuest};
 use crate::state::orchestration_tasks::generate_artefacts::generate_artefacts;
-
+use crate::state::schema::{State, StateTestbedGuest};
 // here we define the different atomic things we can send to the testbed server to trigger an
 // orchestration action, we wrap each component in an enum so that it is easy to de/serialise at
 // the endpoint and at the sender
