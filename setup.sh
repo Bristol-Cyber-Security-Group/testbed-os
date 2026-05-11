@@ -50,6 +50,8 @@ find ./docs/src/ -type f -name "*.md" | while IFS= read -r file; do
 done
 
 echo "building the html pages"
+cp ./kvm-compose/testbedos-server/assets/icons/*.png docs/src/      # copying the icons from the server's assets to the source of the documentation
+cp ./kvm-compose/testbedos-server/assets/diagrams/*.png docs/src/   # copying the diagrams from the server's assets to the source of the documentation
 mdbook build docs/ -d build/html/       # generating the html files from the md files
 
 # restoring the original md files with the pandoc man pages metadata yaml declaration and deleting the backup
