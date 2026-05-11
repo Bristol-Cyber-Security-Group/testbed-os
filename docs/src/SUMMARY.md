@@ -18,7 +18,7 @@
     - [TestbedOS OVN and OVS Background](networking_background.md)
     - [TestbedOS Guest Networking Limitations](networking_limitations.md)
 - [TestbedOS Resource Monitoring](resource_monitoring.md)
-- [TestbedOS Clustering Mode](clustering_mode.md)
+- [TestbedOS Configurations and Clustering Mode](clustering_mode.md)
 - [TestbedOS Dependencies](dependencies.md)
 - [TestbedOS Server](server.md)
   - [TestbedOS Server Architecture](server_architecture.md)
