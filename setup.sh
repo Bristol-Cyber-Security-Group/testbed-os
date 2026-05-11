@@ -59,6 +59,7 @@ find ./docs/src/ -type f -name "*.bak" | while IFS= read -r file; do
     cp $file ${file%.bak}.md
     rm $file
 done
+rm ./docs/src/*.png
 
 # place documentation in server assets
 sudo rm -rf /var/lib/testbedos/assets/documentation/
