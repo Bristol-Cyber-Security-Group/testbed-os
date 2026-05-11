@@ -1,3 +1,8 @@
+---
+title: SCHEMA-MACHINES
+section: 1
+---
+
 # TestbedOS Guest Machines
 
 `TestbedOS` currently provides three types of guest machines for a deployment: libvirt virtual machines (VMs), Docker containers, and Android Virtual Devices (AVDs). 

@@ -1,5 +1,5 @@
 ---
-title: TESTBEDOS-SERVER-API
+title: SERVER-API
 section: 1
 ---
 

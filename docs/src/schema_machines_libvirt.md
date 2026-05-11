@@ -1,3 +1,8 @@
+---
+title: SCHEMA-MACHINES-LIBVIRT
+section: 1
+---
+
 # TestbedOS libvirt Guest Machines
 
 libvirt is an open-source toolkit commonly used on the Linux platforms to manage virtual machines (VMs) and virtualisation stack. TestbedOS supports the three subtypes of libvirt guests based on how the guest machines are built:

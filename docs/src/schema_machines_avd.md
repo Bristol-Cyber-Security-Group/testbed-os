@@ -1,3 +1,8 @@
+---
+title: SCHEMA-MACHINES-AVD
+section: 1
+---
+
 # TestbedOS Android Virtual Device
 
 TestbedOS additionally provides the capability of spawning Android emulators for the research and experimentation on the Android platform implemented through the [Android Virtual Device feature](https://developer.android.com/studio/run/emulator-commandline#listing-filedir). This is available through the `avd` field in the `kvm-compose.yaml` file. The following lists the available options for the `avd` section:

@@ -1,3 +1,8 @@
+---
+title: SCHEMA-NETWORKING
+section: 1
+---
+
 # TestbedOS Networking
 
 TestbedOS provides networking capabilities for the communication between the guests in a deployment to emulate real-world networks. In TestbedOS, this is implemented as a [Software-Defined Network (SDN)](https://en.wikipedia.org/wiki/Software-defined_networking) powered by [Open Virtual Networks (OVN)](https://www.ovn.org/en/), and [OpenvSwitch (OVS)](https://www.openvswitch.org/), which operates at level 2 in the OSI model, underpins OVN. Via OVN and OVS, the SDN is constructed with components such as switches and routers, following familiar concepts in networking. To learn more about OVN and OVS, as well as how they work in TestbedOS, we provide a quick background on the topic in [OVN and OVS Brief Background](networking_background.md).

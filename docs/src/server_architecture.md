@@ -1,5 +1,5 @@
 ---
-title: TESTBEDOS-SERVER-ARCHITECTURE
+title: SERVER-ARCHITECTURE
 section: 1
 ---
 

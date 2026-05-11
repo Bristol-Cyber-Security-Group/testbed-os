@@ -1,3 +1,8 @@
+---
+title: WELCOME
+section: 1
+---
+
 # Welcome to the TestbedOS Documentation!
 
 ## What is TestbedOS?

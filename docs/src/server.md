@@ -1,5 +1,5 @@
 ---
-title: TESTBEDOS-SERVER
+title: SERVER
 section: 1
 ---
 

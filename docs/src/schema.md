@@ -1,3 +1,8 @@
+---
+title: SCHEMA
+section: 1
+---
+
 # TestbedOS Schema
 
 The schema of TestbedOS refers to the componenets that TestbedOS offers for deployments. We have previously seen a [Minimal Working Example](welcome.md#minimal-working-example) where the components for a deployment described in the `kvm-compose.yaml` file consisting of a single Ubuntu 20.04 LTS virtual machine (VM) with a software-defined switch connected to the VM. 

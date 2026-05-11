@@ -1,3 +1,8 @@
+---
+title: USER-INTERFACE-EXEC-PUSH-PULL
+section: 1
+---
+
 # File Push and Pull
 
 Once a deployment is up and running via `kvm-compose up`, you can *push* (upload) a file to a specific guest via the `push` subcommand or *pull* (download) a file from a specific guest via the `pull` subcommand in the deployment. 

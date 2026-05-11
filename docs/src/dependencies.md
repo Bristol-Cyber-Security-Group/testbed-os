@@ -1,3 +1,8 @@
+---
+title: DEPENDENCIES
+section: 1
+---
+
 # TestbedOS Dependencies
 
 There are various dependencies needed to be installed with some based configuration needed to get the testbed ready to deploy test cases.

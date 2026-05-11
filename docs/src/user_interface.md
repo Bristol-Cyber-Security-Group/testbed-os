@@ -1,5 +1,5 @@
 ---
-title: INTERFACES
+title: USER-INTERFACE
 section: 1
 ---
 

@@ -1,3 +1,8 @@
+---
+title: SCHEMA-MACHINES-DOCKER
+section: 1
+---
+
 # TestbedOS Docker Guest Machines
 
 TestbedOS also provides Docker containers as guest machines under the `docker` field in the `kvm-compose.yaml` file. The following lists the available options in the `docker` section:
