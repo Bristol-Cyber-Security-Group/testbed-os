@@ -66,7 +66,9 @@ sudo rm -rf /var/lib/testbedos/assets/documentation/
 sudo mkdir /var/lib/testbedos/assets/documentation/
 sudo cp -r build/html/. /var/lib/testbedos/assets/documentation/
 
-# install man pages TODO
+# install the man page for kvm-compose
+sudo cp ./build/man/user_interface_kvm_compose.1 /usr/local/share/man/man1/kvm-compose.1
+sudo mandb
 
 echo "installing textual user interface"
 cd util/tui/ || exit
