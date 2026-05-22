@@ -28,7 +28,8 @@ machines:
       mac: "00:00:00:00:00:02"
       ip: "10.0.0.11"
   docker:
-    image: ensignprojects/ubuntu-curl:20260426
+    image: nginx:stable
+    command: "/bin/bash"
     # command: "curl docker-single-nginx:80"  # assuming the deployment name is "project"
 
 

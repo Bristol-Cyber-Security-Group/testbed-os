@@ -9,3 +9,4 @@ __pycache__/
 kvm-compose/testbedos-server/assets/documentation/*
 docs/book/*
 docs-mdbook/*
+docs/src/*.png

@@ -56,7 +56,6 @@ machines:
   - name: server
     network:
       - switch: sw0
-        gateway: 10.0.0.1
         mac: "00:00:00:00:00:01"
         ip: "10.0.0.10"
     libvirt:
@@ -74,7 +73,7 @@ network:
         subnet: "10.0.0.0/24"
 ```
 
-This MWE deploys a virtual machine (VM) assigned the identifier `server` in the deployment with the specification of one core CPU, 1024 MB memory, a maximum of 2 GB of virtual disk size for QCOW2 format (more details on this in ), an IP address of `10.0.0.10` and a MAC address of `00:00:00:00:00:01`, and running Ubuntu 20.04 LTS. The networking setup contains a switch with the identifier `sw0` that connects to the `server` VM acting as the VM's gateway, and serves the subnet `10.0.0.0/24`.
+This MWE deploys a virtual machine (VM) assigned the identifier `server` in the deployment with the specification of one core CPU, 1024 MB memory, a maximum of 2 GB of virtual disk size for QCOW2 format (more details on this in ), an IP address of `10.0.0.10` and a MAC address of `00:00:00:00:00:01`, and running Ubuntu 20.04 LTS. The networking setup contains a switch with the identifier `sw0` that connects the `server` VM to this switch that is defined later on.
 
 1. On your terminal, navigate to `/testbedos/examples/mwe` where the `kvm-compose.yaml` file for the MWE lives. Alternatively, if you prefer you can also create a new project directory outside of the cloned TestbedOS repository, which might be the more preferable case for your own custom TestbedOS deployments. For this, we will name the project `example`.
 

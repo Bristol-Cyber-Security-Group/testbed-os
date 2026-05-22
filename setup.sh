@@ -33,8 +33,8 @@ poetry install || exit
 
 # removing old doc build and make new structure
 rm -rf build/*
-mkdir build/html/
-mkdir build/man/
+mkdir -p build/html/
+mkdir -p build/man/
 
 echo "building man pages"
 # building the man pages for each md file
