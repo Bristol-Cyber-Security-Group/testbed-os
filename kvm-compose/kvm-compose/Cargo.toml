@@ -36,3 +36,5 @@ virt = { workspace = true }
 tempfile = "3.17.1"
 console = "0.16.0"
 command-group = { version = "5.0.1", features = ["with-tokio"] }
+validator = {version = "0.20.0", features = ["derive"] }
+

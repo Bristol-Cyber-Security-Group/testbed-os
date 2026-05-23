@@ -1,3 +1,6 @@
+pub mod guest;
+pub mod machines;
+
 use std::collections::BTreeMap;
 use std::{fmt, fs};
 use std::fmt::Formatter;
@@ -8,12 +11,12 @@ use tokio::fs::File;
 use nix::unistd::{Gid, Uid};
 use serde::{Deserialize, Serialize};
 use anyhow::Context;
-use kvm_compose_schemas::kvm_compose_yaml::Machine;
 use tokio::io::AsyncWriteExt;
+use guest::{StateTestbedGuest, StateTestbedGuestExtraInfo};
 use crate::components::LogicalTestbed;
 use crate::components::network::LogicalNetwork;
 use crate::ovn::ovn::OvnNetwork;
-
+use crate::state::schema::guest::StateGuestType;
 // the data structures in this file represent the state, they are generated from the Config and Common
 // data structures used to parse the kvm-compose.yaml
 // some of the conversion is redundant but needed to keep the concerns of the data structures separate in the
@@ -39,8 +42,7 @@ pub struct State {
 impl State {
     pub fn new(logical_testbed: &LogicalTestbed) -> anyhow::Result<Self> {
         let testbed_hosts = Self::fill_host_list(logical_testbed)?;
-        // let network = Self::fill_network(&testbed_hosts, logical_testbed)?;
-        Ok(Self {
+        let mut state = Self {
             project_name: logical_testbed.common.project.clone(),
             creation_date: format!("{:?}", chrono::offset::Local::now()),
             project_working_dir: logical_testbed.common.project_working_dir.clone(),
@@ -74,7 +76,9 @@ impl State {
             state_provisioning: StateProvisioning {
                 guests_provisioned: false
             },
-        })
+        };
+        assign_tcp_tty_ports(&mut state)?;
+        Ok(state)
     }
 
     fn fill_host_list(
@@ -132,7 +136,7 @@ impl State {
             testbed_guest_map.insert(
                 guest.get_guest_name().clone(),
                 StateTestbedGuest {
-                    guest_type,
+                    guest_type: guest_type.try_into()?,
                     testbed_host: guest.get_testbed_host().clone(), // filled in during load balancing
                     is_golden_image,
                     guest_id: guest.get_guest_id(),
@@ -185,6 +189,24 @@ impl fmt::Display for State {
     }
 }
 
+/// This assigns a unique port for the serial TTY access. This is only applicable to libvirt guests.
+pub fn assign_tcp_tty_ports(config: &mut State) -> anyhow::Result<()> {
+    let mut tcp_port = 4555;
+
+    for (_, machine) in config.testbed_guests.0.iter_mut() {
+        match machine.guest_type.guest_type {
+            StateGuestType::Libvirt(ref mut libvirt_guest) => {
+                libvirt_guest.tcp_tty_port = Some(tcp_port);
+                tcp_port += 1;
+            }
+            StateGuestType::Docker(_) => {}
+            StateGuestType::Android(_) => {}
+        }
+    }
+
+    Ok(())
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct StateTestbedHost {
@@ -202,28 +224,6 @@ pub struct StateTestbedHost {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct StateTestbedHostList(pub BTreeMap<String, StateTestbedHost>);
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct StateTestbedGuest {
-    /// `guest_type` is a straight copy of the yaml file definition, wrapped by this "State" struct
-    #[serde(flatten)]
-    pub guest_type: Machine,
-    pub testbed_host: Option<String>,
-    pub is_golden_image: bool,
-    /// this is a unique identifier for the guest in the state
-    pub guest_id: u32,
-    pub extra_info: StateTestbedGuestExtraInfo,
-}
-
-/// This contains extra information on the guest that is not captured by the yaml, but is computed from a combination of
-/// the yaml and the testbed environment, making it unique to a testbed
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
-pub struct StateTestbedGuestExtraInfo {
-    /// This is used when a guest is based off another resource i.e. an image for existing disk, or an iso for iso guest
-    pub reference_image: Option<String>,
-}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]

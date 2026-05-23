@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 use anyhow::{bail, Context};
 use tokio::process::Command;
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
-use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::LibvirtGuestOptions;
 use kvm_compose_schemas::cli_models::Common;
 use crate::orchestration::OrchestrationCommon;
-use crate::state::schema::{StateTestbedGuest, StateTestbedHost};
+use crate::state::schema::StateTestbedHost;
+use crate::state::schema::guest::{StateGuestType, StateTestbedGuest};
+use crate::state::schema::machines::libvirt::StateLibvirtGuestOptions;
 
 /// This is a struct that contains the implementation and management of SSH for the testbed.
 /// Although there is the sophisticated SSH crate `russh`, we just want to run remote commands.
@@ -48,10 +48,10 @@ impl SSHClient {
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
         // running a guest command depends on the type of guest and the available connection
         match &machine_config.guest_type.guest_type {
-            GuestType::Libvirt(libvirt) => {
+            StateGuestType::Libvirt(libvirt) => {
                 // there may be different connection mechanisms available for non cloud init guests
                 match libvirt.libvirt_type {
-                    LibvirtGuestOptions::CloudImage { .. } => {
+                    StateLibvirtGuestOptions::CloudImage { .. } => {
                         // we have a testbed ssh public key registered in the guest
                         let key = &common.testbed_guest_shared_config.ssh_private_key_location;
                         let output = _run_remote_command(
@@ -64,12 +64,12 @@ impl SSHClient {
                         ).await?;
                         return Ok(output);
                     }
-                    LibvirtGuestOptions::ExistingDisk { .. } => unimplemented!(),
-                    LibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
+                    StateLibvirtGuestOptions::ExistingDisk { .. } => unimplemented!(),
+                    StateLibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
                 }
             }
-            GuestType::Docker(_) => unimplemented!(),
-            GuestType::Android(_) => unimplemented!(),
+            StateGuestType::Docker(_) => unimplemented!(),
+            StateGuestType::Android(_) => unimplemented!(),
         }
     }
 

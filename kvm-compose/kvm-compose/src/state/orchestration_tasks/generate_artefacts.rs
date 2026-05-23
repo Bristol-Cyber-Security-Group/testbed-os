@@ -2,11 +2,6 @@ use kvm_compose_schemas::TESTBED_SETTINGS_FOLDER;
 use std::path::PathBuf;
 use anyhow::{bail, Context};
 use nix::unistd::{Gid, Uid};
-use kvm_compose_schemas::kvm_compose_yaml::MachineNetwork;
-use kvm_compose_schemas::kvm_compose_yaml::machines::avd::ConfigAVDMachine;
-use kvm_compose_schemas::kvm_compose_yaml::machines::docker::ConfigDockerMachine;
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
-use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::{ConfigLibvirtMachine, LibvirtGuestOptions};
 use crate::components::get_guest_interface_name;
 use crate::components::helpers::{check_file_exists, serialisation};
 use crate::components::helpers::android::{create_avd, download_system_image, get_sdk_string};
@@ -15,7 +10,11 @@ use crate::components::helpers::cloud_init::{create_meta_data, create_network_co
 use crate::components::helpers::xml::render_libvirt_domain_xml;
 use crate::orchestration::{run_testbed_orchestration_command, OrchestrationCommon};
 use crate::state::orchestration_tasks::parse_path_with_deployment_config;
-use crate::state::schema::{State, StateTestbedGuest};
+use crate::state::schema::State;
+use crate::state::schema::guest::{StateGuestType, StateMachineNetwork, StateTestbedGuest};
+use crate::state::schema::machines::avd::StateAVDMachine;
+use crate::state::schema::machines::docker::StateDockerMachine;
+use crate::state::schema::machines::libvirt::{StateLibvirtGuestOptions, StateLibvirtMachine};
 
 /// This is the generate artefacts version for State rather than Logical testbed
 pub async fn generate_artefacts(
@@ -25,9 +24,9 @@ pub async fn generate_artefacts(
     // for each guest, generate artefacts
     for (_, guest_config) in &state.testbed_guests.0 {
         match &guest_config.guest_type.guest_type {
-            GuestType::Libvirt(c) => libvirt(&c, &guest_config, common).await?,
-            GuestType::Docker(c) => docker(&c, &guest_config, common).await?,
-            GuestType::Android(c) => android(&c, &guest_config, common).await?,
+            StateGuestType::Libvirt(c) => libvirt(&c, &guest_config, common).await?,
+            StateGuestType::Docker(c) => docker(&c, &guest_config, common).await?,
+            StateGuestType::Android(c) => android(&c, &guest_config, common).await?,
         }
     }
 
@@ -35,7 +34,7 @@ pub async fn generate_artefacts(
 }
 
 async fn libvirt(
-    libvirt_config: &ConfigLibvirtMachine,
+    libvirt_config: &StateLibvirtMachine,
     guest_config: &StateTestbedGuest,
     common: &OrchestrationCommon
 ) -> anyhow::Result<()> {
@@ -68,16 +67,14 @@ async fn libvirt(
 
     let mut tera_context = tera::Context::new();
     tera_context.insert("guest_name", &client_name);
-    tera_context.insert("vcpu", &libvirt_config.cpus
-        .context("getting n cpus for libvirt guest")?.to_string());
-    tera_context.insert("memory", &libvirt_config.memory_mb
-        .context("getting memory for libvirt guest")?.to_string());
+    tera_context.insert("vcpu", &libvirt_config.cpus.to_string());
+    tera_context.insert("memory", &libvirt_config.memory_mb.to_string());
 
     // main disk
     tera_context.insert("disk_driver", &format!("qcow2"));
     // this is either on main or on remote
     let main_disk_img_path = match &libvirt_config.libvirt_type {
-        LibvirtGuestOptions::CloudImage { path,.. } => {
+        StateLibvirtGuestOptions::CloudImage { path,.. } => {
             let img_path = path
                 .clone()
                 .context("getting disk path for libvirt cloud-image guest")?;
@@ -97,11 +94,11 @@ async fn libvirt(
 
             img_path
         }
-        LibvirtGuestOptions::ExistingDisk { path,.. } => {
+        StateLibvirtGuestOptions::ExistingDisk { path,.. } => {
             tera_context.insert("disk_path", path);
             path.clone()
         }
-        LibvirtGuestOptions::IsoGuest { path,.. } => {
+        StateLibvirtGuestOptions::IsoGuest { path,.. } => {
             tera_context.insert("disk_path", path);
             path.clone()
         }
@@ -155,10 +152,10 @@ async fn libvirt(
     // of a desktop environment
     // TODO - make this an option in the yaml
     match libvirt_config.libvirt_type {
-        LibvirtGuestOptions::ExistingDisk { .. } => {
+        StateLibvirtGuestOptions::ExistingDisk { .. } => {
             tera_context.insert("extended_graphics_support", &true);
         }
-        LibvirtGuestOptions::IsoGuest { .. } => {
+        StateLibvirtGuestOptions::IsoGuest { .. } => {
             tera_context.insert("extended_graphics_support", &true);
         }
         _ => {}
@@ -184,7 +181,7 @@ async fn libvirt(
 
     // get disk expand value
     let disk_expand = match &libvirt_config.libvirt_type {
-        LibvirtGuestOptions::CloudImage {
+        StateLibvirtGuestOptions::CloudImage {
             expand_gigabytes, ..
         } => {
             if expand_gigabytes.is_some() {
@@ -193,8 +190,8 @@ async fn libvirt(
                 0
             }
         }
-        LibvirtGuestOptions::ExistingDisk { .. } => 0,
-        LibvirtGuestOptions::IsoGuest { expand_gigabytes, .. } => {
+        StateLibvirtGuestOptions::ExistingDisk { .. } => 0,
+        StateLibvirtGuestOptions::IsoGuest { expand_gigabytes, .. } => {
             if expand_gigabytes.is_some() {
                 expand_gigabytes.context("getting expand gigabytes for iso libvirt guest")?
             } else {
@@ -210,7 +207,7 @@ async fn libvirt(
     // it is a non clone or is a backing image guest
     // implementation for each libvirt type
     match &libvirt_config.libvirt_type {
-        LibvirtGuestOptions::CloudImage { name, .. } => {
+        StateLibvirtGuestOptions::CloudImage { name, .. } => {
             if libvirt_config.is_clone_of.is_some() {
                 // is a clone, dont need to copy image as orchestration will create the linked
                 // clone image once the backing image is deployed and setup
@@ -234,7 +231,7 @@ async fn libvirt(
                 }
             }
         }
-        LibvirtGuestOptions::ExistingDisk { create_deep_copy, .. } => {
+        StateLibvirtGuestOptions::ExistingDisk { create_deep_copy, .. } => {
             if libvirt_config.is_clone_of.is_some() {
                 // is a clone, dont need to copy image as orchestration will create the linked
                 // clone image once the backing image is deployed and setup
@@ -281,7 +278,7 @@ async fn libvirt(
                 }
             }
         }
-        LibvirtGuestOptions::IsoGuest { .. } => {
+        StateLibvirtGuestOptions::IsoGuest { .. } => {
             if libvirt_config.is_clone_of.is_some() {
                 bail!("scaling is not supported currently for libvirt iso guests");
             } else {
@@ -318,7 +315,7 @@ async fn libvirt(
 
     // set up cloud init data only for cloud images
     match libvirt_config.libvirt_type {
-        LibvirtGuestOptions::CloudImage { .. } => cloud_init_setup(
+        StateLibvirtGuestOptions::CloudImage { .. } => cloud_init_setup(
             &common,
             network_def,
             libvirt_config,
@@ -333,7 +330,7 @@ async fn libvirt(
 }
 
 async fn docker(
-    _docker_config: &ConfigDockerMachine,
+    _docker_config: &StateDockerMachine,
     _guest_config: &StateTestbedGuest,
     _common: &OrchestrationCommon
 ) -> anyhow::Result<()> {
@@ -341,13 +338,13 @@ async fn docker(
 }
 
 async fn android(
-    _android_config: &ConfigAVDMachine,
+    _android_config: &StateAVDMachine,
     guest_config: &StateTestbedGuest,
     common: &OrchestrationCommon
 ) -> anyhow::Result<()> {
     // get the avd settings
     let guest_options = match &guest_config.guest_type.guest_type {
-        GuestType::Android(avd_guest) => avd_guest,
+        StateGuestType::Android(avd_guest) => avd_guest,
         _ => unreachable!(),
     };
 
@@ -402,8 +399,8 @@ async fn android(
 
 async fn cloud_init_setup(
     common: &OrchestrationCommon,
-    network_def: &Option<Vec<MachineNetwork>>,
-    libvirt_config: &ConfigLibvirtMachine,
+    network_def: &Option<Vec<StateMachineNetwork>>,
+    libvirt_config: &StateLibvirtMachine,
     client_name: String,
     project_artefacts_folder: String,
     guest_config: &StateTestbedGuest,
@@ -423,7 +420,7 @@ async fn cloud_init_setup(
         client_name,
         public_ssh_key_contents,
         match &libvirt_config.libvirt_type {
-            LibvirtGuestOptions::CloudImage { environment, ..  } => {
+            StateLibvirtGuestOptions::CloudImage { environment, ..  } => {
                 environment.clone()
             }
             _ => {
@@ -495,7 +492,7 @@ async fn cloud_init_setup(
         };
         // add context if present in yaml
         match &libvirt_config.libvirt_type {
-            LibvirtGuestOptions::CloudImage { context, .. } => match &context {
+            StateLibvirtGuestOptions::CloudImage { context, .. } => match &context {
                 None => {}
                 Some(context) => {
                     let context_dest = PathBuf::from(format!("{}/context.tar", &project_artefacts_folder));
@@ -507,10 +504,10 @@ async fn cloud_init_setup(
                     cloud_init_inputs.push(context_dest);
                 }
             },
-            LibvirtGuestOptions::ExistingDisk { .. } => {
+            StateLibvirtGuestOptions::ExistingDisk { .. } => {
                 unreachable!()
             }
-            LibvirtGuestOptions::IsoGuest { .. } => {
+            StateLibvirtGuestOptions::IsoGuest { .. } => {
                 unreachable!()
             }
         }

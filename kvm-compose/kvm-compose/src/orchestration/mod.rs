@@ -19,7 +19,8 @@ use crate::components::LogicalTestbed;
 use crate::orchestration::api::{OrchestrationLogger, OrchestrationProtocol};
 use crate::orchestration::ssh::SSHClient;
 use crate::parse_config;
-use crate::state::schema::{State, StateNetwork, StateTestbedGuest, StateTestbedGuestList, StateTestbedGuestSharedConfig, StateTestbedHost};
+use crate::state::schema::{State, StateNetwork, StateTestbedGuestList, StateTestbedGuestSharedConfig, StateTestbedHost};
+use crate::state::schema::guest::StateTestbedGuest;
 
 pub mod ssh;
 pub mod orchestrator;

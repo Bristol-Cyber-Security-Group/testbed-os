@@ -1,10 +1,10 @@
 use anyhow::{bail, Context};
 use tokio::sync::mpsc::Sender;
 use kvm_compose_schemas::cli_models::{SnapshotSubCommand};
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::orchestration::api::OrchestrationLogger;
 use crate::orchestration::OrchestrationCommon;
 use crate::snapshot::TestbedSnapshots;
+use crate::state::schema::guest::StateGuestType;
 use crate::state::schema::State;
 
 /// The snapshot action will run the respective command for snapshots. This will be called by either
@@ -79,7 +79,7 @@ pub async fn run_snapshot_action(
                     // need to make sure the guest is eligible for snapshots, right now it is only
                     // libvirt guests that support snapshots
                     match state.testbed_guests.0.get(guest).unwrap().guest_type.guest_type {
-                        GuestType::Libvirt(_) => {}
+                        StateGuestType::Libvirt(_) => {}
                         _ => bail!("only libvirt guests support snapshots"),
                     }
 

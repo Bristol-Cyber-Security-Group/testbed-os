@@ -7,7 +7,7 @@ use crate::components::helpers::serialisation;
 use crate::exec::libvirt::shell_command;
 use crate::orchestration::api::OrchestrationLogger;
 use crate::orchestration::OrchestrationCommon;
-use crate::state::schema::StateTestbedGuest;
+use crate::state::schema::guest::StateTestbedGuest;
 
 const CDROM_DEVICE_XML: &str = r#"
     <disk type='file' device='cdrom'>

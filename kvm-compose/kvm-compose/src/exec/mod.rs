@@ -8,10 +8,10 @@ use anyhow::{bail, Context};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Mutex;
 use kvm_compose_schemas::exec::{ExecCmd, ExecCmdType, TestbedTools};
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::orchestration::OrchestrationCommon;
 use crate::orchestration::api::OrchestrationLogger;
-use crate::state::schema::{State, StateTestbedGuest};
+use crate::state::schema::State;
+use crate::state::schema::guest::{StateGuestType, StateTestbedGuest};
 
 /// Before running the exec command, we need to prepare some data and make sure that the guest
 /// exists.
@@ -98,13 +98,13 @@ pub async fn run_guest_exec_cmd(
             }
 
             let shell_command_result = match &guest_data.guest_type.guest_type {
-                GuestType::Libvirt(_) => {
+                StateGuestType::Libvirt(_) => {
                     libvirt::shell_command(cmd, command.timeout_ms, guest_data, &guest_name_with_project, orchestration_common, &logging_send, command.suppress_logging, false).await?
                 }
-                GuestType::Docker(_) => {
+                StateGuestType::Docker(_) => {
                     docker::shell_command(cmd, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?
                 }
-                GuestType::Android(_) => {
+                StateGuestType::Android(_) => {
                     android::shell_command(cmd, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?
                 }
             };
@@ -117,7 +117,7 @@ pub async fn run_guest_exec_cmd(
         ExecCmdType::Push(transfer) => {
             tracing::info!("pushing {:?} to guest {guest_name}", &transfer.source_path);
             match &guest_data.guest_type.guest_type {
-                GuestType::Libvirt(_) => libvirt::push(transfer, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?,
+                StateGuestType::Libvirt(_) => libvirt::push(transfer, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?,
                 _ => bail!("unsupported guest type"),
             }
             true
@@ -125,7 +125,7 @@ pub async fn run_guest_exec_cmd(
         ExecCmdType::Pull(transfer) => {
             tracing::info!("pushing {:?} from guest {guest_name}", &transfer.source_path);
             match &guest_data.guest_type.guest_type {
-                GuestType::Libvirt(_) => libvirt::pull(transfer, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?,
+                StateGuestType::Libvirt(_) => libvirt::pull(transfer, guest_data, &guest_name_with_project, orchestration_common, &logging_send).await?,
                 _ => bail!("unsupported guest type"),
             }
             true
@@ -174,15 +174,15 @@ fn check_command_on_guest_type(
         ExecCmdType::ShellCommand(_) => {}
         ExecCmdType::Push(_) => {
             match guest_data.guest_type.guest_type {
-                GuestType::Libvirt(_) => {}
-                GuestType::Android(_) => bail!("please use ADB commands for Android instead"),
+                StateGuestType::Libvirt(_) => {}
+                StateGuestType::Android(_) => bail!("please use ADB commands for Android instead"),
                 _ => bail!("Push command only compatible with Libvirt guests"),
             }
         }
         ExecCmdType::Pull(_) => {
             match guest_data.guest_type.guest_type {
-                GuestType::Libvirt(_) => {}
-                GuestType::Android(_) => bail!("please use ADB commands for Android instead"),
+                StateGuestType::Libvirt(_) => {}
+                StateGuestType::Android(_) => bail!("please use ADB commands for Android instead"),
                 _ => bail!("Pull command only compatible with Libvirt guests"),
             }
         }
@@ -190,37 +190,37 @@ fn check_command_on_guest_type(
             match tool.tool {
                 TestbedTools::ADB(_) => {
                     match guest_data.guest_type.guest_type {
-                        GuestType::Android(_) => {}
+                        StateGuestType::Android(_) => {}
                         _ => bail!("ADB tool only compatible with android guests"),
                     }
                 }
                 TestbedTools::FridaSetup => {
                     match guest_data.guest_type.guest_type {
-                        GuestType::Android(_) => {}
+                        StateGuestType::Android(_) => {}
                         _ => bail!("ADB tool only compatible with android guests"),
                     }
                 }
                 TestbedTools::InstallApk(_) => {
                     match guest_data.guest_type.guest_type {
-                        GuestType::Android(_) => {}
+                        StateGuestType::Android(_) => {}
                         _ => bail!("ADB tool only compatible with android guests"),
                     }
                 }
                 TestbedTools::TestPermissions(_) => {
                     match guest_data.guest_type.guest_type {
-                        GuestType::Android(_) => {}
+                        StateGuestType::Android(_) => {}
                         _ => bail!("ADB tool only compatible with android guests"),
                     }
                 }
                 TestbedTools::TestPrivacy(_) => {
                     match guest_data.guest_type.guest_type {
-                        GuestType::Android(_) => {}
+                        StateGuestType::Android(_) => {}
                         _ => bail!("ADB tool only compatible with android guests"),
                     }
                 }
                 TestbedTools::TLSIntercept(_) => {
                     match guest_data.guest_type.guest_type {
-                        GuestType::Android(_) => {}
+                        StateGuestType::Android(_) => {}
                         _ => bail!("ADB tool only compatible with android guests"),
                     }
                 }

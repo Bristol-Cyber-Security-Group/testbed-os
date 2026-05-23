@@ -9,7 +9,6 @@ use tokio::sync::Mutex;
 use kvm_compose_schemas::cli_models::{SnapshotSubCommand, ToolCmd, ToolSubCmd};
 use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use kvm_compose_schemas::exec::ExecCmd;
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt_image_download::OnlineCloudImage;
 use crate::tool::packet_capture::packet_capture;
 use crate::exec::prepare_guest_exec_command;
@@ -33,7 +32,8 @@ use crate::state::orchestration_tasks::*;
 use crate::state::orchestration_tasks::guests::*;
 use crate::state::orchestration_tasks::ovn_network::*;
 use crate::state::orchestration_tasks::generate_artefacts::generate_artefacts;
-use crate::state::schema::{State, StateTestbedGuest};
+use crate::state::schema::State;
+use crate::state::schema::guest::{StateGuestType, StateTestbedGuest};
 // here we define the different atomic things we can send to the testbed server to trigger an
 // orchestration action, we wrap each component in an enum so that it is easy to de/serialise at
 // the endpoint and at the sender
@@ -446,7 +446,7 @@ impl OrchestrationInstruction {
                     match resource {
                         OrchestrationResource::Guest(g) => {
                             match &g.guest_type.guest_type {
-                                GuestType::Libvirt(l) => {
+                                StateGuestType::Libvirt(l) => {
                                     let backing_image_name = l.is_clone_of.as_ref().unwrap();
                                     let guest_testbed = g.testbed_host.as_ref().unwrap();
                                     // from the images_to_push set, work out the local path on main and the remote path
@@ -469,8 +469,8 @@ impl OrchestrationInstruction {
                                     futures.push(Box::pin(SSHClient::push_file_to_remote_testbed(&orchestration_common, target_testbed_host, local_src, remote_dst, false)));
                                     res_name_list.push(resource.name());
                                 }
-                                GuestType::Docker(_) => {}
-                                GuestType::Android(_) => {}
+                                StateGuestType::Docker(_) => {}
+                                StateGuestType::Android(_) => {}
                             }
                         }
                         OrchestrationResource::Network(_) => unreachable!(),
@@ -746,13 +746,13 @@ impl OrchestrationResource {
         match self {
             OrchestrationResource::Guest(guest) => {
                 match &guest.guest_type.guest_type {
-                    GuestType::Libvirt(libvirt) => {
+                    StateGuestType::Libvirt(libvirt) => {
                         libvirt.create_action(orchestration_common, guest.clone(), logging_send).await
                     }
-                    GuestType::Docker(docker) => {
+                    StateGuestType::Docker(docker) => {
                         docker.create_action(orchestration_common, guest.clone(), logging_send).await
                     }
-                    GuestType::Android(android) => {
+                    StateGuestType::Android(android) => {
                         android.create_action(orchestration_common, guest.clone(), logging_send).await
                     }
                 }
@@ -821,13 +821,13 @@ impl OrchestrationResource {
         match self {
             OrchestrationResource::Guest(guest) => {
                 match &guest.guest_type.guest_type {
-                    GuestType::Libvirt(libvirt) => {
+                    StateGuestType::Libvirt(libvirt) => {
                         libvirt.destroy_action(orchestration_common, guest.clone(), logging_send).await
                     }
-                    GuestType::Docker(docker) => {
+                    StateGuestType::Docker(docker) => {
                         docker.destroy_action(orchestration_common, guest.clone(), logging_send).await
                     }
-                    GuestType::Android(android) => {
+                    StateGuestType::Android(android) => {
                         android.destroy_action(orchestration_common, guest.clone(), logging_send).await
                     }
                 }
@@ -895,13 +895,13 @@ impl OrchestrationResource {
         match self {
             OrchestrationResource::Guest(g) => {
                 match &g.guest_type.guest_type {
-                    GuestType::Libvirt(l) => {
+                    StateGuestType::Libvirt(l) => {
                         l.push_image_action(orchestration_common, g.clone(), logging_send).await
                     }
-                    GuestType::Docker(d) => {
+                    StateGuestType::Docker(d) => {
                         d.push_image_action(orchestration_common, g.clone(), logging_send).await
                     }
-                    GuestType::Android(_) => unreachable!()
+                    StateGuestType::Android(_) => unreachable!()
                 }
             }
             OrchestrationResource::Network(_) => unreachable!()
@@ -912,11 +912,11 @@ impl OrchestrationResource {
         match self {
             OrchestrationResource::Guest(g) => {
                 match &g.guest_type.guest_type {
-                    GuestType::Libvirt(l) => {
+                    StateGuestType::Libvirt(l) => {
                         l.setup_image_action(orchestration_common, g.clone(), logging_sender).await
                     }
-                    GuestType::Docker(_) => unreachable!(),
-                    GuestType::Android(_) => unreachable!()
+                    StateGuestType::Docker(_) => unreachable!(),
+                    StateGuestType::Android(_) => unreachable!()
                 }
             }
             OrchestrationResource::Network(_) => unreachable!(),
@@ -927,11 +927,11 @@ impl OrchestrationResource {
         match self {
             OrchestrationResource::Guest(g) => {
                 match &g.guest_type.guest_type {
-                    GuestType::Libvirt(l) => {
+                    StateGuestType::Libvirt(l) => {
                         l.rebase_image_action(orchestration_common, g.clone(), state.testbed_guests.clone(), logging_send).await
                     }
-                    GuestType::Docker(_) => unreachable!(),
-                    GuestType::Android(_) => unreachable!()
+                    StateGuestType::Docker(_) => unreachable!(),
+                    StateGuestType::Android(_) => unreachable!()
                 }
             }
             OrchestrationResource::Network(_) => unreachable!(),
@@ -942,11 +942,11 @@ impl OrchestrationResource {
         match self {
             OrchestrationResource::Guest(g) => {
                 match &g.guest_type.guest_type {
-                    GuestType::Libvirt(l) => {
+                    StateGuestType::Libvirt(l) => {
                         l.setup_action(orchestration_common, g.clone(), logging_send).await
                     }
-                    GuestType::Docker(_) => unreachable!(),
-                    GuestType::Android(a) => {
+                    StateGuestType::Docker(_) => unreachable!(),
+                    StateGuestType::Android(a) => {
                         a.setup_action(orchestration_common, g.clone(), logging_send).await
                     }
                 }
@@ -959,11 +959,11 @@ impl OrchestrationResource {
         match self {
             OrchestrationResource::Guest(g) => {
                 match &g.guest_type.guest_type {
-                    GuestType::Libvirt(l) => {
+                    StateGuestType::Libvirt(l) => {
                         l.run_action(orchestration_common, g.clone(), logging_send).await
                     }
-                    GuestType::Docker(_) => unreachable!(),
-                    GuestType::Android(a) => {
+                    StateGuestType::Docker(_) => unreachable!(),
+                    StateGuestType::Android(a) => {
                         a.run_action(orchestration_common, g.clone(), logging_send).await
                     }
                 }

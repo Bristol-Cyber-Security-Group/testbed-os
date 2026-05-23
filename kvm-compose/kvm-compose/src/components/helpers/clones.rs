@@ -161,11 +161,11 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                                 },
                                 username: libvirt_guest.username.clone(),
                                 password: libvirt_guest.password.clone(),
-                                hostname: libvirt_guest.hostname.clone(),
-                                ssh_address: libvirt_guest.ssh_address.clone(),
+                                // hostname: libvirt_guest.hostname.clone(),
+                                // ssh_address: libvirt_guest.ssh_address.clone(),
                                 scaling: None,
                                 is_clone_of: Some(machine.name.clone()),
-                                tcp_tty_port: None,
+                                // tcp_tty_port: None,
                                 static_ip: None,
                             }),
                         };
@@ -207,7 +207,7 @@ pub fn generate_clone_guests(config: &mut Config) -> anyhow::Result<()> {
                                 scaling: None,
                                 user: docker_guest.user.clone(),
                                 device: docker_guest.device.clone(),
-                                hostname: docker_guest.hostname.clone(),
+                                // hostname: docker_guest.hostname.clone(),
                                 static_ip: None,
                             }),
                         };

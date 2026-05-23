@@ -25,15 +25,15 @@ pub struct ConfigDockerMachine {
     pub scaling: Option<DockerScaling>,
     pub user: Option<String>,
     pub device: Option<Vec<String>>,
-    #[serde(skip_deserializing)]
-    pub hostname: String,
+    // #[serde(skip_deserializing)]
+    // pub hostname: String,
 
     // TODO depends on is a useful feature of docker-compose that users may want here, we should
     //  be able to implement this ourselves by making checks in the orchestration or if docker cli
     //  gives this as an option. Also may be useful to make depends on available to other guest type
     // pub depends_on: _
 
-    pub static_ip: Option<String>,
+    pub static_ip: Option<String>, // TODO - is this used? part of network now?
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
