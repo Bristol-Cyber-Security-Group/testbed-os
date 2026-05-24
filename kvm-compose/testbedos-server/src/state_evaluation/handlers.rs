@@ -1,16 +1,16 @@
 use crate::{AppError, AppState};
-use anyhow::{anyhow, bail, Context};
+use anyhow::{anyhow, Context};
 use axum::extract::{Path, State};
+use axum::response::Response;
 use axum::{
     http::StatusCode,
     response::IntoResponse,
     Json,
 };
+use kvm_compose_lib::state::schema::StateNetwork;
 use kvm_compose_lib::state::state_evaluation::{EvaluateState, StateComponentStatus};
 use serde_json::json;
 use std::sync::Arc;
-use axum::response::Response;
-use kvm_compose_lib::state::schema::StateNetwork;
 
 fn get_status_response(guest_exists: StateComponentStatus) -> Response {
     match guest_exists {
@@ -332,16 +332,29 @@ pub async fn ovs_port_state(
     // network components saved as their full name with project prepended
     let name = format!("{}-{}", project, component);
 
-    match state_json.network {
-        StateNetwork::Ovn(ovn) => {
-            let lsp = ovn.ovs_ports
-                .get(&name)
-                .ok_or(anyhow!("OVS Port {} does not exist", name))?
-                .check_exists(project).await?;
-            Ok(get_status_response(lsp))
+    let ovs_port = match state_json.network {
+        StateNetwork::Ovn(ref ovn) => {
+            ovn.ovs_ports.get(&name).ok_or(anyhow!("OVS Port {} does not exist", name))?
         }
-        StateNetwork::Ovs(_) => {
-            Ok((StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"status": "OVS network type not supported for ovs port"}))).into_response())
-        },
-    }
+        StateNetwork::Ovs(_) => unimplemented!(),
+    };
+    // get the cluster config with all host information
+    let cluster_config = db_config.config_db
+        .read()
+        .await
+        .get_cluster_config()
+        .await?;
+    // get the host's config
+    let host_config = cluster_config.testbed_host_ssh_config
+        .get(&ovs_port.chassis)
+        .ok_or(anyhow!("OVS port's host {} does not exist", ovs_port.chassis))?;
+    // if this host config is "main" then we can poll from this as this is the "main" server as well
+    // but if it is not main, then we need to relay the state request to the correct testbed server
+    let guest_exists = if host_config.is_main_host.ok_or(anyhow!("Host {} has not been given an if main", ovs_port.chassis))? {
+        // on main
+        ovs_port.check_exists(project).await?
+    } else {
+        unimplemented!()
+    };
+    Ok(get_status_response(guest_exists))
 }
