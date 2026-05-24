@@ -28,6 +28,7 @@ use testbedos_lib::gui::add_gui_handlers;
 use testbedos_lib::logging::server_log_cleanup;
 use testbedos_lib::orchestration::add_orchestration_handlers;
 use testbedos_lib::resource_monitoring::handlers::*;
+use testbedos_lib::state_evaluation::add_state_evaluation_handlers;
 
 // we use a couple of threads, arbitrarily set to 4 as modern cpus are usually now at least 4 cores.
 // the testbed is going to be handling quite a few requests when dealing with resource monitoring,
@@ -219,6 +220,7 @@ pub fn main_app(app_state: Arc<AppState>) -> Router {
         .route("/api/metrics/dashboard/{project}", get(resource_monitoring_dashboard))
         .nest("/api/orchestration", add_orchestration_handlers())
         .merge(add_gui_handlers())
+        .merge(add_state_evaluation_handlers())
         .layer(CorsLayer::new()
             .allow_origin("http://localhost:8080".parse::<HeaderValue>().unwrap())
             .allow_methods([Method::GET, Method::POST]))

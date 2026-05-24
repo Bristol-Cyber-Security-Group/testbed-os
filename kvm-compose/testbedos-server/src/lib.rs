@@ -15,6 +15,7 @@ pub mod logging;
 pub mod resource_monitoring;
 pub mod orchestration;
 pub mod gui;
+pub mod state_evaluation;
 
 /// Store a version of the testbed server when compiled - useful for versioning javascript
 pub const PROJECT_VERSION: &str = env!("CARGO_PKG_VERSION");
