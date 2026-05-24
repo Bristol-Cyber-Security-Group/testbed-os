@@ -28,7 +28,7 @@ pub trait EvaluateState {
 
         let result = match status_string.as_str() {
             "does_not_exist" => StateComponentStatus::DoesNotExist,
-            "running" => StateComponentStatus::Up,
+            "up" => StateComponentStatus::Up,
             down => StateComponentStatus::Down(down.to_string()),
 
         };

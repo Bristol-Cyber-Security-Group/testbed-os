@@ -22,7 +22,7 @@ impl EvaluateState for StateTestbedGuest {
             }
             StateGuestType::Android(_) => {
                 format!(
-                    "emulator -list-avds 2>/dev/null | grep -Fxq \"{0}-{1}\" && (pgrep -f \"emulator.*-name {0}-{1}\" >/dev/null && echo \"running\" || echo \"shut off\") || echo \"does_not_exist\"",
+                    "emulator -list-avds 2>/dev/null | grep -Fxq \"{0}-{1}\" && (pgrep -f \"emulator.*-name {0}-{1}\" >/dev/null && echo \"up\" || echo \"shut off\") || echo \"does_not_exist\"",
                     project_name,
                     self.guest_type.name,
                 )
