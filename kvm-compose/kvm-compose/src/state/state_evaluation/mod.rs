@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use tokio::process::Command;
 
 /// This enum is to be used to record the state of any components
+#[derive(PartialEq)]
 pub enum StateComponentStatus {
     Up,
     Down(String),
@@ -20,7 +21,7 @@ pub trait EvaluateState {
         let output = Command::new("sudo")
             .arg("sh")
             .arg("-c")
-            .arg(check_command)
+            .arg(&check_command)
             .output()
             .await?;
 
@@ -28,7 +29,8 @@ pub trait EvaluateState {
 
         let result = match status_string.as_str() {
             "does_not_exist" => StateComponentStatus::DoesNotExist,
-            "up" => StateComponentStatus::Up,
+            "running" => StateComponentStatus::Up, // "running" is used by the services we call
+            // assume anything that isn't "running" or not exist to mean it is down for some reason
             down => StateComponentStatus::Down(down.to_string()),
 
         };

@@ -5,17 +5,19 @@ use crate::AppState;
 use crate::state_evaluation::handlers::*;
 
 mod handlers;
+mod models;
 
 pub fn add_state_evaluation_handlers() -> Router<Arc<AppState>> {
     let router = Router::new()
-        .route("/api/state/{project}/guest/{guest}", get(guest_state))
-        .route("/api/state/{project}/ls/{component}", get(logical_switch_state))
-        .route("/api/state/{project}/lsp/{component}", get(logical_switch_port_state))
-        .route("/api/state/{project}/lr/{component}", get(logical_router_state))
-        .route("/api/state/{project}/lrp/{component}", get(logical_router_port_state))
-        .route("/api/state/{project}/acl/{component}", get(logical_acl_state))
-        .route("/api/state/{project}/dhcp/{component}", get(logical_dhcp_state))
-        .route("/api/state/{project}/ovsport/{component}", get(ovs_port_state));
+        .route("/api/state/{project}", get(deployment_state))
+        .route("/api/state/{project}/guest/{guest}", get(guest_state_handler))
+        .route("/api/state/{project}/ls/{component}", get(logical_switch_state_handler))
+        .route("/api/state/{project}/lsp/{component}", get(logical_switch_port_state_handler))
+        .route("/api/state/{project}/lr/{component}", get(logical_router_state_handler))
+        .route("/api/state/{project}/lrp/{component}", get(logical_router_port_state_handler))
+        .route("/api/state/{project}/acl/{component}", get(logical_acl_state_handler))
+        .route("/api/state/{project}/dhcp/{component}", get(logical_dhcp_state_handler))
+        .route("/api/state/{project}/ovsport/{component}", get(ovs_port_state_handler));
 
     router
 }

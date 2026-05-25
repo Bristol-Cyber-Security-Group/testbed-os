@@ -12,7 +12,7 @@ use crate::state::state_evaluation::EvaluateState;
 impl EvaluateState for LogicalSwitch {
     async fn get_check_command(&self, _: String) -> String {
         format!(
-            "ovn-nbctl --bare get Logical_Switch \"{}\" _uuid >/dev/null 2>&1 && echo \"up\" || echo \"does_not_exist\"",
+            "ovn-nbctl --bare get Logical_Switch \"{}\" _uuid >/dev/null 2>&1 && echo \"running\" || echo \"does_not_exist\"",
             self.name,
         )
     }
@@ -22,7 +22,7 @@ impl EvaluateState for LogicalSwitch {
 impl EvaluateState for LogicalSwitchPort {
     async fn get_check_command(&self, _: String) -> String {
         format!(
-            "STATE=$(ovn-nbctl --bare get Logical_Switch_Port \"{}\" up 2>/dev/null); if [ -z \"$STATE\" ]; then echo \"does_not_exist\"; elif [ \"$STATE\" = \"true\" ]; then echo \"up\"; else echo \"down\"; fi",
+            "if ! ovn-nbctl get Logical_Switch_Port \"{0}\" _uuid >/dev/null 2>&1; then echo \"does_not_exist\"; else TYPE=$(ovn-nbctl --bare get Logical_Switch_Port \"{0}\" type); STATE=$(ovn-nbctl --bare get Logical_Switch_Port \"{0}\" up); if [ \"$STATE\" = \"true\" ] || [ \"$TYPE\" = \"router\" ] || [ \"$TYPE\" = \"localnet\" ]; then echo \"running\"; else echo \"down\"; fi; fi",
             self.name,
         )
     }
@@ -32,7 +32,7 @@ impl EvaluateState for LogicalSwitchPort {
 impl EvaluateState for LogicalRouter {
     async fn get_check_command(&self, _: String) -> String {
         format!(
-            "ovn-nbctl --bare get Logical_Router \"{}\" _uuid >/dev/null 2>&1 && echo \"up\" || echo \"does_not_exist\"",
+            "ovn-nbctl --bare get Logical_Router \"{}\" _uuid >/dev/null 2>&1 && echo \"running\" || echo \"does_not_exist\"",
             self.name,
         )
     }
@@ -42,7 +42,7 @@ impl EvaluateState for LogicalRouter {
 impl EvaluateState for LogicalRouterPort {
     async fn get_check_command(&self, _: String) -> String {
         format!(
-            "ovn-nbctl --bare get Logical_Router_Port \"{}\" _uuid >/dev/null 2>&1 && echo \"up\" || echo \"does_not_exist\"",
+            "ovn-nbctl --bare get Logical_Router_Port \"{}\" _uuid >/dev/null 2>&1 && echo \"running\" || echo \"does_not_exist\"",
             self.name,
         )
     }
