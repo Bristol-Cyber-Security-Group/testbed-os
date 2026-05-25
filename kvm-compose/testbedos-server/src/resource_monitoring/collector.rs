@@ -7,7 +7,7 @@ use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
 use tokio::sync::RwLockWriteGuard;
 use kvm_compose_lib::state::schema::guest::StateGuestType;
 use kvm_compose_lib::state::schema::State;
-use kvm_compose_schemas::deployment_models::{Deployment, DeploymentList, DeploymentState};
+use kvm_compose_schemas::deployment_models::{Deployment, DeploymentList};
 use kvm_compose_schemas::settings::TestbedClusterConfig;
 use crate::resource_monitoring::guest::{get_android_guest_metrics, get_docker_guest_metrics, get_libvirt_guest_metrics};
 use crate::ServiceClients;
@@ -17,12 +17,6 @@ pub async fn get_active_deployments(
     deployment_list: &HashMap<String, Deployment>,
 ) -> anyhow::Result<Vec<(&String, &Deployment)>> {
     let active_deployments: Vec<_> = deployment_list.iter()
-        .filter(|(_,d)| {
-            match d.state {
-                DeploymentState::Up => true,
-                _ => false,
-            }
-        })
         .collect();
     Ok(active_deployments)
 }

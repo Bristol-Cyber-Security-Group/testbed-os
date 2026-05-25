@@ -5,7 +5,7 @@ use crate::AppState;
 use crate::state_evaluation::handlers::*;
 
 mod handlers;
-mod models;
+pub mod models;
 
 pub fn add_state_evaluation_handlers() -> Router<Arc<AppState>> {
     let router = Router::new()

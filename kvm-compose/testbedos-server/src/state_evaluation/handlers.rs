@@ -41,7 +41,26 @@ pub async fn deployment_state(
 ) -> Result<impl IntoResponse, AppError> {
 
     let state = total_deployment_state(db_config, project).await?;
-    Ok((StatusCode::OK, state).into_response())
+    let json_response = match state {
+        DeploymentStatus::Up => json!({
+            "status": "up",
+        }),
+        DeploymentStatus::Partial { guest_info, network_info } => json!({
+            "status": "partial",
+            "guest_info": guest_info,
+            "network_info": network_info,
+        }),
+        DeploymentStatus::Down { guest_info, network_info } => json!({
+            "status": "down",
+            "guest_info": guest_info,
+            "network_info": network_info,
+        }),
+        DeploymentStatus::Running => json!({
+            "status": "running",
+        }),
+    };
+    // wrap serde json with axum's json type
+    Ok((StatusCode::OK, Json(json_response)).into_response())
 
 }
 

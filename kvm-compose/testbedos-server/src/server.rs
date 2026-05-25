@@ -2,7 +2,7 @@ use std::process::exit;
 use axum::{Router, routing::{get, post}, ServiceExt};
 use std::net::SocketAddr;
 use tokio::process::{Command};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use axum::extract::Request;
 use axum::http::{HeaderValue, Method};
 use sysinfo::{System};
@@ -87,6 +87,7 @@ async fn main() {
                 system_monitor: Arc::new(RwLock::new(System::new_all())),
                 template_env: get_tera_env(),
                 service_clients: Arc::new(ServiceClients::new().await),
+                active_deployments: Arc::new(Mutex::new(Default::default())),
             });
 
             // TODO - use router combination syntax?

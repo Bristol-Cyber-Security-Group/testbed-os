@@ -7,7 +7,9 @@ use async_trait::async_trait;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use kvm_compose_lib::state::schema::State;
+use crate::AppState;
 use crate::deployments::{get_state_json, set_state_json};
+use crate::state_evaluation::models::{total_deployment_state, DeploymentStatus};
 
 /// The `DeploymentProvider` is a trait to describe the database that backs the server. This is used
 /// together with the `DatabaseProvider` enum, which will wrap the types of database implementation.
@@ -22,7 +24,7 @@ pub trait DeploymentProvider {
     async fn create_deployment(&self, deployment: NewDeployment) -> anyhow::Result<()>;
     async fn update_deployment(&self, name: String, deployment: Deployment)
         -> anyhow::Result<Deployment>;
-    async fn delete_deployment(&self, name: String) -> anyhow::Result<()>;
+    async fn delete_deployment(&self, name: String, db_config: Arc<AppState>) -> anyhow::Result<()>;
     async fn get_state(&self, name: String) -> anyhow::Result<State>;
     async fn set_state(&self, name: String, state: State) -> anyhow::Result<()>;
 }
@@ -216,7 +218,6 @@ impl DeploymentProvider for FileBasedProvider {
         let deployment = Deployment {
             name: deployment_name.clone(),
             project_location: path.clone(),
-            state: DeploymentState::Down,
             last_action_uuid: None,
         };
 
@@ -243,19 +244,17 @@ impl DeploymentProvider for FileBasedProvider {
         Ok(deployment)
     }
 
-    async fn delete_deployment(&self, name: String) -> anyhow::Result<()> {
+    async fn delete_deployment(&self, name: String, db_config: Arc<AppState>) -> anyhow::Result<()> {
         let root_path = &self.data_location;
         let json_name = format!("{root_path}{name}.json");
         let log_json_name = format!("{root_path}{name}-logs.json");
         let deployment = self.get_deployment(name).await?;
 
-        match deployment.state {
-            DeploymentState::Up => {
-                bail!("cannot delete a deployment that is in UP state")
-            }
-            DeploymentState::Running => {
-                bail!("cannot delete a deployment that is in RUNNING state")
-            }
+        // here only allow if the deployment is down or does not exist
+        let state = total_deployment_state(db_config, deployment.name).await?;
+        match state {
+            DeploymentStatus::Up => bail!("cannot delete a deployment that is in UP state"),
+            DeploymentStatus::Running => bail!("cannot delete a deployment that is in RUNNING state"),
             _ => {
                 let _guard = self.write_lock().await;
 
@@ -311,7 +310,7 @@ impl DeploymentProvider for SQLiteProvider {
         todo!()
     }
 
-    async fn delete_deployment(&self, name: String) -> anyhow::Result<()> {
+    async fn delete_deployment(&self, name: String, db_config: Arc<AppState>) -> anyhow::Result<()> {
         todo!()
     }
 

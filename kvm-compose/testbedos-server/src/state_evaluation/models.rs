@@ -1,20 +1,34 @@
-use std::any::Any;
 use crate::AppState;
 use anyhow::{anyhow, bail, Context};
-use axum_extra::response::ErasedJson;
 use futures_util::future::join_all;
 use futures_util::{stream, StreamExt, TryStreamExt};
 use kvm_compose_lib::state::schema::StateNetwork;
 use kvm_compose_lib::state::state_evaluation::{EvaluateState, StateComponentStatus};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
-use axum_extra::json;
 
+
+pub enum DeploymentStatus {
+    Up,
+    /// Partially up, a mix of up and down, the inner HashMap offers information
+    Partial {
+        guest_info: HashMap<String, String>,
+        network_info: HashMap<String, String>
+    },
+    /// Fully down, the inner HashMap offers information
+    Down{
+        guest_info: HashMap<String, String>,
+        network_info: HashMap<String, String>
+    },
+    /// Running means there is a lock on the deployment
+    Running,
+}
 
 pub async fn total_deployment_state(
     db_config: Arc<AppState>,
     project: String,
-) -> anyhow::Result<ErasedJson> {
+) -> anyhow::Result<DeploymentStatus> {
 
     // first check if project exists
     db_config.deployment_config_db
@@ -23,6 +37,11 @@ pub async fn total_deployment_state(
         .get_deployment(project.clone())
         .await
         .context("Deployment does not exist")?;
+
+    // if the project exists, check to make sure there is no run lock
+    if db_config.is_deployment_locked(&project) {
+        return Ok(DeploymentStatus::Running);
+    }
 
     // if project exists, then lets get the state json
     let state_json = db_config.deployment_config_db
@@ -122,9 +141,7 @@ pub async fn total_deployment_state(
     };
     // if both all up fully then early exit
     if all_guests_up && all_network_components_up {
-        return Ok(json!({
-            "status": "up",
-        }));
+        return Ok(DeploymentStatus::Up);
     }
     // record whether there are any components or guests up
     let some_guests_up = if !guest_states.is_empty() && guest_states.iter().any(|(g_n, g_s)| *g_s == StateComponentStatus::Up) {
@@ -159,17 +176,19 @@ pub async fn total_deployment_state(
         let _ = network_counts.entry(nc_name).or_insert(key).clone();
     }
 
-    let status_message = if some_guests_up || some_network_components_up {
-        "partial"
+    if some_guests_up || some_network_components_up {
+        // "partial"
+        Ok(DeploymentStatus::Partial {
+            guest_info: guest_counts,
+            network_info: network_counts,
+        })
     } else {
-        "down"
-    };
-
-    Ok(json!({
-        "status": status_message,
-        "guest_info": guest_counts,
-        "network_info": network_counts,
-    }))
+        // "down"
+        Ok(DeploymentStatus::Down {
+            guest_info: guest_counts,
+            network_info: network_counts,
+        })
+    }
 }
 
 async fn collect_component_status<L, F>(

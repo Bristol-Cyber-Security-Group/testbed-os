@@ -2,10 +2,10 @@ use crate::server_web_client::http_actions;
 use crate::get_project_name;
 use anyhow::{bail, Context};
 use kvm_compose_schemas::cli_models::{DeploymentCmd, DeploymentSubCommand, Opts, SubCommand};
-use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand, DeploymentState};
+use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use reqwest::Client;
 use crate::orchestration::websocket::ws_orchestration_client;
-use crate::server_web_client::deployment::reset_state;
+
 
 pub async fn orchestration_action(
     client: &Client,
@@ -32,19 +32,10 @@ pub async fn orchestration_action(
         }
     };
 
-    match opts.sub_command {
-        SubCommand::Up(_) | SubCommand::Down | SubCommand::GenerateArtefacts |
-        SubCommand::ClearArtefacts | SubCommand::Snapshot(_) | SubCommand::TestbedSnapshot(_) => {
-            // these are destructive commands, don't allow running during other destructive cmds
-            match &deployment.state {
-                DeploymentState::Running => bail!("deployment in Running state, cannot run orchestration command"),
-                _ => {}
-            }
-        }
-        _ => {
-            // allow other commands
-        }
-    }
+    // check status of deployment to make sure that it isn't in a run lock state
+    http_actions::check_for_run_lock(&client, &project_name, &opts.server_connection)
+        .await
+        .context("checking for deployment status and any locks")?;
 
     let action = get_deployment_action(&opts)?;
 
@@ -79,12 +70,8 @@ pub async fn orchestration_action(
         }
     };
 
-    let check_deployment =
-        http_actions::check_deployment(&client, &project_name, &server_url).await
+    http_actions::check_deployment(&client, &project_name, &server_url).await
             .context("checking deployment after orchestration")?;
-
-    // TODO - make sure the database update matches result?
-    tracing::debug!("deployment is now in {:?} state", &check_deployment.state);
 
     if success {
         Ok(())
@@ -136,8 +123,6 @@ pub async fn deployment_action(client: &Client, opts: &Opts, dep_cmd: &Deploymen
         DeploymentSubCommand::Destroy(_name) => unimplemented!(),
         DeploymentSubCommand::List => unimplemented!(),
         DeploymentSubCommand::Info(_name) => unimplemented!(),
-        // allow user to set the state manually in case it is stuck on running?
-        DeploymentSubCommand::ResetState(name) => reset_state(name, client, opts).await,
     }
 }
 

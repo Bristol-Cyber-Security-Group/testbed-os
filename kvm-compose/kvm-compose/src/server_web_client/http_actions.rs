@@ -3,6 +3,7 @@ use kvm_compose_schemas::deployment_models::{
     Deployment, NewDeployment,
 };
 use reqwest::Response;
+use serde_json::Value;
 
 /// Reusable helper method for parsing the response from the server for command results
 async fn parse_response(resp: Response, command_name: String) -> anyhow::Result<String> {
@@ -85,3 +86,27 @@ pub async fn update_deployment_state(
     Ok(())
 }
 
+pub async fn check_for_run_lock(
+    client: &reqwest::Client,
+    project_name: &String,
+    server_url: &String,
+) -> anyhow::Result<()> {
+    tracing::debug!("getting run lock state for '{project_name}'");
+    let server_api = format!("{}api/state/{project_name}", server_url);
+    tracing::trace!("api url used = {:?}", &server_api);
+
+    let resp = client.get(server_api).send().await?;
+    if resp.status().is_success() {
+        let response_json: Value = resp.json().await?;
+        if let Some(status) = response_json.get("status").and_then(|s| s.as_str()) {
+            if status == "running" {
+                bail!("deployment in Running state, cannot run orchestration command")
+            }
+            // anything else is fine, continue
+        }
+    } else {
+        bail!(resp.text().await?);
+    }
+
+    Ok(())
+}

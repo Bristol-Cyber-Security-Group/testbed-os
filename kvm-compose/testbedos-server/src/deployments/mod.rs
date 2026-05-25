@@ -12,6 +12,7 @@ pub mod models;
 pub mod providers;
 pub mod db;
 pub mod deployments;
+mod guard;
 
 pub fn run_orchestration_command(
     log_file_path: &String,

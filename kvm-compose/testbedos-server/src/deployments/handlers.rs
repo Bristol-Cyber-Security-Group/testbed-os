@@ -10,6 +10,7 @@ use tokio::io::AsyncReadExt;
 use kvm_compose_schemas::handlers::PrettyQueryParams;
 use crate::deployments::deployments::{ProjectAndPath, validate_project_name, validate_yaml};
 use kvm_compose_lib::state::schema::State as KvmComposeState;
+use crate::state_evaluation::models::{total_deployment_state, DeploymentStatus};
 
 /// List all deployments the database contains.
 /// Requires a read lock on the database.
@@ -31,12 +32,25 @@ pub async fn list_active_deployments(
     let list = db.read().await.list_deployments().await?;
     let mut active_deployments = HashMap::new();
     for (name, deployment) in list.deployments {
-        match deployment.state {
-            DeploymentState::Up => {
+
+        // we previously defined deployments that were up as deployments where the old "DeploymentState"
+        // was set to up, which loosely meant that the last action on the deployment was Up and it
+        // didn't fail, so instead if we have a deployment that is either Up or Partially up, we
+        // can return that here
+
+        let state = total_deployment_state(db_config.clone(), name.clone()).await?;
+
+        match state {
+            DeploymentStatus::Up => {
+                active_deployments.insert(name.clone(), deployment);
+            }
+            DeploymentStatus::Partial { .. } => {
                 active_deployments.insert(name, deployment);
             }
-            _ => {}
+            DeploymentStatus::Down { .. } => {}
+            DeploymentStatus::Running => {}
         }
+
     }
     Ok(Json(active_deployments))
 }
@@ -69,8 +83,9 @@ pub async fn delete_deployment(
     State(db_config): State<Arc<AppState>>,
     Path(name): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
+    let db_conf = db_config.clone(); // an unfortunate need to clone
     let db = &db_config.deployment_config_db;
-    db.write().await.delete_deployment(name).await?;
+    db.write().await.delete_deployment(name, db_conf).await?;
     Ok(())
 }
 
