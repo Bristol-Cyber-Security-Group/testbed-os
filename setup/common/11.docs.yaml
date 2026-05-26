@@ -6,52 +6,105 @@
 
   tasks:
 
+    - name: Install pandoc via system package manager
+      ansible.builtin.package:
+        name: pandoc
+        state: present
+      become: yes
+      when: pandoc_check.rc != 0
+
+    - name: Install mdbook system-wide
+      ansible.builtin.unarchive:
+        src: "https://github.com/rust-lang/mdBook/releases/download/v0.4.42/mdbook-v0.4.42-x86_64-unknown-linux-gnu.tar.gz"
+        dest: /usr/local/bin/
+        remote_src: yes
+        mode: '0755'
+        owner: root
+        group: root
+      become: yes
+      when: mdbook_check.rc != 0
+
+    - name: Check if mdbook is installed
+      ansible.builtin.command: which mdbook
+      register: mdbook_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Check if pandoc is installed
+      ansible.builtin.command: which pandoc
+      register: pandoc_check
+      ignore_errors: yes
+      changed_when: false
+
     - name: Ensure /var/lib/testbedos/assets directory exists
       file:
         path: /var/lib/testbedos/assets
         state: directory
         mode: '0755'
       become: yes
+      when: mdbook_check.rc == 0 and pandoc_check.rc == 0
 
     - name: Ensure documentation is built and deployed
+      when: mdbook_check.rc == 0 and pandoc_check.rc == 0
       block:
 
-        - name: Get Poetry virtualenv path
-          shell: "$HOME/.local/bin/poetry env info -p"
-          register: poetry_venv_path
+        - name: Clean previous build artifacts inside build directory
+          shell: rm -rf build/*
+          args:
+            chdir: "../.."
+          become: yes
 
-        - name: Clean previous build artifacts
+        - name: Create necessary build directories
           file:
             path: "{{ item }}"
-            state: absent
-          loop:
-            - build
-            - /var/lib/testbedos/assets/documentation
-          become: yes
-
-        - name: Create build directory
-          file:
-            path: build
             state: directory
             mode: '0755'
+          loop:
+            - ../../build/html
+            - ../../build/man
           become: yes
 
-        - name: Build man pages with Sphinx
-          shell: | 
-            "{{ poetry_venv_path.stdout }}/bin/sphinx-build" -M man docs build
+        - name: Build man pages and temporarily strip YAML metadata
+          shell: |
+            find ./docs/src/ -type f -name "*.md" | while IFS= read -r file; do
+                relative_path=$(realpath --relative-to="./docs/src/" "$file")
+                relative_dir="build/man/$(dirname "$relative_path")"
+                mkdir -p "$relative_dir"
+                relative_path="${relative_path%.md}.1"
+                
+                pandoc "$file" -s -t man -M author="BCSG" -o "./build/man/$relative_path"
+                
+
+                cp "$file" "${file%.md}.bak"
+                sed -i '/^---$/,/^---$/d' "$file"
+            done
           args:
             chdir: "../.."
             executable: /bin/bash
           become: yes
 
-        - name: Build HTML pages with Sphinx
-          shell: | 
-            "{{ poetry_venv_path.stdout }}/bin/sphinx-build" -M html docs build
+        - name: Copy icons and diagrams to docs source
+          shell: |
+            shopt -s nullglob
+            cp ./kvm-compose/testbedos-server/assets/icons/*.png docs/src/ 2>/dev/null || true
+            cp ./kvm-compose/testbedos-server/assets/diagrams/*.png docs/src/ 2>/dev/null || true
           args:
             chdir: "../.."
             executable: /bin/bash
           become: yes
 
+        - name: Build HTML pages with mdbook
+          shell: mdbook build docs/ -d build/html/
+          args:
+            chdir: "../.."
+            executable: /bin/bash
+          become: yes
+
+        - name: Clean existing documentation target directory
+          file:
+            path: /var/lib/testbedos/assets/documentation
+            state: absent
+          become: yes
 
         - name: Create documentation target directory
           file:
@@ -61,23 +114,60 @@
           become: yes
 
         - name: Copy HTML documentation to target directory
-          copy:
-            src: ../../build/html/
-            dest: /var/lib/testbedos/assets/documentation/
-            owner: root
-            group: root
-            mode: '0755'
-            remote_src: yes
+          shell: cp -r build/html/. /var/lib/testbedos/assets/documentation/
+          args:
+            chdir: "../.."
           become: yes
+
+        - name: Ensure man1 system directory exists
+          file:
+            path: /usr/local/share/man/man1/
+            state: directory
+            mode: '0755'
+          become: yes
+
+        - name: Install the man page for kvm-compose
+          shell: cp ./build/man/user_interface_kvm_compose.1 /usr/local/share/man/man1/kvm-compose.1
+          args:
+            chdir: "../.."
+          become: yes
+
+        - name: Update system man database
+          command: mandb
+          become: yes
+
+      always:
+        - name: Restore original markdown files from backup and cleanup images
+          shell: |
+            find ./docs/src/ -type f -name "*.bak" | while IFS= read -r file; do
+                cp "$file" "${file%.bak}.md"
+                rm "$file"
+            done
+            rm -f ./docs/src/*.png
+          args:
+            chdir: "../.."
+            executable: /bin/bash
+          become: yes
+
+    - name: Warn if documentation build was skipped due to missing dependencies
+      ansible.builtin.debug:
+        msg: "WARNING: Documentation build was skipped because mdbook or pandoc is not installed on the system."
+      when: mdbook_check.rc != 0 or pandoc_check.rc != 0
 
     - name: Check if documentation exists
       ansible.builtin.stat:
         path: /var/lib/testbedos/assets/documentation/index.html
-      register: sphinx_docs
+      register: mdbook_docs
       become: yes
 
     - name: Confirm if the documentation has been built
       ansible.builtin.debug:
         msg: "The documentation has been successfully built and deployed."
-      when: sphinx_docs.stat.exists
-      become: yes
+      when: mdbook_docs.stat.exists
+      become: yes    
+      
+    - name: Check if mdbook is installed
+      ansible.builtin.command: which mdbook
+      register: mdbook_check
+      ignore_errors: yes
+      changed_when: false
