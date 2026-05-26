@@ -9,9 +9,10 @@ use tokio::task::JoinHandle;
 use kvm_compose_lib::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationProtocol, OrchestrationProtocolResponse};
 use kvm_compose_lib::orchestration::{OrchestrationCommon};
 use kvm_compose_lib::state::orchestration_tasks::get_orchestration_common;
-use kvm_compose_lib::state::State;
-use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand, DeploymentState};
+use kvm_compose_lib::state::schema::State;
+use kvm_compose_schemas::deployment_models::{DeploymentCommand};
 use crate::AppState;
+use crate::state_evaluation::models::{total_deployment_state, DeploymentStatus};
 
 /// This function completely handles the orchestration command requested by the client. This is the websocket
 /// implementation. Depending on the result of the orchestration or any runtime errors, the result is updated here
@@ -110,38 +111,16 @@ async fn run(
     tracing::info!("getting deployment info");
 
     // get the deployment info for later
-    let (mut deployment, previous_state, deployment_command) = match init.instruction {
+    let (deployment, deployment_command) = match init.instruction {
         OrchestrationInstruction::Init { deployment, deployment_command } => {
-            let mut deployment = db_config.deployment_config_db
+            let deployment = db_config.deployment_config_db
                 .read()
                 .await
                 .get_deployment(deployment.name)
                 .await
                 .context("getting deployment for orchestration websocket")?;
 
-
-            // set deployment to running if running destructive commands
-            match deployment_command {
-                DeploymentCommand::Up { up_cmd: _ } | DeploymentCommand::Down |
-                DeploymentCommand::GenerateArtefacts | DeploymentCommand::ClearArtefacts |
-                DeploymentCommand::Snapshot { snapshot_cmd: _ } |
-                DeploymentCommand::TestbedSnapshot { snapshot_guests: _ } => {
-                    // these commands are destructive
-                    let previous_state = deployment.state;
-                    deployment.state = DeploymentState::Running;
-                    db_config.deployment_config_db
-                        .write()
-                        .await
-                        .update_deployment(deployment.name.clone(), deployment.clone())
-                        .await
-                        .context("updating deployment to running state")?;
-                    (deployment, previous_state, deployment_command)
-                }
-                _ => {
-                    let current_state = deployment.state.clone();
-                    (deployment, current_state, deployment_command)
-                }
-            }
+            (deployment, deployment_command)
         }
         _ => {
             let _ = sender.lock().await.send(Message::Close(Some(CloseFrame {
@@ -151,6 +130,30 @@ async fn run(
             bail!("client did not begin with init instruction");
         }
     };
+
+    // set deployment to running if running destructive commands
+    let mut _guard;
+    match deployment_command {
+        DeploymentCommand::Up { up_cmd: _ } | DeploymentCommand::Down |
+        DeploymentCommand::GenerateArtefacts | DeploymentCommand::ClearArtefacts |
+        DeploymentCommand::Snapshot { snapshot_cmd: _ } |
+        DeploymentCommand::TestbedSnapshot { snapshot_guests: _ } => {
+            // these commands are destructive
+            _guard = match db_config.try_lock_deployment(deployment.name.clone()) {
+                Some(g) => g,
+                None => bail!("The deployment {} has a run lock on it", deployment.name)
+            };
+        }
+        _ => {}
+    }
+
+    // before we start the run, we will get a lock on the deployment, if we cannot then there is
+    // something else running and we will error out here
+    // let _guard = match db_config.try_lock_deployment(deployment.name) {
+    //     None => {}
+    //     Some(_) => {}
+    // };
+
 
     // create copies that are moved into the async closure
     let deployment_command_copy = deployment_command.clone();
@@ -380,81 +383,51 @@ async fn run(
         "".to_string()
     };
 
-    // update the state of the deployment on the server backend
-    match deployment_command {
-        DeploymentCommand::Up { .. } => {
-            deployment.state = update_state_on_command_end(DeploymentState::Up, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
+
+    // we define success here if there were no errors, this means a successful cancel is also a
+    // success, despite cancelling technically meaning the command was not successful, since the
+    // deployment state is defined on whether the resources are running or not
+
+    let deployment_state = match total_deployment_state(db_config, deployment.name).await {
+        Ok(status_json) => {
+            match status_json {
+                DeploymentStatus::Up => "up".to_string(),
+                DeploymentStatus::Partial { .. } => "partial".to_string(),
+                DeploymentStatus::Down { .. } => "down".to_string(),
+                DeploymentStatus::Running => "running".to_string(),
+                DeploymentStatus::DoesNotExist => "does_not_exist".to_string(),
+            }
         }
-        DeploymentCommand::Down => {
-            deployment.state = update_state_on_command_end(DeploymentState::Down, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
+        Err(_) => {
+            "there was an error getting deployment state".to_string()
         }
-        DeploymentCommand::ClearArtefacts => {
-            deployment.state = update_state_on_command_end(DeploymentState::Down, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
-        }
-        _ => {
-            // don't update state if a non-destructive command
-            // set to previous state
-            deployment.state = update_state_on_command_end(previous_state, deployment.clone(), &db_config, deployment_command, &orchestration_task).await?;
+    };
 
-            // do not check current state to determine the success of the command as it is a
-            // non-destructive command
-            let final_response = if was_cancelled {
-                if command_result {
-                    OrchestrationProtocolResponse::Generic {
-                        is_success: true,
-                        message: format!("The command was successful{cancelled}"),
-                    }
-                } else {
-                    OrchestrationProtocolResponse::Generic {
-                        is_success: false,
-                        message: format!("The command failed{cancelled}"),
-                    }
-                }
-            } else {
-                let msg = if command_result {
-                    ""
-                } else {
-                    "not "
-                };
-                OrchestrationProtocolResponse::Generic {
-                    is_success: command_result,
-                    message: format!("The command was {msg}successful"),
-                }
-            };
-            let serialised_response = serde_json::to_string(&final_response)?;
-            tracing::info!("non-destructive command running end - sending final message to client with result of {serialised_response:?}");
-
-            // finally send to the client the result
-            let _ = sender.lock().await.send(Message::Text(serialised_response.into()))
-                .await
-                .context("sending instruction result")?;
-            return Ok(());
-
-        }
-    }
-
-    // the following sends the success of the command based on the state we worked out due to
-    // a destructive command
-
-    tracing::info!("deployment state before sending final response: {:?}", deployment.state);
-
-    let final_response = match deployment.state {
-        DeploymentState::Failed(_) => {
+    let final_response = if was_cancelled {
+        if command_result {
+            OrchestrationProtocolResponse::Generic {
+                is_success: true,
+                message: format!("The command was successful{cancelled} and deployment is {deployment_state}"),
+            }
+        } else {
             OrchestrationProtocolResponse::Generic {
                 is_success: false,
-                message: format!("The command failed{cancelled}"),
+                message: format!("The command failed{cancelled} and deployment is {deployment_state}"),
             }
         }
-        _ => {
-            OrchestrationProtocolResponse::Generic {
-                is_success: command_result,
-                message: format!("The command was successful{cancelled}"),
-            }
+    } else {
+        let msg = if command_result {
+            ""
+        } else {
+            "not "
+        };
+        OrchestrationProtocolResponse::Generic {
+            is_success: command_result,
+            message: format!("The command was {msg}successful and deployment is {deployment_state}"),
         }
     };
     let serialised_response = serde_json::to_string(&final_response)?;
-
-    tracing::info!("destructive command running end - sending final message to client with result of {serialised_response:?}");
+    tracing::info!("non-destructive command running end - sending final message to client with result of {serialised_response:?}");
 
     // finally send to the client the result
     let _ = sender.lock().await.send(Message::Text(serialised_response.into()))
@@ -462,61 +435,6 @@ async fn run(
         .context("sending instruction result")?;
 
     Ok(())
-}
-
-
-/// This function will update the deployment state to either the given new state or into a failed
-/// state. This should only be used for those commands considered to be destructive such as
-/// - Up
-/// - Down
-/// - ClearArtefacts
-/// Which have an impact on the state of the network and guests.
-async fn update_state_on_command_end(
-    intended_state: DeploymentState,
-    mut deployment: Deployment,
-    db_config: &Arc<AppState>,
-    deployment_command: DeploymentCommand,
-    orchestration_task: &anyhow::Result<(anyhow::Result<bool>, bool)>,
-) -> anyhow::Result<DeploymentState> {
-
-    // there was a failure, set state to failed - expectation that this function is called only for
-    // the destructive commands
-    let final_state: DeploymentState = match orchestration_task {
-        Ok((job_cancel_result, _)) => {
-            // handle the case where the thread joins successfully, but because of a cancellation
-            match job_cancel_result {
-                Ok(cancelled) => {
-                    if *cancelled {
-                        tracing::info!("the job finished due to a cancellation");
-                        DeploymentState::Failed(deployment_command)
-                    } else {
-                        intended_state
-                    }
-                }
-                Err(err) => {
-                    // we could join on the job, but there was an error in the run
-                    tracing::error!("the job did not finish successfully due to an error: {err:#}");
-                    DeploymentState::Failed(deployment_command)
-                }
-            }
-        }
-        Err(err) => {
-            tracing::error!("error in orchestration websocket: {err:#}");
-            // set state to failed with the deployment command attempted
-            DeploymentState::Failed(deployment_command)
-        }
-    };
-
-    // update the state to the new intended state as a result of the command running
-    deployment.state = final_state.clone();
-    db_config.deployment_config_db
-        .write()
-        .await
-        .update_deployment(deployment.name.clone(), deployment)
-        .await
-        .context("updating deployment to up state")?;
-
-    Ok(final_state)
 }
 
 

@@ -30,7 +30,6 @@ pub fn cli_canonicalise_all_paths(
                 DeploymentSubCommand::Destroy(_) => {}
                 DeploymentSubCommand::List => {}
                 DeploymentSubCommand::Info(_) => {}
-                DeploymentSubCommand::ResetState(_) => {}
             }
         }
         SubCommand::Up(_) => {}

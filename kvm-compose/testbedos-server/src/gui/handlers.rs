@@ -208,10 +208,12 @@ pub async fn gui_deployment_delete(
 
     tracing::info!("deleting deployment {project}");
 
+    let db = db_config.clone();
+
     db_config.deployment_config_db
         .write()
         .await
-        .delete_deployment(project)
+        .delete_deployment(project, db)
         .await?;
 
     // Redirect::to("/gui/deployments")

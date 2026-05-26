@@ -1,8 +1,7 @@
 use std::process::Stdio;
 use std::process::Command;
 use anyhow::{bail, Context};
-use kvm_compose_schemas::kvm_compose_yaml::machines::avd::AVDGuestOptions;
-
+use crate::state::schema::machines::avd::StateAVDGuestOptions;
 
 /// Check if the parameters for the image exists on disk based on the output from `get_sdk_string`.
 /// If the sdk already exists it will just continue.
@@ -38,14 +37,14 @@ pub fn download_system_image(
 
 /// Get the string for the `sdkmanager` based on the `AVDGuestOptions`
 pub fn get_sdk_string(
-    avdguest_options: &AVDGuestOptions,
+    avdguest_options: &StateAVDGuestOptions,
 ) -> anyhow::Result<String> {
 
     // always start with system images
     let mut package_string = "system-images;".to_string();
 
     match avdguest_options {
-        AVDGuestOptions::Avd { android_api_version, playstore_enabled, .. } => {
+        StateAVDGuestOptions::Avd { android_api_version, playstore_enabled, .. } => {
             package_string.push_str(&format!("android-{android_api_version};"));
 
             if *playstore_enabled {
@@ -62,7 +61,7 @@ pub fn get_sdk_string(
             }
 
         }
-        AVDGuestOptions::ExistingAvd { .. } => bail!("Existing AVD not yet implemented"),
+        StateAVDGuestOptions::ExistingAvd { .. } => bail!("Existing AVD not yet implemented"),
     }
 
     Ok(package_string)

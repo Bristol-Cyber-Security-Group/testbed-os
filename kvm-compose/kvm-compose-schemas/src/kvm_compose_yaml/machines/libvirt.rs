@@ -13,18 +13,18 @@ pub struct ConfigLibvirtMachine {
     pub libvirt_type: LibvirtGuestOptions,
     pub username: Option<String>,
     pub password: Option<String>,
-    #[serde(skip_deserializing)]
-    pub hostname: String,
-    #[serde(skip_deserializing)]
-    pub ssh_address: String,
+    // #[serde(skip_deserializing)]
+    // pub hostname: String,
+    // #[serde(skip_deserializing)]
+    // pub ssh_address: String,
     // #[serde(default)]
     // pub extended_graphics_support: bool,
     pub scaling: Option<ConfigScaling>,
     // #[serde(skip_deserializing)]
     pub is_clone_of: Option<String>,
-    #[serde(skip_deserializing)]
-    pub tcp_tty_port: Option<u32>,
-    pub static_ip: Option<String>,
+    // #[serde(skip_deserializing)]
+    // pub tcp_tty_port: Option<u32>,
+    pub static_ip: Option<String>, // TODO - is this used? part of network now?
 }
 
 /// This is a further specialisation for libvirt guests, any options that are specific to the guest

@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use anyhow::{Context};
-use futures_util::future::{try_join_all};
+use anyhow::Context;
+use futures_util::future::try_join_all;
 use serde_json::{json, Value};
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
 use tokio::sync::RwLockWriteGuard;
-use kvm_compose_lib::state::{State};
-use kvm_compose_schemas::deployment_models::{Deployment, DeploymentList, DeploymentState};
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
-use kvm_compose_schemas::settings::{TestbedClusterConfig};
+use kvm_compose_lib::state::schema::guest::StateGuestType;
+use kvm_compose_lib::state::schema::State;
+use kvm_compose_schemas::deployment_models::{Deployment, DeploymentList};
+use kvm_compose_schemas::settings::TestbedClusterConfig;
 use crate::resource_monitoring::guest::{get_android_guest_metrics, get_docker_guest_metrics, get_libvirt_guest_metrics};
 use crate::ServiceClients;
 
@@ -17,12 +17,6 @@ pub async fn get_active_deployments(
     deployment_list: &HashMap<String, Deployment>,
 ) -> anyhow::Result<Vec<(&String, &Deployment)>> {
     let active_deployments: Vec<_> = deployment_list.iter()
-        .filter(|(_,d)| {
-            match d.state {
-                DeploymentState::Up => true,
-                _ => false,
-            }
-        })
         .collect();
     Ok(active_deployments)
 }
@@ -105,13 +99,13 @@ pub async fn collect_from_guest(
     // let metrics_url = format!("http://{main_ip}:3355/api/metrics/guest/{}/{}", &project_name, &guest_name);
 
     let guest_stats = match guest_type {
-        GuestType::Libvirt(_) => {
+        StateGuestType::Libvirt(_) => {
             get_libvirt_guest_metrics(&guest_name, &project_name, &service_clients).await?
         }
-        GuestType::Docker(_) => {
+        StateGuestType::Docker(_) => {
             get_docker_guest_metrics(&guest_name, &project_name, &service_clients).await?
         }
-        GuestType::Android(_) => {
+        StateGuestType::Android(_) => {
             get_android_guest_metrics(&guest_name, &project_name, &service_clients).await?
         }
     };
@@ -180,17 +174,17 @@ pub async fn collect_metrics_for_guests(
 
             // the endpoint that calls this function will be specific to a type of guest
             match guest_config.guest_type.guest_type {
-                GuestType::Libvirt(_) => {
+                StateGuestType::Libvirt(_) => {
                     if guest_type != "libvirt" {
                         continue;
                     }
                 }
-                GuestType::Docker(_) => {
+                StateGuestType::Docker(_) => {
                     if guest_type != "docker" {
                         continue;
                     }
                 }
-                GuestType::Android(_) => {
+                StateGuestType::Android(_) => {
                     if guest_type != "android" {
                         continue;
                     }

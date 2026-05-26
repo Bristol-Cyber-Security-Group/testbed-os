@@ -1,4 +1,4 @@
-use crate::state::State;
+use crate::state::schema::State;
 
 /// This struct and it's implementation will figure out the different between two `State` structs.
 /// This is an important step in preventing state drift

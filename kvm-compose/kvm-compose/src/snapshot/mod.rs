@@ -7,10 +7,10 @@ use anyhow::Context;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use futures_util::future::try_join_all;
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
-use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::LibvirtGuestOptions;
 use crate::orchestration::{OrchestrationCommon};
-use crate::state::State;
+use crate::state::schema::guest::StateGuestType;
+use crate::state::schema::machines::libvirt::StateLibvirtGuestOptions;
+use crate::state::schema::State;
 
 // The definitions in this file abstract over the qemu-img command and the guests in a given
 // deployment.
@@ -84,13 +84,13 @@ impl TestbedSnapshots {
             if guest_data.is_golden_image {continue;}
             let testbed_host = guest_data.testbed_host.as_ref().context("getting testbed host name in testbed snapshots")?;
             match &guest_data.guest_type.guest_type {
-                GuestType::Libvirt(libvirt) => {
+                StateGuestType::Libvirt(libvirt) => {
                     let corrected_guest_name = TestbedSnapshots::guest_name_helper(&project_name, &guest_name.clone());
 
                     let img_path = match &libvirt.libvirt_type {
-                        LibvirtGuestOptions::CloudImage { path, .. } => path.as_ref().context("getting img path in testbed snapshots")?,
-                        LibvirtGuestOptions::ExistingDisk { path, .. } => path,
-                        LibvirtGuestOptions::IsoGuest { path, .. } => path,
+                        StateLibvirtGuestOptions::CloudImage { path, .. } => path.as_ref().context("getting img path in testbed snapshots")?,
+                        StateLibvirtGuestOptions::ExistingDisk { path, .. } => path,
+                        StateLibvirtGuestOptions::IsoGuest { path, .. } => path,
                     };
                     let img_path_to_string = img_path.to_str()
                         .context("qemu img path to string")?.to_string();
@@ -104,8 +104,8 @@ impl TestbedSnapshots {
                         },
                     );
                 }
-                GuestType::Docker(_) => {}
-                GuestType::Android(_) => {}
+                StateGuestType::Docker(_) => {}
+                StateGuestType::Android(_) => {}
             }
         }
         Ok(Self {

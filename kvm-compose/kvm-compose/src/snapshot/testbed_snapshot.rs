@@ -2,10 +2,10 @@ use anyhow::Context;
 use chrono::{DateTime, Utc};
 use futures_util::future::try_join_all;
 use tokio::sync::mpsc::Sender;
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
-use crate::orchestration::{is_main_testbed, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command};
+use crate::orchestration::{is_main_testbed, run_testbed_orchestration_command, OrchestrationCommon, OrchestrationGuestTask};
 use crate::orchestration::api::OrchestrationLogger;
-use crate::state::{State};
+use crate::state::schema::guest::StateGuestType;
+use crate::state::schema::State;
 
 /// This function will create the whole testbed snapshot by preparing all the artefacts of the
 /// guest VMs and the yaml file into a zip file in the project folder. This does not include the
@@ -20,11 +20,11 @@ pub async fn run_testbed_snapshot_action(
     let mut guest_stop_futures = Vec::new();
     for (_, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
-            GuestType::Libvirt(libvirt) => {
+            StateGuestType::Libvirt(libvirt) => {
                 guest_stop_futures.push(libvirt.destroy_action(common.clone(), guest_data.clone(), logging_send));
             }
-            GuestType::Docker(_) => {}
-            GuestType::Android(_) => {
+            StateGuestType::Docker(_) => {}
+            StateGuestType::Android(_) => {
                 // TODO once android guests are placed in the artefacts folder
             }
         }
@@ -35,7 +35,7 @@ pub async fn run_testbed_snapshot_action(
     for (guest_name, guest_data) in state.testbed_guests.0.iter() {
         let testbed_host = guest_data.testbed_host.as_ref().context("getting testbed host name in run snapshot action")?;
         match &guest_data.guest_type.guest_type {
-            GuestType::Libvirt(libvirt) => {
+            StateGuestType::Libvirt(libvirt) => {
                 if !is_main_testbed(common, testbed_host) {
                     // place remote images back into the artefacts folder, this will overwrite
                     // the original images but we want to preserve state of the current guest
@@ -43,10 +43,10 @@ pub async fn run_testbed_snapshot_action(
                     pull_image_futures.push(libvirt.pull_image_action(common.clone(), guest_data.clone(), logging_send));
                 }
             }
-            GuestType::Docker(_) => {
+            StateGuestType::Docker(_) => {
                 tracing::info!("Doing nothing for {guest_name}, docker guests currently not supported for testbed snapshot as images come from docker hub");
             }
-            GuestType::Android(_) => {
+            StateGuestType::Android(_) => {
                 tracing::info!("Doing nothing for {guest_name}, android guests currently not supported for testbed snapshot");
             }
         }
@@ -58,11 +58,11 @@ pub async fn run_testbed_snapshot_action(
     let mut guest_start_futures = Vec::new();
     for (_, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
-            GuestType::Libvirt(libvirt) => {
+            StateGuestType::Libvirt(libvirt) => {
                 guest_start_futures.push(libvirt.create_action(common.clone(), guest_data.clone(), logging_send));
             }
-            GuestType::Docker(_) => {}
-            GuestType::Android(_) => {
+            StateGuestType::Docker(_) => {}
+            StateGuestType::Android(_) => {
                 // TODO once android guests are placed in the artefacts folder
             }
         }

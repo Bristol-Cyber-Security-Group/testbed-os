@@ -16,16 +16,6 @@ pub enum GuestType {
     Android(ConfigAVDMachine),
 }
 
-impl GuestType {
-    pub fn name(&self) -> String {
-        match self {
-            GuestType::Libvirt(_) => "Libvirt".into(),
-            GuestType::Docker(_) => "Docker".into(),
-            GuestType::Android(_) => "Android".into(),
-        }
-    }
-}
-
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ConfigScalingInterface {
     pub clones: Vec<u32>,

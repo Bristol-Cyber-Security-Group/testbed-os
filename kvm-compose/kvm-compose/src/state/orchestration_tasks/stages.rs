@@ -1,11 +1,11 @@
 use anyhow::Context;
 use tokio::sync::mpsc::{Sender};
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationProtocol, OrchestrationResource};
 use crate::orchestration::websocket::{send_orchestration_instruction_over_channel};
 use crate::orchestration::{OrchestrationCommon};
 use crate::state::orchestration_tasks::guests::{get_main_testbed_name};
-use crate::state::State;
+use crate::state::schema::guest::StateGuestType;
+use crate::state::schema::State;
 
 pub async fn deploy_guest_stage(
     state: &State,
@@ -17,21 +17,21 @@ pub async fn deploy_guest_stage(
     let mut orchestration_resources_deploy_guests = Vec::new();
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
-            GuestType::Libvirt(_) => {
+            StateGuestType::Libvirt(_) => {
                 if !guest_data.is_golden_image {
                     orchestration_resources_deploy_guests.push(
                         OrchestrationResource::Guest(guest_data.clone())
                     );
                 }
             }
-            GuestType::Docker(docker) => {
+            StateGuestType::Docker(docker) => {
                 if docker.scaling.is_none() {
                     orchestration_resources_deploy_guests.push(
                         OrchestrationResource::Guest(guest_data.clone())
                     );
                 }
             }
-            GuestType::Android(android) => {
+            StateGuestType::Android(android) => {
                 if android.scaling.is_none() {
                     orchestration_resources_deploy_guests.push(
                         OrchestrationResource::Guest(guest_data.clone())
@@ -62,21 +62,21 @@ pub async fn destroy_guest_stage(
     let mut orchestration_resources_destroy_guests = Vec::new();
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
-            GuestType::Libvirt(_) => {
+            StateGuestType::Libvirt(_) => {
                 if !guest_data.is_golden_image {
                     orchestration_resources_destroy_guests.push(
                         OrchestrationResource::Guest(guest_data.clone())
                     );
                 }
             }
-            GuestType::Docker(docker) => {
+            StateGuestType::Docker(docker) => {
                 if docker.scaling.is_none() {
                     orchestration_resources_destroy_guests.push(
                         OrchestrationResource::Guest(guest_data.clone())
                     );
                 }
             }
-            GuestType::Android(android) => {
+            StateGuestType::Android(android) => {
                 if android.scaling.is_none() {
                     orchestration_resources_destroy_guests.push(
                         OrchestrationResource::Guest(guest_data.clone())
@@ -109,15 +109,15 @@ pub async fn setup_backing_image_stage(
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         if guest_data.is_golden_image {
             match &guest_data.guest_type.guest_type {
-                GuestType::Libvirt(_) => {
+                StateGuestType::Libvirt(_) => {
                     if guest_data.is_golden_image {
                         orchestration_resources.push(
                             OrchestrationResource::Guest(guest_data.clone())
                         );
                     }
                 }
-                GuestType::Docker(_) => unimplemented!(), // build from Dockerfile
-                GuestType::Android(_) => unimplemented!(), // create AVD
+                StateGuestType::Docker(_) => unimplemented!(), // build from Dockerfile
+                StateGuestType::Android(_) => unimplemented!(), // create AVD
             }
         }
     }
@@ -144,15 +144,15 @@ pub async fn setup_linked_clones_stage(
 
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
-            GuestType::Libvirt(libvirt) => {
+            StateGuestType::Libvirt(libvirt) => {
                 if libvirt.is_clone_of.is_some() {
                     orchestration_resources.push(
                         OrchestrationResource::Guest(guest_data.clone())
                     );
                 }
             }
-            GuestType::Docker(_) => {} // not applicable
-            GuestType::Android(_) => {} // not applicable
+            StateGuestType::Docker(_) => {} // not applicable
+            StateGuestType::Android(_) => {} // not applicable
         }
     }
     if orchestration_resources.is_empty() {
@@ -177,17 +177,17 @@ pub async fn push_guest_images_stage(
 
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
-            GuestType::Libvirt(_) => {
+            StateGuestType::Libvirt(_) => {
                 orchestration_resources.push(
                     OrchestrationResource::Guest(guest_data.clone())
                 );
             }
-            GuestType::Docker(_) => {
+            StateGuestType::Docker(_) => {
                 orchestration_resources.push(
                     OrchestrationResource::Guest(guest_data.clone())
                 );
             }
-            GuestType::Android(_) => {} // Android guests currently only supported on main testbed host
+            StateGuestType::Android(_) => {} // Android guests currently only supported on main testbed host
         }
     }
     if orchestration_resources.is_empty() {
@@ -215,7 +215,7 @@ pub async fn push_backing_guest_images_stage(
     let main_testbed_name = get_main_testbed_name(common);
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
-            GuestType::Libvirt(libvirt) => {
+            StateGuestType::Libvirt(libvirt) => {
                 // check if guest is a clone and if not on the main testbed
                 let guest_testbed = guest_data.testbed_host.as_ref().unwrap();
                 if libvirt.is_clone_of.is_some() && !guest_testbed.eq(&main_testbed_name) {
@@ -225,8 +225,8 @@ pub async fn push_backing_guest_images_stage(
                     );
                 }
             }
-            GuestType::Docker(_) => {}
-            GuestType::Android(_) => {}
+            StateGuestType::Docker(_) => {}
+            StateGuestType::Android(_) => {}
         }
     }
     if orchestration_resources.is_empty() {
@@ -253,7 +253,7 @@ pub async fn rebase_clone_images_stage(
         // only rebase on remote testbeds
         if !guest_data.testbed_host.as_ref().unwrap().eq(&get_main_testbed_name(&common)) {
             match &guest_data.guest_type.guest_type {
-                GuestType::Libvirt(libvirt) => {
+                StateGuestType::Libvirt(libvirt) => {
                     if libvirt.is_clone_of.is_some() {
                         orchestration_resources.push(
                             OrchestrationResource::Guest(guest_data.clone())
@@ -285,13 +285,13 @@ pub async fn run_guest_setup_scripts_stage(
 
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
-            GuestType::Libvirt(_) => {
+            StateGuestType::Libvirt(_) => {
                 orchestration_resources.push(
                     OrchestrationResource::Guest(guest_data.clone())
                 );
             }
-            GuestType::Docker(_) => {} // not applicable at this time
-            GuestType::Android(_) => {
+            StateGuestType::Docker(_) => {} // not applicable at this time
+            StateGuestType::Android(_) => {
                 orchestration_resources.push(
                     OrchestrationResource::Guest(guest_data.clone())
                 );
@@ -319,13 +319,13 @@ pub async fn run_guest_run_scripts_stage(
 
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
-            GuestType::Libvirt(_) => {
+            StateGuestType::Libvirt(_) => {
                 orchestration_resources.push(
                     OrchestrationResource::Guest(guest_data.clone())
                 );
             }
-            GuestType::Docker(_) => {} // not applicable at this time
-            GuestType::Android(_) => {
+            StateGuestType::Docker(_) => {} // not applicable at this time
+            StateGuestType::Android(_) => {
                 orchestration_resources.push(
                     OrchestrationResource::Guest(guest_data.clone())
                 );

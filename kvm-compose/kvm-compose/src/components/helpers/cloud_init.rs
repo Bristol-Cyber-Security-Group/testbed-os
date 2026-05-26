@@ -3,9 +3,8 @@ use crate::assets::Assets;
 use serde::Serialize;
 use std::fmt;
 use std::fmt::Formatter;
-use kvm_compose_schemas::kvm_compose_yaml::{MachineNetwork};
 use crate::components::helpers::xml::TEMPLATES;
-
+use crate::state::schema::guest::StateMachineNetwork;
 // The functions in this file simply create a string representation of the cloud-init metadata files
 // to be passed to the "virt-install" command
 
@@ -62,7 +61,7 @@ struct NetworkConfigEthernet {
 }
 
 pub fn create_network_config(
-    network_definition: &Option<Vec<MachineNetwork>>,
+    network_definition: &Option<Vec<StateMachineNetwork>>,
 ) -> anyhow::Result<Vec<u8>> {
     let mut tera_context = tera::Context::new();
     let mut interfaces = Vec::new();

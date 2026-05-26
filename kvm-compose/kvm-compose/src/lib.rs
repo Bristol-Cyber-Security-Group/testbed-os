@@ -3,7 +3,6 @@ use crate::components::LogicalTestbed;
 
 use anyhow::{Context};
 use kvm_compose_schemas::cli_models::{Common};
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::Config;
 use components::helpers::clones::generate_clone_guests;
 use std::path::PathBuf;
@@ -41,29 +40,6 @@ pub fn get_project_name(project_name: Option<String>) -> anyhow::Result<String> 
     Ok(project_name)
 }
 
-/// This assigns a unique port for the serial TTY access. This is only applicable to libvirt guests.
-pub fn assign_tcp_tty_ports(config: &mut Config) -> anyhow::Result<()> {
-    // TODO - condition if a libvirt guest
-    let mut tcp_port = 4555;
-    if config.machines.is_some() {
-        for machine in config
-            .machines
-            .as_mut()
-            .context("Getting machines from yaml config")?
-            .iter_mut()
-        {
-            match &mut machine.guest_type {
-                GuestType::Libvirt(libvirt_guest) => {
-                    libvirt_guest.tcp_tty_port = Some(tcp_port);
-                    tcp_port += 1;
-                }
-                GuestType::Docker(_) => {}
-                GuestType::Android(_) => {}
-            }
-        }
-    }
-    Ok(())
-}
 
 /// This is the main bit of code to create the logical testbed. It will expand the yaml file input
 /// and prepare all the information in memory, ready for creating artefacts. Note the artefacts are
@@ -90,8 +66,6 @@ pub async fn parse_config(
     let mut config = Config::load_from_file(path).await?;
     // expand any machines with scaling parameters to include clones in the machine list
     generate_clone_guests(&mut config)?;
-    // assign tty ports for the guest
-    assign_tcp_tty_ports(&mut config)?;
     // end yaml parsing
 
     // permissions

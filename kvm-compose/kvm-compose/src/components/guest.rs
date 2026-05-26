@@ -267,15 +267,15 @@ impl TestbedComponent for LibvirtGuest {
                     libivrt_config.password = Some("password".to_string());
                 }
 
-                libivrt_config.hostname = format!("{}-{}", context.project_name, guest_name);
-                libivrt_config.ssh_address = format!(
-                    "{}@{}",
-                    libivrt_config
-                        .username
-                        .clone()
-                        .context("getting guest username")?,
-                    libivrt_config.hostname.clone()
-                );
+                // libivrt_config.hostname = format!("{}-{}", context.project_name, guest_name);
+                // libivrt_config.ssh_address = format!(
+                //     "{}@{}",
+                //     libivrt_config
+                //         .username
+                //         .clone()
+                //         .context("getting guest username")?,
+                //     libivrt_config.hostname.clone()
+                // );
             }
             _ => {
                 unreachable!()
@@ -379,13 +379,13 @@ impl TestbedComponent for DockerGuest {
         };
 
         // set hostname
-        let name = self.get_guest_name().clone();
-        match self.config_machine.guest_type {
-            GuestType::Docker(ref mut docker_config) => {
-                docker_config.hostname = format!("{}-{}", context.project_name, name);
-            }
-            _ => unreachable!(),
-        }
+        // // let name = self.get_guest_name().clone();
+        // match self.config_machine.guest_type {
+        //     GuestType::Docker(ref mut docker_config) => {
+        //         // docker_config.hostname = format!("{}-{}", context.project_name, name);
+        //     }
+        //     _ => unreachable!(),
+        // }
 
         Ok(())
     }

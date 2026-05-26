@@ -3,27 +3,27 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use anyhow::{anyhow, bail, Context};
 use async_trait::async_trait;
-use futures_util::future::{try_join_all};
-use glob::{glob};
+use futures_util::future::try_join_all;
+use glob::glob;
 use nix::unistd::{Gid, Uid};
 use tokio::sync::mpsc::Sender;
 use kvm_compose_schemas::exec::ExecCmdFileTransfer;
-use kvm_compose_schemas::kvm_compose_yaml::machines::avd::{AVDGuestOptions, ConfigAVDMachine};
-use kvm_compose_schemas::kvm_compose_yaml::machines::docker::ConfigDockerMachine;
-use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
-use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::{ConfigLibvirtMachine, LibvirtGuestOptions};
 use crate::components::get_guest_interface_name;
 use crate::exec;
-use crate::exec::{libvirt};
-use crate::orchestration::{is_main_testbed, OrchestrationCommon, OrchestrationGuestTask, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail};
+use crate::exec::libvirt;
+use crate::orchestration::{is_main_testbed, run_testbed_orchestration_command, run_testbed_orchestration_command_allow_fail, OrchestrationCommon, OrchestrationGuestTask};
 use crate::orchestration::api::OrchestrationLogger;
 use crate::orchestration::ssh::SSHClient;
 use crate::ovn::components::logical_switch_port::LogicalSwitchPortType;
-use crate::state::{State, StateNetwork, StateTestbedGuest, StateTestbedGuestList};
 use crate::state::orchestration_tasks::parse_path_with_deployment_config;
+use crate::state::schema::{State, StateNetwork, StateTestbedGuestList};
+use crate::state::schema::guest::{StateGuestType, StateTestbedGuest};
+use crate::state::schema::machines::avd::{StateAVDGuestOptions, StateAVDMachine};
+use crate::state::schema::machines::docker::StateDockerMachine;
+use crate::state::schema::machines::libvirt::{StateLibvirtGuestOptions, StateLibvirtMachine};
 
 #[async_trait]
-impl OrchestrationGuestTask for ConfigLibvirtMachine {
+impl OrchestrationGuestTask for StateLibvirtMachine {
     async fn setup_image_action(
         &self,
         common: OrchestrationCommon,
@@ -47,13 +47,13 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                 // then run the script depending on the guest options
                 tracing::info!("starting base backing image guest {guest_name} to run share setup script");
                 match self.libvirt_type {
-                    LibvirtGuestOptions::CloudImage { .. } => {
+                    StateLibvirtGuestOptions::CloudImage { .. } => {
                         // TODO - this needs to be reworked to use exec cmd, no more SSHClient ..
                         //  see code that was here previously for guidance on re-implementing
                         unimplemented!();
                     }
-                    LibvirtGuestOptions::ExistingDisk { .. } => unimplemented!(),
-                    LibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
+                    StateLibvirtGuestOptions::ExistingDisk { .. } => unimplemented!(),
+                    StateLibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
                 }
             } else {
                 tracing::info!("backing image guest {} has no shared setup script", &guest_name);
@@ -145,7 +145,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 
             // different actions for the libvirt types
             match &self.libvirt_type {
-                LibvirtGuestOptions::CloudImage { path, .. } => {
+                StateLibvirtGuestOptions::CloudImage { path, .. } => {
                     // send image
                     let image_name = if self.is_clone_of.is_some() {
                         format!("{}-linked-clone.qcow2", machine_config.guest_type.name)
@@ -185,7 +185,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                     ));
 
                 }
-                LibvirtGuestOptions::ExistingDisk { path, .. } => {
+                StateLibvirtGuestOptions::ExistingDisk { path, .. } => {
                     // get file name with extension
                     let image_name = path.file_name().unwrap().to_str().unwrap();
                     let local_image_path = format!("{local_image_folder_path}/{image_name}");
@@ -207,7 +207,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                         false,
                     ));
                 }
-                LibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
+                StateLibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
             }
         }
         let _ = try_join_all(futures).await?;
@@ -229,9 +229,9 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         } else {
             tracing::info!("pulling guest {} image from testbed host {} to main testbed", &guest_name, target_testbed);
             let remote_image_path = match &self.libvirt_type {
-                LibvirtGuestOptions::CloudImage { path, .. } => path.as_ref().unwrap(),
-                LibvirtGuestOptions::ExistingDisk { path, .. } => path,
-                LibvirtGuestOptions::IsoGuest { path, .. } => path,
+                StateLibvirtGuestOptions::CloudImage { path, .. } => path.as_ref().unwrap(),
+                StateLibvirtGuestOptions::ExistingDisk { path, .. } => path,
+                StateLibvirtGuestOptions::IsoGuest { path, .. } => path,
             };
             let local_dest = format!("{}/artefacts/", &common.project_working_dir.to_str().unwrap());
             SSHClient::pull_file_from_remote_testbed(
@@ -269,9 +269,9 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
             &target_testbed)?;
         // get the remote path to the clone we want to rebase
         let clone_remote_path = match &self.libvirt_type {
-            LibvirtGuestOptions::CloudImage { path, .. } => path.as_ref().unwrap().to_str().unwrap(),
-            LibvirtGuestOptions::ExistingDisk { path, .. } => path.to_str().unwrap(),
-            LibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
+            StateLibvirtGuestOptions::CloudImage { path, .. } => path.as_ref().unwrap().to_str().unwrap(),
+            StateLibvirtGuestOptions::ExistingDisk { path, .. } => path.to_str().unwrap(),
+            StateLibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
         };
         let cmd = vec!["qemu-img", "rebase", "-u", "-f", "qcow2", "-b", &remote_backing_image_path, "-F", "qcow2", clone_remote_path];
         run_testbed_orchestration_command(
@@ -406,7 +406,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
         // run any setup
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
         match &self.libvirt_type {
-            LibvirtGuestOptions::CloudImage { setup_script, setup_script_timeout_s, .. } => {
+            StateLibvirtGuestOptions::CloudImage { setup_script, setup_script_timeout_s, .. } => {
                 if let Some(script) = setup_script {
                     tracing::info!("running setup script on guest {}", &machine_config.guest_type.name);
 
@@ -579,8 +579,8 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
                     // }
                 }
             }
-            LibvirtGuestOptions::ExistingDisk { .. } => {}
-            LibvirtGuestOptions::IsoGuest { .. } => {}
+            StateLibvirtGuestOptions::ExistingDisk { .. } => {}
+            StateLibvirtGuestOptions::IsoGuest { .. } => {}
         }
         Ok(())
     }
@@ -593,7 +593,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
     ) -> anyhow::Result<()> {
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
         match &self.libvirt_type {
-            LibvirtGuestOptions::CloudImage { run_script, .. } => {
+            StateLibvirtGuestOptions::CloudImage { run_script, .. } => {
                 // if the script exists, we will push the execution into the background
                 if let Some(script) = run_script {
                     tracing::info!("running setup script on guest {}", &machine_config.guest_type.name);
@@ -657,8 +657,8 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 
                 }
             }
-            LibvirtGuestOptions::ExistingDisk { .. } => {}
-            LibvirtGuestOptions::IsoGuest { .. } => {}
+            StateLibvirtGuestOptions::ExistingDisk { .. } => {}
+            StateLibvirtGuestOptions::IsoGuest { .. } => {}
         }
         Ok(())
     }
@@ -736,7 +736,7 @@ impl OrchestrationGuestTask for ConfigLibvirtMachine {
 }
 
 #[async_trait]
-impl OrchestrationGuestTask for ConfigDockerMachine {
+impl OrchestrationGuestTask for StateDockerMachine {
     async fn setup_image_action(
         &self,
         _common: OrchestrationCommon,
@@ -1231,7 +1231,7 @@ impl OrchestrationGuestTask for ConfigDockerMachine {
 }
 
 #[async_trait]
-impl OrchestrationGuestTask for ConfigAVDMachine {
+impl OrchestrationGuestTask for StateAVDMachine {
     async fn setup_image_action(
         &self, _common: OrchestrationCommon,
         _machine_config: StateTestbedGuest,
@@ -1471,7 +1471,7 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
     ) -> anyhow::Result<()> {
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
         match &self.avd_type {
-            AVDGuestOptions::Avd { setup_script, .. } => {
+            StateAVDGuestOptions::Avd { setup_script, .. } => {
                 if let Some(script) = setup_script {
                     logging_sender.send(OrchestrationLogger::info(format!("Waiting until guest {guest_name} is up before continuing"))).await?;
                     wait_for_android_guest_to_be_up(
@@ -1500,7 +1500,7 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
 
                 }
             }
-            AVDGuestOptions::ExistingAvd { .. } => {}
+            StateAVDGuestOptions::ExistingAvd { .. } => {}
         }
 
         Ok(())
@@ -1514,7 +1514,7 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
     ) -> anyhow::Result<()> {
         let guest_name = format!("{}-{}", &common.project_name, &machine_config.guest_type.name);
         match &self.avd_type {
-            AVDGuestOptions::Avd { run_script, .. } => {
+            StateAVDGuestOptions::Avd { run_script, .. } => {
                 if let Some(script) = run_script {
                     logging_sender.send(OrchestrationLogger::info(format!("Waiting until guest {guest_name} is up before continuing"))).await?;
                     wait_for_android_guest_to_be_up(
@@ -1541,7 +1541,7 @@ impl OrchestrationGuestTask for ConfigAVDMachine {
 
                 }
             }
-            AVDGuestOptions::ExistingAvd { .. } => {}
+            StateAVDGuestOptions::ExistingAvd { .. } => {}
         }
 
         Ok(())
@@ -1719,7 +1719,7 @@ pub async fn calculate_backing_images_to_push(
     let mut assignment = HashSet::new();
     for (_guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
-            GuestType::Libvirt(libvirt) => {
+            StateGuestType::Libvirt(libvirt) => {
                 // check if guest is a clone and if not on the main testbed
                 let guest_testbed = guest_data.testbed_host.as_ref().unwrap();
                 if libvirt.is_clone_of.is_some() && !guest_testbed.eq(&main_testbed_name) {
@@ -1728,8 +1728,8 @@ pub async fn calculate_backing_images_to_push(
                     assignment.insert((backing_image_name.clone(), guest_testbed.clone()));
                 }
             }
-            GuestType::Docker(_) => {}
-            GuestType::Android(_) => {}
+            StateGuestType::Docker(_) => {}
+            StateGuestType::Android(_) => {}
         }
     }
     // tracing::info!("assignment = {assignment:?}");
@@ -1763,15 +1763,15 @@ pub fn get_backing_image_local_path(
 ) -> anyhow::Result<String> {
     let backing_guest = testbed_guests.0.get(backing_guest_name).unwrap();
     let local_src = match &backing_guest.guest_type.guest_type {
-        GuestType::Libvirt(libvirt) => {
+        StateGuestType::Libvirt(libvirt) => {
             match &libvirt.libvirt_type {
-                LibvirtGuestOptions::CloudImage { path, .. } => {
+                StateLibvirtGuestOptions::CloudImage { path, .. } => {
                     path.as_ref().unwrap().to_str().unwrap()
                 }
-                LibvirtGuestOptions::ExistingDisk { path, .. } => {
+                StateLibvirtGuestOptions::ExistingDisk { path, .. } => {
                     path.to_str().unwrap()
                 }
-                LibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
+                StateLibvirtGuestOptions::IsoGuest { .. } => unimplemented!(),
             }
         }
         _ => unreachable!(), // no linked clones for docker or android

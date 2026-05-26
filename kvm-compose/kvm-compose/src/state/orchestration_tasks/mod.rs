@@ -3,7 +3,7 @@ use anyhow::{bail, Context};
 use async_trait::async_trait;
 use futures_util::future::try_join_all;
 use nix::unistd::{Gid, Uid};
-use tokio::sync::mpsc::{Sender};
+use tokio::sync::mpsc::Sender;
 use kvm_compose_schemas::kvm_compose_yaml::machines::GuestType;
 use kvm_compose_schemas::kvm_compose_yaml::machines::libvirt::LibvirtGuestOptions;
 use kvm_compose_schemas::settings::TestbedClusterConfig;
@@ -13,9 +13,10 @@ use crate::components::LogicalTestbed;
 use crate::get_project_folder_user_group;
 use crate::orchestration::*;
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationLogger, OrchestrationProtocol};
-use crate::orchestration::websocket::{send_orchestration_instruction_over_channel};
-use crate::state::{State, StateTestbedGuestList};
+use crate::orchestration::websocket::send_orchestration_instruction_over_channel;
 use crate::state::orchestration_tasks::stages::*;
+use crate::state::schema::{State, StateTestbedGuestList};
+use crate::state::schema::guest::StateGuestType;
 
 pub mod ovs_network;
 pub mod ovn_network;
@@ -84,13 +85,13 @@ impl OrchestrationTask for State {
         let mut guest_destroy_futures = Vec::new();
         for (_guest_name, guest_data) in self.testbed_guests.0.iter() {
             match &guest_data.guest_type.guest_type {
-                GuestType::Libvirt(libvirt) => {
+                StateGuestType::Libvirt(libvirt) => {
                     guest_destroy_futures.push(libvirt.destroy_action(common.clone(), guest_data.clone(), logging_send));
                 }
-                GuestType::Docker(docker) => {
+                StateGuestType::Docker(docker) => {
                     guest_destroy_futures.push(docker.destroy_action(common.clone(), guest_data.clone(), logging_send));
                 }
-                GuestType::Android(android) => {
+                StateGuestType::Android(android) => {
                     guest_destroy_futures.push(android.destroy_action(common.clone(), guest_data.clone(), logging_send));
                 }
             }
@@ -227,7 +228,7 @@ pub async fn clear_artefacts(
     // special case for android
     for (guest_name, guest_data) in state.testbed_guests.0.iter() {
         match &guest_data.guest_type.guest_type {
-            GuestType::Android(android_config) => {
+            StateGuestType::Android(android_config) => {
                 // is android, run avd delete command
                 let avd_name = format!("{project_name}-{guest_name}");
                 if android_config.scaling.is_some() {
@@ -337,7 +338,7 @@ fn check_provision_temporary_network(state_testbed_guest_list: &StateTestbedGues
         .iter()
         .filter(|(_, g)| {
             match &g.guest_type.guest_type {
-                GuestType::Libvirt(libvirt) => {
+                StateGuestType::Libvirt(libvirt) => {
                     if let Some(scaling) = &libvirt.scaling {
                         scaling.shared_setup.is_some() // could be true or false
                     } else {

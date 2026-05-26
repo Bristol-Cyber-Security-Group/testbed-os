@@ -6,8 +6,8 @@ use kvm_compose_schemas::cli_models::Opts;
 use crate::orchestration::{create_logical_testbed, OrchestrationTask, read_previous_state_request, write_state_request};
 use crate::parse_config;
 use crate::state::orchestration_tasks::{check_if_guest_images_exist, get_orchestration_common};
-use crate::state::State;
-use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand, DeploymentState};
+use crate::state::schema::State;
+use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
 use kvm_compose_schemas::settings::TestbedClusterConfig;
 use crate::orchestration::api::{OrchestrationInstruction, OrchestrationProtocol};
 use crate::orchestration::websocket::{send_orchestration_instruction_over_channel};
@@ -67,7 +67,7 @@ pub async fn run_orchestration(
 
 pub async fn orchestration_parse_command(
     command: DeploymentCommand,
-    mut deployment: Deployment,
+    deployment: Deployment,
     kvm_compose_config: TestbedClusterConfig,
     sender: &mut Sender<OrchestrationProtocol>,
     http_client: Client,
@@ -208,10 +208,10 @@ pub async fn orchestration_parse_command(
                 let common = get_orchestration_common(&state, force_provision, force_rerun_scripts, reapply_acl, kvm_compose_config).await?;
                 // now the state has been written, we can ask the server to run orchestration
                 let up_res = state.request_create_action(&common, sender).await.context("requesting create action");
+
                 match up_res {
-                    Ok(_) => deployment.state = DeploymentState::Up,
+                    Ok(_) => {},
                     Err(err) => {
-                        deployment.state = DeploymentState::Failed(command.clone());
                         bail!("{err:#}");
                     },
                 }
@@ -243,9 +243,8 @@ pub async fn orchestration_parse_command(
                 Ok(old_state) => {
                     let common = get_orchestration_common(&old_state, false, false, false, kvm_compose_config).await?;
                     match old_state.request_destroy_action(&common, sender).await {
-                        Ok(_) => deployment.state = DeploymentState::Down,
+                        Ok(_) => {},
                         Err(err) => {
-                            deployment.state = DeploymentState::Failed(command.clone());
                             bail!("{err:#}");
                         },
                     }
@@ -253,7 +252,6 @@ pub async fn orchestration_parse_command(
                 }
                 Err(err) => {
                     tracing::error!("{err:#}");
-                    deployment.state = DeploymentState::Failed(command.clone());
                 }
             }
             deployment
@@ -297,7 +295,6 @@ pub async fn orchestration_parse_command(
                     command_outcome = CommandOutcome::Success;
                 }
                 Err(err) => {
-                    deployment.state = DeploymentState::Failed(command.clone());
                     bail!("{err:#}");
                 },
             }
@@ -325,7 +322,6 @@ pub async fn orchestration_parse_command(
 
             } else {
                 tracing::error!("could not run clear artefacts, no state file");
-                deployment.state = DeploymentState::Failed(command.clone());
             }
             deployment
         }

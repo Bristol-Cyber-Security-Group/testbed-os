@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
 use axum::response::{IntoResponse, Response};
 use axum::http::StatusCode;
@@ -15,6 +16,7 @@ pub mod logging;
 pub mod resource_monitoring;
 pub mod orchestration;
 pub mod gui;
+pub mod state_evaluation;
 
 /// Store a version of the testbed server when compiled - useful for versioning javascript
 pub const PROJECT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -46,6 +48,7 @@ pub struct AppState {
     pub system_monitor: Arc<RwLock<System>>,
     pub template_env: Arc<RwLock<Tera>>,
     pub service_clients: Arc<ServiceClients>,
+    pub active_deployments: Arc<Mutex<HashSet<String>>>,
 }
 
 /// Store some state for the handlers in client mode.
