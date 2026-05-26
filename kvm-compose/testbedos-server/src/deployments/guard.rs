@@ -15,15 +15,23 @@ pub struct DeploymentGuard {
 
 impl Drop for DeploymentGuard {
     fn drop(&mut self) {
-        let mut active = self.state.active_deployments.lock().unwrap();
+        let mut active = self.state.active_deployments
+            .lock()
+            // for now, we allow getting the lock even if another thread has panicked when holding
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
         active.remove(&self.deployment_name);
-        // Mutex is automatically released here
+        // mutex is dropped automatically and the deployment name is removed from the hashset
+        // so everything is cleaned up, and we can start this again for the same deployment in a
+        // clean state
     }
 }
 
 impl AppState {
     pub fn try_lock_deployment(&self, id: String) -> Option<DeploymentGuard> {
-        let mut active = self.active_deployments.lock().unwrap();
+        let mut active = self.active_deployments
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         if active.insert(id.clone()) {
             Some(DeploymentGuard {
@@ -36,6 +44,9 @@ impl AppState {
     }
 
     pub fn is_deployment_locked(&self, id: &str) -> bool {
-        self.active_deployments.lock().unwrap().contains(id)
+        self.active_deployments
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .contains(id)
     }
 }
