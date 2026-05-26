@@ -22,6 +22,7 @@ pub enum DeploymentStatus {
     },
     /// Running means there is a lock on the deployment
     Running,
+    DoesNotExist,
 }
 
 pub async fn total_deployment_state(
@@ -30,12 +31,14 @@ pub async fn total_deployment_state(
 ) -> anyhow::Result<DeploymentStatus> {
 
     // first check if project exists
-    db_config.deployment_config_db
+    let deployment = db_config.deployment_config_db
         .read()
         .await
         .get_deployment(project.clone())
         .await
         .context("Deployment does not exist")?;
+
+    dbg!(deployment);
 
     // if the project exists, check to make sure there is no run lock
     if db_config.is_deployment_locked(&project) {
@@ -43,12 +46,17 @@ pub async fn total_deployment_state(
     }
 
     // if project exists, then lets get the state json
-    let state_json = db_config.deployment_config_db
+    let state_json = match db_config.deployment_config_db
         .read()
         .await
         .get_state(project.clone())
-        .await
-        .context("Deployment exists but state json does not")?;
+        .await {
+        Ok(ok) => ok,
+        Err(_) => {
+            return Ok(DeploymentStatus::DoesNotExist);
+        }
+    };
+
 
     // for all the known components in the state, we will check each of them to check what is up and
     // what is down

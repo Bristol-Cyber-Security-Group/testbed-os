@@ -49,6 +49,7 @@ pub async fn list_active_deployments(
             }
             DeploymentStatus::Down { .. } => {}
             DeploymentStatus::Running => {}
+            DeploymentStatus::DoesNotExist => {}
         }
 
     }

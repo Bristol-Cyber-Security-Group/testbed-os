@@ -395,6 +395,7 @@ async fn run(
                 DeploymentStatus::Partial { .. } => "partial".to_string(),
                 DeploymentStatus::Down { .. } => "down".to_string(),
                 DeploymentStatus::Running => "running".to_string(),
+                DeploymentStatus::DoesNotExist => "does_not_exist".to_string(),
             }
         }
         Err(_) => {

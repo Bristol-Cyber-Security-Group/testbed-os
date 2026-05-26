@@ -58,6 +58,9 @@ pub async fn deployment_state(
         DeploymentStatus::Running => json!({
             "status": "running",
         }),
+        DeploymentStatus::DoesNotExist => json!({
+            "status": "does_not_exist",
+        }),
     };
     // wrap serde json with axum's json type
     Ok((StatusCode::OK, Json(json_response)).into_response())
