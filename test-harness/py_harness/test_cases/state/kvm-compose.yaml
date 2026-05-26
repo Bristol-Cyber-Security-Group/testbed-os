@@ -1,0 +1,93 @@
+machines:
+
+  - name: client1
+    network:
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:01"
+        ip: "10.0.0.10"
+    libvirt:
+      cpus: 1
+      memory_mb: 512
+      libvirt_type:
+        cloud_image:
+          name: ubuntu_20_04
+          expand_gigabytes: 2
+
+  - name: client2
+    network:
+      - switch: sw0
+        gateway: 10.0.0.1
+        mac: "00:00:00:00:00:02"
+        ip: "10.0.0.11"
+    docker:
+      image: nginx:stable
+      volumes:
+        - source: ${PWD}/html
+          target: /usr/share/nginx/html
+
+  - name: client3
+    network:
+      - switch: sw1
+        gateway: 10.0.2.1
+        mac: "00:00:00:00:00:03"
+        ip: "10.0.2.13"
+    docker:
+      image: nginx:stable
+      volumes:
+        - source: ${PWD}/html
+          target: /usr/share/nginx/html
+
+
+network:
+  ovn:
+    switches:
+
+      sw0:
+        subnet: "10.0.0.0/24"
+
+      sw1:
+        subnet: "10.0.2.0/24"
+
+      sw-mid:
+        subnet: "10.0.1.0/24"
+
+    routers:
+
+      lr0:
+        ports:
+
+          - name: lr0-sw0
+            mac: "00:00:00:00:ff:01"
+            gateway_ip: "10.0.0.1/24"
+            switch: sw0
+
+          - name: lr0-sw-mid
+            mac: "00:00:00:00:ff:02"
+            gateway_ip: "10.0.1.1/24"
+            switch: sw-mid
+
+        static_routes:
+          - prefix: "0.0.0.0/0"
+            nexthop: "172.16.1.1"
+
+          - prefix: "10.0.2.0/24"
+            nexthop: "10.0.1.2"
+
+      lr1:
+        ports:
+
+          - name: lr1-sw-mid
+            mac: "00:00:00:00:ff:03"
+            gateway_ip: "10.0.1.2/24"
+            switch: sw-mid
+
+          - name: lr1-sw1
+            mac: "00:00:00:00:ff:04"
+            gateway_ip: "10.0.2.1/24"
+            switch: sw1
+
+        static_routes:
+          - prefix: "0.0.0.0/0"
+            nexthop: "10.0.1.1"
+
