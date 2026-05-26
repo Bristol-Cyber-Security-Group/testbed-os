@@ -117,7 +117,7 @@ pub fn get_deployment_action(
 }
 
 /// This set of commands will control the deployments on the server
-pub async fn deployment_action(client: &Client, opts: &Opts, dep_cmd: &DeploymentCmd) -> anyhow::Result<()> {
+pub async fn deployment_action(_client: &Client, _opts: &Opts, dep_cmd: &DeploymentCmd) -> anyhow::Result<()> {
     match &dep_cmd.sub_command {
         DeploymentSubCommand::Create(_name) => unimplemented!(),
         DeploymentSubCommand::Destroy(_name) => unimplemented!(),

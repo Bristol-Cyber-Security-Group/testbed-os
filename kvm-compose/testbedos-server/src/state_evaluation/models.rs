@@ -128,12 +128,12 @@ pub async fn total_deployment_state(
     // now with the full vectors of both guest and network states, we can do a quick check to see
     // which response to make
 
-    let all_guests_up = if !guest_states.is_empty() && guest_states.iter().all(|(g_n, g_s)| *g_s == StateComponentStatus::Up) {
+    let all_guests_up = if !guest_states.is_empty() && guest_states.iter().all(|(_, g_s)| *g_s == StateComponentStatus::Up) {
         true
     } else {
         false
     };
-    let all_network_components_up = if !network_component_states.is_empty() && network_component_states.iter().all(|(nc_n, nc_s)| *nc_s == StateComponentStatus::Up) {
+    let all_network_components_up = if !network_component_states.is_empty() && network_component_states.iter().all(|(_, nc_s)| *nc_s == StateComponentStatus::Up) {
         true
     } else {
         false
@@ -143,12 +143,12 @@ pub async fn total_deployment_state(
         return Ok(DeploymentStatus::Up);
     }
     // record whether there are any components or guests up
-    let some_guests_up = if !guest_states.is_empty() && guest_states.iter().any(|(g_n, g_s)| *g_s == StateComponentStatus::Up) {
+    let some_guests_up = if !guest_states.is_empty() && guest_states.iter().any(|(_, g_s)| *g_s == StateComponentStatus::Up) {
         true
     } else {
         false
     };
-    let some_network_components_up = if !network_component_states.is_empty() && network_component_states.iter().any(|(nc_n, nc_s)| *nc_s == StateComponentStatus::Up) {
+    let some_network_components_up = if !network_component_states.is_empty() && network_component_states.iter().any(|(_, nc_s)| *nc_s == StateComponentStatus::Up) {
         true
     } else {
         false
@@ -201,7 +201,7 @@ async fn collect_component_status<L, F>(
     // for all network components, get their dedicated status check function and create a bunch of
     // futures to check them all in one go
     let status_vec_futures: Vec<_> = hash_map.iter()
-        .map(|(component_name, component)| async {
+        .map(|(component_name, _)| async {
             let component_exists = state_check_func(
                 db_config.clone(),
                 project.clone(),
@@ -469,9 +469,9 @@ pub async fn logical_acl_state(
 }
 
 pub async fn logical_dhcp_state(
-    db_config: Arc<AppState>,
-    project: String,
-    component: String,
+    _db_config: Arc<AppState>,
+    _project: String,
+    _component: String,
 ) -> anyhow::Result<StateComponentStatus> {
     unimplemented!()
 }

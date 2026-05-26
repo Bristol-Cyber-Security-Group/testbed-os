@@ -10,7 +10,7 @@ use kvm_compose_lib::orchestration::api::{OrchestrationInstruction, Orchestratio
 use kvm_compose_lib::orchestration::{OrchestrationCommon};
 use kvm_compose_lib::state::orchestration_tasks::get_orchestration_common;
 use kvm_compose_lib::state::schema::State;
-use kvm_compose_schemas::deployment_models::{Deployment, DeploymentCommand};
+use kvm_compose_schemas::deployment_models::{DeploymentCommand};
 use crate::AppState;
 use crate::state_evaluation::models::{total_deployment_state, DeploymentStatus};
 
@@ -111,9 +111,9 @@ async fn run(
     tracing::info!("getting deployment info");
 
     // get the deployment info for later
-    let (mut deployment, deployment_command) = match init.instruction {
+    let (deployment, deployment_command) = match init.instruction {
         OrchestrationInstruction::Init { deployment, deployment_command } => {
-            let mut deployment = db_config.deployment_config_db
+            let deployment = db_config.deployment_config_db
                 .read()
                 .await
                 .get_deployment(deployment.name)

@@ -67,7 +67,7 @@ pub async fn run_orchestration(
 
 pub async fn orchestration_parse_command(
     command: DeploymentCommand,
-    mut deployment: Deployment,
+    deployment: Deployment,
     kvm_compose_config: TestbedClusterConfig,
     sender: &mut Sender<OrchestrationProtocol>,
     http_client: Client,
