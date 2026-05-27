@@ -13,10 +13,17 @@
       become: yes
       when: pandoc_check.rc != 0
 
-    - name: Install mdbook system-wide
-      ansible.builtin.unarchive:
-        src: "https://github.com/rust-lang/mdBook/releases/download/v0.4.42/mdbook-v0.4.42-x86_64-unknown-linux-gnu.tar.gz"
-        dest: /usr/local/bin/
+    - name: Compile and install mdbook locally (using absolute path to cargo)
+      ansible.builtin.command: "{{ ansible_env.HOME }}/.cargo/bin/cargo install mdbook"
+      args:
+        creates: "{{ ansible_env.HOME }}/.cargo/bin/mdbook"
+      # running as regular user.
+      when: mdbook_check.rc != 0
+
+    - name: Move mdbook binary to system-wide location
+      ansible.builtin.copy:
+        src: "{{ ansible_env.HOME }}/.cargo/bin/mdbook"
+        dest: /usr/local/bin/mdbook
         remote_src: yes
         mode: '0755'
         owner: root

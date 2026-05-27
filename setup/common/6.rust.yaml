@@ -4,14 +4,14 @@
   tasks:
   - name: Check if Rust is installed
     ansible.builtin.stat:
-       path: ~/.cargo/bin/rustc
+       path: "{{ ansible_env.HOME }}/.cargo/bin/rustc"
     register: rust_check
 
   - name: Install Rust using RustUp
     shell: |
       curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     args:
-      creates: ~/.cargo/bin/rustc  
+      creates: "{{ ansible_env.HOME }}/.cargo/bin/rustc"
     when:  not rust_check.stat.exists
 
   - name: Check if rust is in PATH
