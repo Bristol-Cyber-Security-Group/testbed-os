@@ -13,8 +13,8 @@ The `kvm-compose.yaml` file (the schema) provide the following four available se
 
 - **Machines (`machines`)** A list of definitions for the guests in a deployment that specifies the guest types and further specifications for each guest machine such as the name of the guest machine, memory capacity, storage capacity, etc. Please see [TestbedOS Guest Machines](machines.md) for more details.
 
-- **Network (`network`)** A list of networking entities available for the Software-Defined Network (SDN) in a deployment. This includes a switch and the SDN topology for the deployment. Please see [TestbedOS Guest Networking](networking.md) for more details.
+- **Network (`network`)** A list of networking entities available for the Software-Defined Network (SDN) in a deployment. This includes a switch and the SDN topology for the deployment. Please see [TestbedOS Guest Networking](schema_networking.md) for more details.
 
-- **Tooling (`tooling`)** A list of specialised tools to interact with the deployment for specific purposes. Please see [TestbedOS Tooling](tooling.md) for more details.
+<!-- - **Tooling (`tooling`)** A list of specialised tools to interact with the deployment for specific purposes. Please see [TestbedOS Tooling](tooling.md) for more details.
 
-- **Deployment Options (`deployment_options`)** A list of options to customise the deployment. Please see [TestbedOS Deployment Options](deployment_options.md).
+- **Deployment Options (`deployment_options`)** A list of options to customise the deployment. Please see [TestbedOS Deployment Options](deployment_options.md). -->
