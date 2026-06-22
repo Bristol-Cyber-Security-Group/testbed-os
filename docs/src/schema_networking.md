@@ -13,7 +13,7 @@ We provide a way to describe the SDN configuration and topology in the `kvm-comp
 
 - Switches
 - Routers
-- External Guest IP addresses
+- External network access
 - Static Guest IP addresses
 - Dynamic Guest IP addresses via DHCP
 - NAT
@@ -60,7 +60,7 @@ This definition will create a router port connecting logical router `lr0` to log
 The port needs a MAC address (`mac`) and an IP address for the gateway (`gateway_ip`).
 These are important details as guests need to know the gateway.
 
-## External Guest IP Addresses
+## External Network Access
 
 TestbedOS allows external networking from inside the logical network of a deployment and out to the internet. 
 This requires a couple of OVN components that need to be configured:
@@ -178,13 +178,14 @@ The type of NAT is defined in `nat_type`, with the values being either `snat` or
 
 ## DNS
 
-While OVN is comprehensive in many areas, DNS in it's current version as of writing this documentation (v23.03.0) is lacking.
-For internal DNS, the OVN controller can route all DNS requests directly from the guest's port to itself to serve lookups.
+While OVN is comprehensive in many areas, DNS in its current version as of writing this documentation (v23.03.0) is lacking.
+The DNS option in TestbedOS via OVN serves as the local DNS server for the deployment and therefore the guests, not for the TestbedOS hosts.
+For internal DNS, i.e., for assigning the domain name lookup for the guests in the deployment, the OVN controller can route all DNS requests directly from the guest's port to itself to serve lookups.
 However, this requires a combination of configuring the DNS entries in each logical switch and also having the guest with a dynamic IP address.
 We found this to be cumbersome, in addition to being rather opinionated to potential use cases.
 For example, if you want to investigate DNS traffic in your network for research purposes, say you are trying to model an old insecure network, then OVN would be obstructive in this scenario.
 It is possible for the user to host a DNS agent in the network, but there would be some configuration of the guests on the user's part.
 
-For external DNS, this will also require configuration on the user's side for the guests.
+For external DNS, i.e., to get the IP addresses for domains that live in the Internet. this will also require configuration on the user's side for the guests.
 We have added 8.8.8.8 as a DNS server for guests with dynamic IP addresses as a default.
 However, we are looking to generally improve the DNS story in TestbedOS in future updates.

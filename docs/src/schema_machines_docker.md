@@ -60,7 +60,7 @@ All these necessary materials required to run the example can be found under the
 After `kvm-compose up`, you can interact with the docker containers in the deployment by, for example, running 
 
 ``` shell
-kvm-compose exec one-off curl 10.0.0.10
+kvm-compose exec one-off shell-command curl 10.0.0.10
 ``` 
 
 The results of running the command should return the content of the `index.html` page.
