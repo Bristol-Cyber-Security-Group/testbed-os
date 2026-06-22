@@ -7,7 +7,7 @@ section: 1
 
 Once a deployment is up and running via `kvm-compose up`, you can *push* (upload) a file to a specific guest via the `push` subcommand or *pull* (download) a file from a specific guest via the `pull` subcommand in the deployment. 
 
-The subcommands are only available for libvirt guests. For Docker, please use the file and folder mounts feature. For Android, please see the ADB tooling which has built in file pushing support. To be able to push to the guest, TestbedOS will need credentials to a user on the guest. For cloud-init libvirt guests, these have the default credentials of  `nocloud` for both the username and password. If this is your own virtual machine, you will need to supply credentials in the `kvm-compose.yaml` file, as shown in the following snippet (trimmed with ellipses for brevity). 
+The subcommands are only available for libvirt guests. For Docker, please use the file and folder mounts feature. For Android, please see the ADB tooling which has built in file pushing support. To be able to push to the guest, TestbedOS will need credentials to a user on the guest. For cloud-init libvirt guests, these have the default credentials of  `nocloud` as the username and `password` as the password. If this is your own virtual machine, you will need to supply credentials in the `kvm-compose.yaml` file, as shown in the following snippet (trimmed with ellipses for brevity). 
 
 ``` yaml
 - name: client1
