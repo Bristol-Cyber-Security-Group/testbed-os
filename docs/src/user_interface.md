@@ -44,12 +44,12 @@ Clicking the `Run command` button will provide the GUI tools that you can use to
 
 On the left side of the page, the GUI also provides a pseudo terminal to emulate the CLI behaviour to display the logs of commands as they appear from the TestbedOS server.
 Note that the logging is exactly the same logging with what you would see if the command is executed on the CLI, the GUI logging is mostly a general indication of what is happening so that there is some activity to be seen by the user.
-For more detailed logging, especially if there is a problem, please refer to the server logs for more information.
+For more detailed logging, especially if there is a problem, please refer to the server logs for more information, which by default, is located at `/var/lib/testbedos/log/`.
 
 ### Authentication
 
 There are currently no users and login for the GUI.
-While the testbed is un-authenticated, we have not added this but in a future release when the endpoints are secured we will also add users to the GUI.
+While a TestbedOS deployment is userless, we have not added this but in a future release when the endpoints are secured we will also add users to the GUI.
 
 ### GUI Internals
 
