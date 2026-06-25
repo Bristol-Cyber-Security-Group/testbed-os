@@ -13,7 +13,7 @@ This installation guide will outline each component needed.
 [Rust](https://rustup.rs/)
 : The Rust programming language. Default configuration, when prompted, is fine.
 
-[Poetry](https://python-poetry.org/docs/#installation)
+<!-- [Poetry](https://python-poetry.org/docs/#installation)
 : Please make sure you have python version `3.10` and above, consider using pyenv to manage python installs (see [Poetry Documentation](https://python-poetry.org/docs/managing-environments/)).
 Also make sure you have `pip3` installed for this python version, for Ubuntu install `python3-pip`.
 
@@ -22,7 +22,7 @@ Also make sure you have `pip3` installed for this python version, for Ubuntu ins
 
 Poetry has been used to manage the python virtual environments for TestbedOS.
 While it is possible to use others, you will need to manually replace the use of `poetry run` for example with your own virtual environment management.
-The use of `poetry run` for ad-hoc use of the python environment to remove the need to load the virtual environment in the current session.
+The use of `poetry run` for ad-hoc use of the python environment to remove the need to load the virtual environment in the current session. -->
 
 ## Runtime Dependencies
 
@@ -98,7 +98,7 @@ sdkmanager --install "emulator" "platform-tools"    # Install the Android emulat
 
 ## Dependencies Installation Setup
 
-The `setup.sh` script is executed during the installation process in to compile and build the Rust code of different components of TestbedOS, set up the poetry virtual environments, and build the TestbedOS documentation.
+The `setup.sh` script is executed during the installation process via [the Ansible installation](welcome.md#quick-installation) to compile and build the Rust code of different components of TestbedOS and build the TestbedOS documentation.
 
 ``` bash
 ./setup.sh
