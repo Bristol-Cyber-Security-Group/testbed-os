@@ -5,7 +5,7 @@ section: 1
 
 # TestbedOS Configurations and Clustering Mode
 
-TestbedOS provides a clustering mode that ables a deployment to be run across a cluster of multiple TestbedOS hosts, instead of a single TestbedOS host. The objective of the clustering mode is to allow the cluster of hosts to distribute the overhead of running the deployment equally for better performance.
+TestbedOS provides a clustering mode that ables a deployment to be run across a cluster of multiple TestbedOS hosts, instead of a single TestbedOS host. The objective of the clustering mode is to increase available resources and to allow the cluster of hosts to distribute the overhead of running the deployment equally.
 The architecture of a TestbedOS deployment with a cluster of hosts with their [TestbedOS servers](server.md) is visualised in the diagram below.
 
 ![TestbedOS Deployment Architecture Diagram](testbedos_architecture.png)
