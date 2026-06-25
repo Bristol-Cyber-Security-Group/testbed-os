@@ -10,7 +10,7 @@ We provide dashboards available via [the GUI](user_interface.md#gui) at `localho
 Under the 'Resource Monitoring' tab, you can view the list of the names of the deployments to monitor its resources.
 
 As an overview, the resource monitoring stack consists of the following:
-1. NGINX as a proxy server,
+1. NGINX as a reverse proxy server,
 2. Prometheus as the time series database, and
 3. Grafana for the data visualisation.
 
