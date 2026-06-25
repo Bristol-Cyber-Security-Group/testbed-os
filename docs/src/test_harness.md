@@ -98,7 +98,7 @@ At a high level, the objective of the testing the "assets" or the components in 
 - Network bridges for libvirt and openvswitch are created.
 - The tunnels for openvswitch are created
 - The guests are created.
-- Guests are accessible via SSH and can have files pushed.
+<!-- - Guests are accessible via SSH and can have files pushed. -->
 - The guests can communicate with (all) other guests on the network.
 - The guests can communicate with the external web, e.g., to download further dependencies.
 
