@@ -16,7 +16,7 @@ Before the clustering mode can be run, configurations have to be made on the Tes
 
 The `host.json` file contains the necessary information for the TestbedOS host(s) and `mode.json` determines how the current host will behave (standalone, main, or client). These files must exist before a deployment can be run. As part of the installation process, the `host.json` file and the `mode.json` file will be created in `/var/lib/testbedos/config/`.
 
-The ``setup.sh`` script, which is executed as part of the [Quick Installation](welcome.md#quick-installation), configures  both of the `host.json` and `mode.json` files for a singleton host and places them in `/var/lib/testbedos/config/` automatically. 
+[The Ansible installation](welcome.md#quick-installation), configures  both of the `host.json` and `mode.json` files for a singleton host and places them in `/var/lib/testbedos/config/` automatically. 
 
 ### Singleton Mode or the Main Host
 

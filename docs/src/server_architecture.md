@@ -104,7 +104,7 @@ The database provider is implemented with `trait`s, so introducing a new databas
 
 This database connection is shared between all handlers and is wrapped with atomic read/write locks to ensure thread safety and prevent race conditions on the database (especially for the file based provider).
 
-The `setup.sh` script will enable the server as a daemon, so if you want to run the server for development you will have to stop the service before you run you development version, as it shares the same port and the CLI will be connecting to this port.
+[The Ansible installation](welcome.md#quick-installation) will enable the server as a daemon, so if you want to run the server for development you will have to stop the service before you run you development version, as it shares the same port and the CLI will be connecting to this port.
 Ideally we should make the port editable through environment variables for development purposes.
 
 The server has a development mode, where there are checks for cargo's debug mode.

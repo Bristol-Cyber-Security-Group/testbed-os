@@ -98,8 +98,4 @@ sdkmanager --install "emulator" "platform-tools"    # Install the Android emulat
 
 ## Dependencies Installation Setup
 
-The `setup.sh` script is executed during the installation process via [the Ansible installation](welcome.md#quick-installation) to compile and build the Rust code of different components of TestbedOS and build the TestbedOS documentation.
-
-``` bash
-./setup.sh
-```
+[The Ansible installation](welcome.md#quick-installation) compiles and builds the Rust code of different components of TestbedOS. It also generates the TestbedOS documentation.
