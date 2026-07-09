@@ -21,6 +21,22 @@ jobs:
       - name: Install Rust dependencies
       - run: |
             cargo install mdbook 
+
+      - name: Strip YAML metadata
+      - run: |
+            find ./docs/src/ -type f -name "*.md" | while IFS= read -r file; do
+              sed -i '/^---$/,/^---$/d' "$file"
+            done
+
+      - name: Copy icons and diagrams to docs source
+      - run: |
+            cp ./kvm-compose/testbedos-server/assets/icons/*.png docs/src/ 2>/dev/null || true
+            cp ./kvm-compose/testbedos-server/assets/diagrams/*.png docs/src/ 2>/dev/null || true
+
+      - name: Build HTML pages
+      - run: |
+            mdbook build docs/ -d _build
+
       # - name: Install dependencies
       #   run: |
       #     pip install sphinx sphinx_rtd_theme myst_parser
@@ -28,12 +44,12 @@ jobs:
       #   run: |
       #     sphinx-build docs _build
 
-      # - name: Deploy to GitHub Pages
-      #   uses: peaceiris/actions-gh-pages@v3
-      #   if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-      #   with:
-      #     publish_branch: gh-pages
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}
-      #     publish_dir: _build/
-      #     force_orphan: true
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        with:
+          publish_branch: gh-pages
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _build/
+          force_orphan: true
 
