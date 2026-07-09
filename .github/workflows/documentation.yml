@@ -17,25 +17,24 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       # - uses: actions/setup-python@v3
-      
-      - name: Install Rust dependencies
       - uses: dtolnay/rust-toolchain@stable
-      - run: |
-            cargo install mdbook 
+
+      - name: Install Rust dependencies
+        run: cargo install mdbook 
 
       - name: Strip YAML metadata
-      - run: |
-            find ./docs/src/ -type f -name "*.md" | while IFS= read -r file; do
-              sed -i '/^---$/,/^---$/d' "$file"
-            done
+        run: |
+          find ./docs/src/ -type f -name "*.md" | while IFS= read -r file; do
+            sed -i '/^---$/,/^---$/d' "$file"
+          done
 
       - name: Copy icons and diagrams to docs source
-      - run: |
+        run: |
             cp ./kvm-compose/testbedos-server/assets/icons/*.png docs/src/ 2>/dev/null || true
             cp ./kvm-compose/testbedos-server/assets/diagrams/*.png docs/src/ 2>/dev/null || true
 
       - name: Build HTML pages
-      - run: |
+        run: |
             mdbook build docs/ -d _build
 
       # - name: Install dependencies
