@@ -16,9 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v3
-      - uses: dtolnay/rust-toolchain@stable
+      # - uses: actions/setup-python@v3
+      
       - name: Install Rust dependencies
+      - uses: dtolnay/rust-toolchain@stable
       - run: |
             cargo install mdbook 
 
