@@ -1,0 +1,40 @@
+machines:
+- name: nginx
+  network:
+    - switch: sw0
+      gateway: 10.0.0.1
+      mac: "00:00:00:00:00:01"
+      ip: "10.0.0.10"
+  docker:
+    image: nginx:stable
+    env_file: docker.env
+    volumes:
+      - source: ${PWD}/html  # the schema allows you to reference the project dir as ${PWD}
+        target: /usr/share/nginx/html
+
+# - name: observer
+#   network:
+#     - switch: sw0
+#       gateway: 10.0.0.1
+#       mac: "00:00:00:00:00:02"
+#       ip: "10.0.0.12"
+#   docker:
+#     image: alpine/curl
+
+- name: one-off
+  network:
+    - switch: sw0
+      gateway: 10.0.0.1
+      mac: "00:00:00:00:00:02"
+      ip: "10.0.0.11"
+  docker:
+    image: nginx:stable
+    command: "/bin/bash"
+    # command: "curl docker-single-nginx:80"  # assuming the deployment name is "project"
+
+
+network:
+  ovn:
+    switches:
+      sw0:
+        subnet: "10.0.0.0/24"

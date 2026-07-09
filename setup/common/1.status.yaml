@@ -45,22 +45,20 @@
       path: ~/.local/bin/poetry
     register: poetry_check
 
-  - name: Check if Poetry has installed its dependencies
-    shell: |
-      export PYENV_ROOT="$HOME/.pyenv"
-      export PATH="$PYENV_ROOT/bin:$HOME/.local/bin:$PATH"
-      eval "$(pyenv init --path)"
-      eval "$(pyenv init -)"
-      poetry run which sphinx-build
-    args:
-      chdir: "../.."
-    register: poetry_check_install
+  - name: Check if mdbook is installed
+    ansible.builtin.command: which mdbook
+    register: mdbook_check
+    ignore_errors: yes
+
+  - name: Check if pandoc is installed
+    ansible.builtin.command: which pandoc
+    register: pandoc_check
     ignore_errors: yes
 
   - name: Check Docs are present
     ansible.builtin.stat:
       path: /var/lib/testbedos/assets/documentation/index.html
-    register: sphinx_docs
+    register: mdbook_docs
 
   - name: Check Textual User Interface is installed
     ansible.builtin.stat:
@@ -189,8 +187,9 @@
         - "| Rust Installed                | {{ rust_check.stat.exists }} |"
         - "| PyEnv Installed               | {{ pyenv_check.stat.exists }} |"
         - "| Poetry Installed              | {{ poetry_check.stat.exists }} |"
-        - "| Poetry Packages Installed     | {{ poetry_check_install.rc == 0 }} |"
-        - "| Documentation is Built        | {{ sphinx_docs.stat.exists }} |"
+        - "| mdbook Installed              | {{ mdbook_check.rc == 0 }} |"
+        - "| pandoc Installed              | {{ pandoc_check.rc == 0 }} |"
+        - "| Documentation is Built        | {{ mdbook_docs.stat.exists }} |"
         - "| TUI Installed                 | {{ tui_check.stat.exists }} |"
         - "| KVM-Compose Installed         | {{ kvm_check.stat.exists }} |"
         - "| Testbed-OS Server Installed   | {{ server_check.stat.exists }} |"

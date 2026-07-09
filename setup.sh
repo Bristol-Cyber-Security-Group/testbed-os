@@ -31,19 +31,44 @@ poetry env use 3.10.5 || exit
 poetry install || exit
 #poetry update || exit
 
-echo "building man pages"
-# remove old doc build
+# removing old doc build and make new structure
 rm -rf build/*
-# build man pages (use kvm-orchestrate venv as it has sphinx and sphinx-click installed)
-poetry run sphinx-build -M man docs build
-# build html pages of documentation which can be useful
-poetry run sphinx-build -M html docs build
+mkdir -p build/html/
+mkdir -p build/man/
+
+echo "building man pages"
+# building the man pages for each md file
+find ./docs/src/ -type f -name "*.md" | while IFS= read -r file; do
+    relative_path=$(realpath --relative-to="./docs/src/" "$file")   # relative path from testbed-os including filename and extension
+    relative_dir=build/man/$(dirname $relative_path)    # path difference excluding filename and extension in /build/man
+    mkdir -p $relative_dir                              # create the same path difference in /build/man
+    relative_path=${relative_path%.md}.1                # changing the extension
+    pandoc $file -s -t man -M author="BCSG" -o ./build/man/$relative_path   # generating the man page
+    
+    cp $file ${file%.md}.bak            # making a backup for the file as this will be overwritten when removing the man pages metadata yaml declaration 
+    sed -i '/^---$/,/^---$/d' "$file"   # removing the metadata yaml declaration for the man pages metadata for pandoc
+done
+
+echo "building the html pages"
+cp ./kvm-compose/testbedos-server/assets/icons/*.png docs/src/      # copying the icons from the server's assets to the source of the documentation
+cp ./kvm-compose/testbedos-server/assets/diagrams/*.png docs/src/   # copying the diagrams from the server's assets to the source of the documentation
+mdbook build docs/ -d build/html/       # generating the html files from the md files
+
+# restoring the original md files with the pandoc man pages metadata yaml declaration and deleting the backup
+find ./docs/src/ -type f -name "*.bak" | while IFS= read -r file; do
+    cp $file ${file%.bak}.md
+    rm $file
+done
+rm ./docs/src/*.png
+
 # place documentation in server assets
 sudo rm -rf /var/lib/testbedos/assets/documentation/
 sudo mkdir /var/lib/testbedos/assets/documentation/
-sudo cp -r build/html/ /var/lib/testbedos/assets/documentation/
+sudo cp -r build/html/. /var/lib/testbedos/assets/documentation/
 
-# install man pages TODO
+# install the man page for kvm-compose
+sudo cp ./build/man/user_interface_kvm_compose.1 /usr/local/share/man/man1/kvm-compose.1
+sudo mandb
 
 echo "installing textual user interface"
 cd util/tui/ || exit

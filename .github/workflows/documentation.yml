@@ -16,13 +16,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v3
-      - name: Install dependencies
+      # - uses: actions/setup-python@v3
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Rust dependencies
+        run: cargo install mdbook 
+
+      - name: Strip YAML metadata
         run: |
-          pip install sphinx sphinx_rtd_theme myst_parser
-      - name: Sphinx build
+          find ./docs/src/ -type f -name "*.md" | while IFS= read -r file; do
+            sed -i '/^---$/,/^---$/d' "$file"
+          done
+
+      - name: Copy icons and diagrams to docs source
         run: |
-          sphinx-build docs _build
+            cp ./kvm-compose/testbedos-server/assets/icons/*.png docs/src/ 2>/dev/null || true
+            cp ./kvm-compose/testbedos-server/assets/diagrams/*.png docs/src/ 2>/dev/null || true
+
+      - name: Build HTML pages
+        run: |
+            mdbook build docs/ -d _build
+
+      # - name: Install dependencies
+      #   run: |
+      #     pip install sphinx sphinx_rtd_theme myst_parser
+      # - name: Sphinx build
+      #   run: |
+      #     sphinx-build docs _build
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
